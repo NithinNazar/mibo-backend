@@ -1,101 +1,256 @@
-// src/services/auth.service.ts
+// src/services/auth.services.ts
 import { userRepository } from "../repositories/user.repository";
+import { authSessionRepository } from "../repositories/authSession.repository";
 import { generateOtp, hashOtp, verifyOtp } from "../utils/otp";
 import { ApiError } from "../utils/apiError";
-import { signAccessToken } from "../utils/jwt";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt";
+import { verifyPassword } from "../utils/password";
 import { ENV } from "../config/env";
+import logger from "../config/logger";
+
+interface AuthResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    username: string | null;
+    role: string;
+    avatar: string | null;
+    centreIds: string[];
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  accessToken: string;
+  refreshToken: string;
+}
 
 export class AuthService {
-  /*
-   Trigger OTP for login/signup.
-   This will create user if not existing (patient use case).
-   Gallabox integration for WhatsApp sending will be plugged in here later.
-  */
-  async requestOtp(phone: string) {
-    let user = await userRepository.findByPhone(phone);
-
-    const purpose: "LOGIN" | "SIGNUP" = user ? "LOGIN" : "SIGNUP";
+  /**
+   * Send OTP to staff user's phone (STAFF users only)
+   */
+  async sendOtp(phone: string): Promise<{ message: string }> {
+    // Check if user exists and is STAFF
+    const user = await userRepository.findByPhoneStaffOnly(phone);
 
     if (!user) {
-      user = await userRepository.createPatientUser(phone);
-      // In future, also assign PATIENT role explicitly if needed.
+      // Don't reveal if user exists or not for security
+      logger.warn(
+        `OTP requested for non-existent or non-staff phone: ${phone}`
+      );
+      return { message: "OTP sent if phone is valid" };
     }
 
     const otp = generateOtp();
     const otpHash = hashOtp(otp);
-
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + ENV.OTP_EXPIRY_MINUTES * 60 * 1000);
 
     await userRepository.createOtpRequest({
       phone,
       otpHash,
-      purpose,
+      purpose: "LOGIN",
       expiresAt,
     });
 
-    // Integration point: send OTP via Gallabox WhatsApp here.
-    if (!ENV.GALLABOX_API_KEY) {
-      // For now, we can log OTP in development.
-      // In production, remove this and rely only on WhatsApp.
-      // console.log("OTP for", phone, "is", otp);
+    // TODO: Send OTP via SMS (Twilio integration)
+    // For development, log OTP
+    if (ENV.NODE_ENV === "development") {
+      logger.info(`OTP for ${phone}: ${otp}`);
     }
 
-    return {
-      userId: user.id,
-      phone: user.phone,
-      purpose,
-      // For development only, you might return otp.
-      // Do not return OTP in production responses.
-    };
+    return { message: "OTP sent successfully" };
   }
 
-  /*
-   Verifies OTP and returns a JWT if valid.
-  */
-  async verifyOtpAndLogin(phone: string, otp: string) {
-    const user = await userRepository.findByPhone(phone);
+  /**
+   * Login with phone + OTP (STAFF users only)
+   */
+  async loginWithPhoneOtp(phone: string, otp: string): Promise<AuthResponse> {
+    // Find staff user
+    const user = await userRepository.findByPhoneStaffOnly(phone);
+
     if (!user) {
-      throw ApiError.unauthorized("User not found for this phone number");
+      throw ApiError.forbidden("Access denied");
     }
 
+    // Verify OTP
     const otpRecord = await userRepository.findLatestValidOtp(phone, "LOGIN");
-    const signupOtpRecord = await userRepository.findLatestValidOtp(
-      phone,
-      "SIGNUP"
-    );
-    const record = otpRecord || signupOtpRecord;
 
-    if (!record) {
-      throw ApiError.badRequest("No valid OTP request found or OTP expired");
+    if (!otpRecord) {
+      throw ApiError.badRequest("Invalid or expired OTP");
     }
 
-    const isValid = verifyOtp(otp, record.otp_hash);
+    const isValid = verifyOtp(otp, otpRecord.otp_hash);
+
     if (!isValid) {
-      await userRepository.incrementOtpAttempts(record.id);
+      await userRepository.incrementOtpAttempts(otpRecord.id);
       throw ApiError.badRequest("Invalid OTP");
     }
 
-    await userRepository.markOtpUsed(record.id);
+    await userRepository.markOtpUsed(otpRecord.id);
 
-    // For now, get roles minimally (can be expanded later).
-    const userWithRoles = await userRepository.findByIdWithRoles(user.id);
-    const roles = userWithRoles?.roles || [];
+    // Generate tokens and return response
+    return this.generateAuthResponse(user.id);
+  }
 
-    const token = signAccessToken({
-      userId: user.id,
-      userType: user.user_type,
-      roles,
-    });
+  /**
+   * Login with phone + password (STAFF users only)
+   */
+  async loginWithPhonePassword(
+    phone: string,
+    password: string
+  ): Promise<AuthResponse> {
+    // Find staff user
+    const user = await userRepository.findByPhoneStaffOnly(phone);
+
+    if (!user || !user.password_hash) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Verify password
+    const isValid = await verifyPassword(password, user.password_hash);
+
+    if (!isValid) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Generate tokens and return response
+    return this.generateAuthResponse(user.id);
+  }
+
+  /**
+   * Login with username + password (STAFF users only)
+   */
+  async loginWithUsernamePassword(
+    username: string,
+    password: string
+  ): Promise<AuthResponse> {
+    // Find staff user
+    const user = await userRepository.findByUsernameStaffOnly(username);
+
+    if (!user || !user.password_hash) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Verify password
+    const isValid = await verifyPassword(password, user.password_hash);
+
+    if (!isValid) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Generate tokens and return response
+    return this.generateAuthResponse(user.id);
+  }
+
+  /**
+   * Refresh access token using refresh token
+   */
+  async refreshAccessToken(
+    refreshToken: string
+  ): Promise<{ accessToken: string }> {
+    try {
+      // Verify refresh token
+      const payload = verifyRefreshToken(refreshToken);
+
+      // Check if session is valid
+      const session = await authSessionRepository.findValidSession(
+        refreshToken
+      );
+
+      if (!session) {
+        throw ApiError.unauthorized("Invalid or expired refresh token");
+      }
+
+      // Generate new access token
+      const accessToken = signAccessToken({
+        userId: payload.userId,
+        userType: payload.userType,
+        roles: payload.roles,
+      });
+
+      return { accessToken };
+    } catch (error) {
+      throw ApiError.unauthorized("Invalid or expired refresh token");
+    }
+  }
+
+  /**
+   * Logout user by revoking refresh token
+   */
+  async logout(userId: number, refreshToken: string): Promise<void> {
+    await authSessionRepository.revokeSession(refreshToken);
+    logger.info(`User ${userId} logged out`);
+  }
+
+  /**
+   * Get current user details
+   */
+  async getCurrentUser(userId: number): Promise<AuthResponse["user"]> {
+    const userWithRoles = await userRepository.findByIdWithRolesAndCentres(
+      userId
+    );
+
+    if (!userWithRoles) {
+      throw ApiError.notFound("User not found");
+    }
+
+    return this.formatUserResponse(userWithRoles);
+  }
+
+  /**
+   * Generate auth response with tokens (private helper)
+   */
+  private async generateAuthResponse(userId: number): Promise<AuthResponse> {
+    const userWithRoles = await userRepository.findByIdWithRolesAndCentres(
+      userId
+    );
+
+    if (!userWithRoles) {
+      throw ApiError.notFound("User not found");
+    }
+
+    // Generate tokens
+    const payload = {
+      userId: userWithRoles.id,
+      userType: userWithRoles.user_type,
+      roles: userWithRoles.roles,
+    };
+
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    // Store refresh token session
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await authSessionRepository.createSession(userId, refreshToken, expiresAt);
 
     return {
-      token,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        full_name: user.full_name,
-        user_type: user.user_type,
-        roles,
-      },
+      user: this.formatUserResponse(userWithRoles),
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
+   * Format user response (private helper)
+   */
+  private formatUserResponse(user: any): AuthResponse["user"] {
+    return {
+      id: user.id.toString(),
+      name: user.full_name,
+      email: user.email,
+      phone: user.phone,
+      username: user.username,
+      role: user.roles[0] || "staff", // Primary role
+      avatar: null, // TODO: Add avatar support
+      centreIds: (user.centreIds || []).map((id: number) => id.toString()),
+      isActive: user.is_active,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
     };
   }
 }

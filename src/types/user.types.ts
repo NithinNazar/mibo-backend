@@ -7,6 +7,7 @@ export interface User {
   phone: string | null;
   email: string | null;
   username: string | null;
+  password_hash?: string;
   full_name: string;
   user_type: UserType;
   is_active: boolean;
@@ -22,4 +23,5 @@ export interface Role {
 
 export interface UserWithRoles extends User {
   roles: string[];
+  centreIds?: number[];
 }

@@ -2,98 +2,84 @@
 import { Router } from "express";
 import { appointmentController } from "../controllers/appointment.controller";
 import { authenticate } from "../middlewares/auth.middleware";
-import { requireRoles } from "../middlewares/role.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 
 const router = Router();
 
-/*
- Patient or staff creates an appointment.
- If userType = PATIENT, patient is automatically derived.
- If userType = STAFF, body.patient_id must be provided.
-*/
-router.post("/", authenticate, (req, res, next) =>
-  appointmentController.create(req, res, next)
+/**
+ * GET /api/appointments
+ * Get appointments with query filters (centreId, clinicianId, patientId, date, status)
+ * Role-based filtering applied automatically
+ */
+router.get("/", authenticate, (req, res, next) =>
+  appointmentController.getAppointments(req, res, next)
 );
 
-/*
- Current patient views all their appointments.
-*/
-router.get("/me", authenticate, (req, res, next) =>
-  appointmentController.listForCurrentPatient(req, res, next)
+/**
+ * GET /api/appointments/availability
+ * Get clinician availability for a specific date
+ * Query params: clinician_id, centre_id, date (YYYY-MM-DD)
+ */
+router.get("/availability", authenticate, (req, res, next) =>
+  appointmentController.getClinicianAvailability(req, res, next)
 );
 
-/*
- Staff: list appointments for a clinician.
-*/
-router.get(
-  "/clinician/:clinicianId",
-  authenticate,
-  requireRoles([
-    "ADMIN",
-    "MANAGER",
-    "CENTRE_MANAGER",
-    "CLINICIAN",
-    "CARE_COORDINATOR",
-    "FRONT_DESK",
-  ]),
-  (req, res, next) => appointmentController.listForClinician(req, res, next)
-);
-
-/*
- Staff: list appointments for a centre.
-*/
-router.get(
-  "/centre/:centreId",
-  authenticate,
-  requireRoles([
-    "ADMIN",
-    "MANAGER",
-    "CENTRE_MANAGER",
-    "CARE_COORDINATOR",
-    "FRONT_DESK",
-  ]),
-  (req, res, next) => appointmentController.listForCentre(req, res, next)
-);
-
-/*
- Get appointment by id, with access control.
-*/
+/**
+ * GET /api/appointments/:id
+ * Get appointment by ID with access control
+ */
 router.get("/:id", authenticate, (req, res, next) =>
-  appointmentController.getById(req, res, next)
+  appointmentController.getAppointmentById(req, res, next)
 );
 
-/*
- Reschedule appointment.
- Typically staff will use this; you can also allow patients if needed.
-*/
-router.patch(
-  "/:id/reschedule",
+/**
+ * POST /api/appointments
+ * Create appointment
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ * If userType = PATIENT, patient is automatically derived
+ * If userType = STAFF, body.patient_id must be provided
+ */
+router.post(
+  "/",
   authenticate,
-  requireRoles([
+  requireRole(
     "ADMIN",
     "MANAGER",
     "CENTRE_MANAGER",
     "CARE_COORDINATOR",
-    "FRONT_DESK",
-  ]),
-  (req, res, next) => appointmentController.reschedule(req, res, next)
+    "FRONT_DESK"
+  ),
+  (req, res, next) => appointmentController.createAppointment(req, res, next)
 );
 
-/*
- Update appointment status (cancel, complete, no-show).
- Only staff.
-*/
-router.patch(
-  "/:id/status",
+/**
+ * PUT /api/appointments/:id
+ * Update appointment (reschedule or update status)
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR
+ */
+router.put(
+  "/:id",
   authenticate,
-  requireRoles([
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER", "CARE_COORDINATOR"),
+  (req, res, next) => appointmentController.updateAppointment(req, res, next)
+);
+
+/**
+ * DELETE /api/appointments/:id
+ * Cancel appointment with reason
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
+router.delete(
+  "/:id",
+  authenticate,
+  requireRole(
     "ADMIN",
     "MANAGER",
     "CENTRE_MANAGER",
     "CARE_COORDINATOR",
-    "FRONT_DESK",
-  ]),
-  (req, res, next) => appointmentController.updateStatus(req, res, next)
+    "FRONT_DESK"
+  ),
+  (req, res, next) => appointmentController.cancelAppointment(req, res, next)
 );
 
 export default router;

@@ -1,49 +1,94 @@
 // src/controllers/patient.controller.ts
-import { Request, Response, NextFunction } from "express";
-import { patientService } from "../services/patient.service";
+import { Response, NextFunction } from "express";
+import { patientService } from "../services/patient.services";
 import { ok, created } from "../utils/response";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 export class PatientController {
-  async getMyProfile(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Get patients with search
+   */
+  async getPatients(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      if (!req.user) return;
+      const search = req.query.search ? String(req.query.search) : undefined;
+      const phone = req.query.phone ? String(req.query.phone) : undefined;
 
-      const data = await patientService.getPatientByUserId(req.user.userId);
-      return ok(res, data);
+      const patients = await patientService.getPatients(search, phone);
+      return ok(res, patients);
     } catch (err) {
       next(err);
     }
   }
 
-  async updateMyProfile(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      if (!req.user) return;
-
-      const updated = await patientService.updatePatient(
-        req.user.userId,
-        req.body
-      );
-      return ok(res, updated, "Profile updated");
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async getPatientById(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Get patient by ID
+   */
+  async getPatientById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const data = await patientService.getPatientById(id);
-      return ok(res, data);
+      const patient = await patientService.getPatientById(id);
+      return ok(res, patient);
     } catch (err) {
       next(err);
     }
   }
 
-  async createPatient(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Create patient
+   */
+  async createPatient(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const createdPatient = await patientService.createPatient(req.body);
-      return created(res, createdPatient, "Patient created");
+      const patient = await patientService.createPatient(req.body);
+      return created(res, patient, "Patient created successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Update patient
+   */
+  async updatePatient(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const updated = await patientService.updatePatient(id, req.body);
+      return ok(res, updated, "Patient updated successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get patient appointments
+   */
+  async getPatientAppointments(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = Number(req.params.id);
+      const appointments = await patientService.getPatientAppointments(id);
+      return ok(res, appointments);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Add medical note
+   */
+  async addMedicalNote(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+
+      const id = Number(req.params.id);
+      const note = await patientService.addMedicalNote(
+        id,
+        req.body,
+        req.user.userId
+      );
+      return created(res, note, "Medical note added successfully");
     } catch (err) {
       next(err);
     }

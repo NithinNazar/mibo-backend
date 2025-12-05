@@ -1,49 +1,114 @@
 // src/routes/patient.routes.ts
 import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware";
-import { requireRoles } from "../middlewares/role.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import { patientController } from "../controllers/patient.controller";
 
 const router = Router();
 
-/*
- Logged-in patient fetches their own profile
-*/
-router.get("/me", authenticate, (req, res, next) =>
-  patientController.getMyProfile(req, res, next)
+/**
+ * GET /api/patients
+ * Get patients with search filters
+ * Query params: search (name), phone
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
+router.get(
+  "/",
+  authenticate,
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK"
+  ),
+  (req, res, next) => patientController.getPatients(req, res, next)
 );
 
-/*
- Logged-in patient updates their profile
-*/
-router.put("/me", authenticate, (req, res, next) =>
-  patientController.updateMyProfile(req, res, next)
-);
-
-/*
- Admin or staff roles fetch patient by ID
-*/
+/**
+ * GET /api/patients/:id
+ * Get patient by ID with complete details
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK, CLINICIAN
+ */
 router.get(
   "/:id",
   authenticate,
-  requireRoles([
+  requireRole(
     "ADMIN",
     "MANAGER",
     "CENTRE_MANAGER",
     "CARE_COORDINATOR",
     "FRONT_DESK",
-  ]),
+    "CLINICIAN"
+  ),
   (req, res, next) => patientController.getPatientById(req, res, next)
 );
 
-/*
- Front desk or admin creates a new patient manually
-*/
+/**
+ * POST /api/patients
+ * Create new patient
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
 router.post(
   "/",
   authenticate,
-  requireRoles(["ADMIN", "FRONT_DESK"]),
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK"
+  ),
   (req, res, next) => patientController.createPatient(req, res, next)
+);
+
+/**
+ * PUT /api/patients/:id
+ * Update patient profile
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
+router.put(
+  "/:id",
+  authenticate,
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK"
+  ),
+  (req, res, next) => patientController.updatePatient(req, res, next)
+);
+
+/**
+ * GET /api/patients/:id/appointments
+ * Get patient appointment history
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK, CLINICIAN
+ */
+router.get(
+  "/:id/appointments",
+  authenticate,
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK",
+    "CLINICIAN"
+  ),
+  (req, res, next) => patientController.getPatientAppointments(req, res, next)
+);
+
+/**
+ * POST /api/patients/:id/notes
+ * Add medical note to patient
+ * Roles: CLINICIAN, ADMIN
+ */
+router.post(
+  "/:id/notes",
+  authenticate,
+  requireRole("CLINICIAN", "ADMIN"),
+  (req, res, next) => patientController.addMedicalNote(req, res, next)
 );
 
 export default router;

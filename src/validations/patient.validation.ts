@@ -1,8 +1,10 @@
 // src/validations/patient.validation.ts
 import { ApiError } from "../utils/apiError";
 
-export interface UpdatePatientDto {
-  full_name?: string;
+export interface CreatePatientDto {
+  phone: string;
+  full_name: string;
+  email?: string;
   date_of_birth?: string;
   gender?: string;
   blood_group?: string;
@@ -10,9 +12,17 @@ export interface UpdatePatientDto {
   emergency_contact_phone?: string;
 }
 
-export interface CreatePatientDto {
-  phone: string;
-  full_name?: string;
+export interface UpdatePatientDto {
+  date_of_birth?: string;
+  gender?: string;
+  blood_group?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  notes?: string;
+}
+
+export interface AddMedicalNoteDto {
+  note: string;
 }
 
 export function validateCreatePatient(body: any): CreatePatientDto {
@@ -20,28 +30,84 @@ export function validateCreatePatient(body: any): CreatePatientDto {
     throw ApiError.badRequest("Phone number is required");
   }
 
-  return {
-    phone: body.phone.trim(),
-    full_name: body.full_name ? String(body.full_name).trim() : "Patient",
+  // Validate phone format (Indian format, 10 digits)
+  const phoneRegex = /^[6-9]\d{9}$/;
+  const cleanPhone = body.phone.trim().replace(/\D/g, "");
+  if (!phoneRegex.test(cleanPhone)) {
+    throw ApiError.badRequest(
+      "Invalid phone number format. Must be 10 digits starting with 6-9"
+    );
+  }
+
+  if (
+    !body.full_name ||
+    typeof body.full_name !== "string" ||
+    body.full_name.trim().length === 0
+  ) {
+    throw ApiError.badRequest("Full name is required");
+  }
+
+  const dto: CreatePatientDto = {
+    phone: cleanPhone,
+    full_name: body.full_name.trim(),
   };
+
+  if (body.email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
+      throw ApiError.badRequest("Invalid email format");
+    }
+    dto.email = body.email.trim();
+  }
+
+  if (body.date_of_birth) {
+    dto.date_of_birth = String(body.date_of_birth);
+  }
+
+  if (body.gender) {
+    dto.gender = String(body.gender).trim();
+  }
+
+  if (body.blood_group) {
+    dto.blood_group = String(body.blood_group).trim();
+  }
+
+  if (body.emergency_contact_name) {
+    dto.emergency_contact_name = String(body.emergency_contact_name).trim();
+  }
+
+  if (body.emergency_contact_phone) {
+    dto.emergency_contact_phone = String(body.emergency_contact_phone).trim();
+  }
+
+  return dto;
 }
 
 export function validateUpdatePatient(body: any): UpdatePatientDto {
-  const allowed = [
-    "full_name",
-    "date_of_birth",
-    "gender",
-    "blood_group",
-    "emergency_contact_name",
-    "emergency_contact_phone",
-  ];
+  const dto: UpdatePatientDto = {};
 
-  const dto: any = {};
+  if (body.date_of_birth !== undefined) {
+    dto.date_of_birth = String(body.date_of_birth);
+  }
 
-  for (const key of allowed) {
-    if (body[key] !== undefined) {
-      dto[key] = String(body[key]).trim();
-    }
+  if (body.gender !== undefined) {
+    dto.gender = String(body.gender).trim();
+  }
+
+  if (body.blood_group !== undefined) {
+    dto.blood_group = String(body.blood_group).trim();
+  }
+
+  if (body.emergency_contact_name !== undefined) {
+    dto.emergency_contact_name = String(body.emergency_contact_name).trim();
+  }
+
+  if (body.emergency_contact_phone !== undefined) {
+    dto.emergency_contact_phone = String(body.emergency_contact_phone).trim();
+  }
+
+  if (body.notes !== undefined) {
+    dto.notes = String(body.notes).trim();
   }
 
   if (Object.keys(dto).length === 0) {
@@ -49,4 +115,18 @@ export function validateUpdatePatient(body: any): UpdatePatientDto {
   }
 
   return dto;
+}
+
+export function validateAddMedicalNote(body: any): AddMedicalNoteDto {
+  if (
+    !body.note ||
+    typeof body.note !== "string" ||
+    body.note.trim().length === 0
+  ) {
+    throw ApiError.badRequest("Note text is required");
+  }
+
+  return {
+    note: body.note.trim(),
+  };
 }

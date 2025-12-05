@@ -2,9 +2,6 @@
 import jwt from "jsonwebtoken";
 import { ENV } from "../config/env";
 
-const JWT_SECRET = ENV.JWT_SECRET || "change_this_secret";
-const ACCESS_TOKEN_EXPIRY = "1h"; // Adjust as needed
-
 export interface JwtPayload {
   userId: number;
   userType: "PATIENT" | "STAFF";
@@ -12,10 +9,23 @@ export interface JwtPayload {
 }
 
 export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+  return jwt.sign(payload as any, ENV.JWT_ACCESS_SECRET, {
+    expiresIn: ENV.JWT_ACCESS_EXPIRY,
+  } as jwt.SignOptions);
+}
+
+export function signRefreshToken(payload: JwtPayload): string {
+  return jwt.sign(payload as any, ENV.JWT_REFRESH_SECRET, {
+    expiresIn: ENV.JWT_REFRESH_EXPIRY,
+  } as jwt.SignOptions);
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
-  const decoded = jwt.verify(token, JWT_SECRET);
+  const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET);
+  return decoded as JwtPayload;
+}
+
+export function verifyRefreshToken(token: string): JwtPayload {
+  const decoded = jwt.verify(token, ENV.JWT_REFRESH_SECRET);
   return decoded as JwtPayload;
 }

@@ -122,6 +122,106 @@ export class UserRepository {
     `;
     await db.none(query, [otpId]);
   }
+
+  /**
+   * Find staff user by phone (excludes PATIENT users)
+   */
+  async findByPhoneStaffOnly(phone: string): Promise<User | null> {
+    const user = await db.oneOrNone<User>(
+      "SELECT * FROM users WHERE phone = $1 AND user_type = 'STAFF' AND is_active = TRUE",
+      [phone]
+    );
+    return user;
+  }
+
+  /**
+   * Find staff user by username (excludes PATIENT users)
+   */
+  async findByUsernameStaffOnly(username: string): Promise<User | null> {
+    const user = await db.oneOrNone<User>(
+      "SELECT * FROM users WHERE username = $1 AND user_type = 'STAFF' AND is_active = TRUE",
+      [username]
+    );
+    return user;
+  }
+
+  /**
+   * Find staff user by email (excludes PATIENT users)
+   */
+  async findByEmailStaffOnly(email: string): Promise<User | null> {
+    const user = await db.oneOrNone<User>(
+      "SELECT * FROM users WHERE email = $1 AND user_type = 'STAFF' AND is_active = TRUE",
+      [email]
+    );
+    return user;
+  }
+
+  /**
+   * Find user by ID with roles and centre assignments
+   */
+  async findByIdWithRolesAndCentres(
+    userId: number
+  ): Promise<UserWithRoles | null> {
+    const user = await db.oneOrNone<User>(
+      "SELECT * FROM users WHERE id = $1 AND is_active = TRUE",
+      [userId]
+    );
+    if (!user) return null;
+
+    // Get roles
+    const roles = await db.any<{ name: string }>(
+      `
+      SELECT DISTINCT r.name
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      WHERE ur.user_id = $1 AND ur.is_active = TRUE
+      `,
+      [userId]
+    );
+
+    // Get centre assignments
+    const centres = await db.any<{ centre_id: number }>(
+      `
+      SELECT DISTINCT centre_id
+      FROM user_roles
+      WHERE user_id = $1 AND is_active = TRUE AND centre_id IS NOT NULL
+      `,
+      [userId]
+    );
+
+    return {
+      ...user,
+      roles: roles.map((r) => r.name),
+      centreIds: centres.map((c) => c.centre_id),
+    };
+  }
+
+  /**
+   * Create staff user with password
+   */
+  async createStaffUser(params: {
+    phone: string;
+    email?: string;
+    username?: string;
+    passwordHash: string;
+    fullName: string;
+  }): Promise<User> {
+    const query = `
+      INSERT INTO users (phone, email, username, password_hash, full_name, user_type, is_active)
+      VALUES ($1, $2, $3, $4, $5, 'STAFF', TRUE)
+      RETURNING *
+    `;
+
+    const user = await db.one<User>(query, [
+      params.phone,
+      params.email || null,
+      params.username || null,
+      params.passwordHash,
+      params.fullName,
+    ]);
+
+    return user;
+  }
 }
 
 export const userRepository = new UserRepository();

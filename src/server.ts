@@ -1,8 +1,69 @@
 import app from "./app";
 import { ENV } from "./config/env";
+import { testDatabaseConnection, closeDatabaseConnection } from "./config/db";
+import logger from "./config/logger";
 
 const PORT = ENV.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+// Start server
+async function startServer() {
+  try {
+    // Test database connection
+    const dbConnected = await testDatabaseConnection();
+    if (!dbConnected) {
+      logger.error("Failed to connect to database. Exiting...");
+      process.exit(1);
+    }
+
+    // Start HTTP server
+    const server = app.listen(PORT, () => {
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`📝 Environment: ${ENV.NODE_ENV}`);
+      logger.info(`🌐 CORS Origin: ${ENV.CORS_ORIGIN}`);
+    });
+
+    // Graceful shutdown handlers
+    const gracefulShutdown = async (signal: string) => {
+      logger.info(`${signal} received. Starting graceful shutdown...`);
+
+      // Stop accepting new connections
+      server.close(async () => {
+        logger.info("HTTP server closed");
+
+        // Close database connections
+        await closeDatabaseConnection();
+
+        logger.info("Graceful shutdown completed");
+        process.exit(0);
+      });
+
+      // Force shutdown after 30 seconds
+      setTimeout(() => {
+        logger.error("Forced shutdown after timeout");
+        process.exit(1);
+      }, 30000);
+    };
+
+    // Listen for termination signals
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+    // Handle uncaught exceptions
+    process.on("uncaughtException", (error) => {
+      logger.error("Uncaught Exception:", error);
+      gracefulShutdown("UNCAUGHT_EXCEPTION");
+    });
+
+    // Handle unhandled promise rejections
+    process.on("unhandledRejection", (reason, promise) => {
+      logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+      gracefulShutdown("UNHANDLED_REJECTION");
+    });
+  } catch (error) {
+    logger.error("Failed to start server:", error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();

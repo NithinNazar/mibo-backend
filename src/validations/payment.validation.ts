@@ -1,10 +1,8 @@
 // src/validations/payment.validation.ts
 import { ApiError } from "../utils/apiError";
 
-export interface CreatePaymentDto {
+export interface CreateOrderDto {
   appointment_id: number;
-  amount: number;
-  currency: string;
 }
 
 export interface VerifyPaymentDto {
@@ -13,36 +11,87 @@ export interface VerifyPaymentDto {
   razorpay_signature: string;
 }
 
-export function validateCreatePayment(body: any): CreatePaymentDto {
+export interface CreateRefundDto {
+  payment_id: number;
+  amount?: number;
+  reason?: string;
+}
+
+export function validateCreateOrder(body: any): CreateOrderDto {
   if (!body.appointment_id) {
     throw ApiError.badRequest("appointment_id is required");
   }
-  if (!body.amount || Number(body.amount) <= 0) {
-    throw ApiError.badRequest("Valid amount is required");
+
+  const appointmentId = Number(body.appointment_id);
+  if (isNaN(appointmentId) || appointmentId <= 0) {
+    throw ApiError.badRequest("Invalid appointment_id");
   }
 
   return {
-    appointment_id: Number(body.appointment_id),
-    amount: Number(body.amount),
-    currency: body.currency ? String(body.currency) : "INR",
+    appointment_id: appointmentId,
   };
 }
 
 export function validateVerifyPayment(body: any): VerifyPaymentDto {
-  const required = [
-    "razorpay_order_id",
-    "razorpay_payment_id",
-    "razorpay_signature",
-  ];
-  for (const key of required) {
-    if (!body[key]) {
-      throw ApiError.badRequest(`${key} is required`);
-    }
+  if (!body.razorpay_order_id || typeof body.razorpay_order_id !== "string") {
+    throw ApiError.badRequest("razorpay_order_id is required");
+  }
+
+  if (
+    !body.razorpay_payment_id ||
+    typeof body.razorpay_payment_id !== "string"
+  ) {
+    throw ApiError.badRequest("razorpay_payment_id is required");
+  }
+
+  if (!body.razorpay_signature || typeof body.razorpay_signature !== "string") {
+    throw ApiError.badRequest("razorpay_signature is required");
   }
 
   return {
-    razorpay_order_id: String(body.razorpay_order_id),
-    razorpay_payment_id: String(body.razorpay_payment_id),
-    razorpay_signature: String(body.razorpay_signature),
+    razorpay_order_id: body.razorpay_order_id.trim(),
+    razorpay_payment_id: body.razorpay_payment_id.trim(),
+    razorpay_signature: body.razorpay_signature.trim(),
   };
+}
+
+export function validateCreateRefund(body: any): CreateRefundDto {
+  if (!body.payment_id) {
+    throw ApiError.badRequest("payment_id is required");
+  }
+
+  const paymentId = Number(body.payment_id);
+  if (isNaN(paymentId) || paymentId <= 0) {
+    throw ApiError.badRequest("Invalid payment_id");
+  }
+
+  const dto: CreateRefundDto = {
+    payment_id: paymentId,
+  };
+
+  if (body.amount !== undefined) {
+    const amount = Number(body.amount);
+    if (isNaN(amount) || amount <= 0) {
+      throw ApiError.badRequest("Invalid refund amount");
+    }
+    dto.amount = amount;
+  }
+
+  if (body.reason) {
+    dto.reason = String(body.reason).trim();
+  }
+
+  return dto;
+}
+
+export function validateWebhookPayload(body: any): any {
+  if (!body.event || typeof body.event !== "string") {
+    throw ApiError.badRequest("Invalid webhook payload: missing event");
+  }
+
+  if (!body.payload) {
+    throw ApiError.badRequest("Invalid webhook payload: missing payload");
+  }
+
+  return body;
 }

@@ -1,50 +1,173 @@
 // src/controllers/payment.controller.ts
 import { Response, NextFunction, Request } from "express";
 import { paymentService } from "../services/payment.service";
-import { AuthRequest } from "../middlewares/auth.middleware";
 import { ok, created } from "../utils/response";
+import { AuthRequest } from "../middlewares/auth.middleware";
+import {
+  validateCreateOrder,
+  validateVerifyPayment,
+  validateCreateRefund,
+  validateWebhookPayload,
+} from "../validations/payment.validation";
 
 export class PaymentController {
-  /*
-   POST /api/payments/create-intent
-   Body: { appointment_id, amount, currency? }
-  */
-  async createIntent(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Create Razorpay order
+   */
+  async createOrder(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return;
-      const result = await paymentService.createPaymentIntent(
-        req.body,
-        req.user
+
+      const dto = validateCreateOrder(req.body);
+
+      // Get patient ID from authenticated user
+      let patientId: number;
+      if (req.user.userType === "PATIENT") {
+        patientId = req.user.userId;
+      } else {
+        // Staff creating order for patient
+        if (!req.body.patient_id) {
+          return next(new Error("patient_id is required for staff users"));
+        }
+        patientId = Number(req.body.patient_id);
+      }
+
+      const order = await paymentService.createRazorpayOrder(
+        dto.appointment_id,
+        patientId
       );
-      return created(res, result, "Payment intent created");
+
+      return created(res, order, "Payment order created successfully");
     } catch (err) {
       next(err);
     }
   }
 
-  /*
-   POST /api/payments/verify
-   Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
-  */
-  async verify(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Verify payment
+   */
+  async verifyPayment(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      if (!req.user) return;
-      const result = await paymentService.verifyAndCapture(req.body, req.user);
-      return ok(res, result, "Payment verified");
+      const dto = validateVerifyPayment(req.body);
+
+      const payment = await paymentService.verifyPayment(
+        dto.razorpay_order_id,
+        dto.razorpay_payment_id,
+        dto.razorpay_signature
+      );
+
+      return ok(res, payment, "Payment verified successfully");
     } catch (err) {
       next(err);
     }
   }
 
-  /*
-   POST /api/payments/webhook
-   Must be called by Razorpay webhook with raw JSON.
-   You may want to secure it further with signature header verification.
-  */
-  async webhook(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Handle Razorpay webhook
+   */
+  async handleWebhook(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await paymentService.handleWebhook(req.body);
-      return ok(res, result);
+      const signature = req.headers["x-razorpay-signature"] as string;
+
+      if (!signature) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "MISSING_SIGNATURE",
+            message: "Webhook signature is missing",
+          },
+        });
+      }
+
+      const payload = validateWebhookPayload(req.body);
+
+      await paymentService.handleWebhook(payload, signature);
+
+      return res.status(200).json({ received: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get payments by patient
+   */
+  async getPaymentsByPatient(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const patientId = Number(req.params.id);
+
+      const payments = await paymentService.getPaymentsByPatient(patientId);
+
+      return ok(res, payments);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get payment by ID
+   */
+  async getPaymentById(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const paymentId = Number(req.params.id);
+
+      const payment = await paymentService.getPaymentById(paymentId);
+
+      return ok(res, payment);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get all payments with filters
+   */
+  async getPayments(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const filters: any = {};
+
+      if (req.query.status) {
+        filters.status = String(req.query.status);
+      }
+
+      if (req.query.patientId) {
+        filters.patientId = Number(req.query.patientId);
+      }
+
+      if (req.query.startDate) {
+        filters.startDate = String(req.query.startDate);
+      }
+
+      if (req.query.endDate) {
+        filters.endDate = String(req.query.endDate);
+      }
+
+      const payments = await paymentService.getPayments(filters);
+
+      return ok(res, payments);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create refund
+   */
+  async createRefund(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const dto = validateCreateRefund(req.body);
+
+      const refund = await paymentService.createRefund(
+        dto.payment_id,
+        dto.amount,
+        dto.reason
+      );
+
+      return created(res, refund, "Refund created successfully");
     } catch (err) {
       next(err);
     }

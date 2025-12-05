@@ -25,6 +25,17 @@ export interface UpdateStatusDto {
   reason?: string;
 }
 
+export interface CancelAppointmentDto {
+  appointment_id: number;
+  reason: string;
+}
+
+export interface AvailabilityQueryDto {
+  clinician_id: number;
+  centre_id: number;
+  date: string; // YYYY-MM-DD format
+}
+
 const allowedTypes: AppointmentType[] = [
   "IN_PERSON",
   "ONLINE",
@@ -127,4 +138,58 @@ export function validateUpdateStatus(body: any, params: any): UpdateStatusDto {
   if (body.reason) dto.reason = String(body.reason);
 
   return dto;
+}
+
+export function validateCancelAppointment(
+  body: any,
+  params: any
+): CancelAppointmentDto {
+  const appointment_id = Number(params.id);
+  if (!appointment_id) {
+    throw ApiError.badRequest("Invalid appointment id");
+  }
+
+  if (
+    !body.reason ||
+    typeof body.reason !== "string" ||
+    body.reason.trim().length === 0
+  ) {
+    throw ApiError.badRequest("Cancellation reason is required");
+  }
+
+  return {
+    appointment_id,
+    reason: body.reason.trim(),
+  };
+}
+
+export function validateAvailabilityQuery(query: any): AvailabilityQueryDto {
+  if (!query.clinician_id) {
+    throw ApiError.badRequest("clinician_id is required");
+  }
+
+  if (!query.centre_id) {
+    throw ApiError.badRequest("centre_id is required");
+  }
+
+  if (!query.date) {
+    throw ApiError.badRequest("date is required");
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(query.date)) {
+    throw ApiError.badRequest("date must be in YYYY-MM-DD format");
+  }
+
+  const date = new Date(query.date);
+  if (Number.isNaN(date.getTime())) {
+    throw ApiError.badRequest("Invalid date");
+  }
+
+  return {
+    clinician_id: Number(query.clinician_id),
+    centre_id: Number(query.centre_id),
+    date: query.date,
+  };
 }

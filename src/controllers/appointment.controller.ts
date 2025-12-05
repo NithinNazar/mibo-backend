@@ -1,24 +1,58 @@
 // src/controllers/appointment.controller.ts
 import { Response, NextFunction } from "express";
-import { appointmentService } from "../services/appointment.service";
+import { appointmentService } from "../services/appointment.services";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { ok, created } from "../utils/response";
+import {
+  validateAvailabilityQuery,
+  validateCancelAppointment,
+} from "../validations/appointment.validations";
+import { AppointmentStatus } from "../types/appointment.types";
 
 export class AppointmentController {
-  async create(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Get appointments with query filters
+   */
+  async getAppointments(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return;
-      const appt = await appointmentService.createAppointment(
-        req.body,
+
+      const filters: any = {};
+
+      if (req.query.centreId) {
+        filters.centreId = Number(req.query.centreId);
+      }
+      if (req.query.clinicianId) {
+        filters.clinicianId = Number(req.query.clinicianId);
+      }
+      if (req.query.patientId) {
+        filters.patientId = Number(req.query.patientId);
+      }
+      if (req.query.date) {
+        filters.date = String(req.query.date);
+      }
+      if (req.query.status) {
+        filters.status = String(req.query.status) as AppointmentStatus;
+      }
+
+      const appointments = await appointmentService.getAppointments(
+        filters,
         req.user
       );
-      return created(res, appt, "Appointment created");
+      return ok(res, appointments);
     } catch (err) {
       next(err);
     }
   }
 
-  async getById(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Get appointment by ID
+   */
+  async getAppointmentById(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
       if (!req.user) return;
       const id = Number(req.params.id);
@@ -29,63 +63,97 @@ export class AppointmentController {
     }
   }
 
-  async listForCurrentPatient(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * Create appointment
+   */
+  async createAppointment(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return;
-      const appts = await appointmentService.listForCurrentPatient(req.user);
-      return ok(res, appts);
+      const appt = await appointmentService.createAppointment(
+        req.body,
+        req.user
+      );
+      return created(res, appt, "Appointment created successfully");
     } catch (err) {
       next(err);
     }
   }
 
-  async listForClinician(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const clinicianId = Number(req.params.clinicianId);
-      const appts = await appointmentService.listForClinician(clinicianId);
-      return ok(res, appts);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async listForCentre(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const centreId = Number(req.params.centreId);
-      const appts = await appointmentService.listForCentre(centreId);
-      return ok(res, appts);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async reschedule(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Update appointment (reschedule or update status)
+   */
+  async updateAppointment(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return;
+
+      // If the request contains new_status, update status
+      if (req.body.new_status) {
+        const appt = await appointmentService.updateStatus(
+          req.body,
+          req.params,
+          req.user
+        );
+        return ok(res, appt, "Appointment status updated");
+      }
+
+      // Otherwise, reschedule
       const appt = await appointmentService.rescheduleAppointment(
         req.body,
         req.params,
         req.user
       );
-      return ok(res, appt, "Appointment rescheduled");
+      return ok(res, appt, "Appointment rescheduled successfully");
     } catch (err) {
       next(err);
     }
   }
 
-  async updateStatus(req: AuthRequest, res: Response, next: NextFunction) {
+  /**
+   * Cancel appointment
+   */
+  async cancelAppointment(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) return;
-      const appt = await appointmentService.updateStatus(
-        req.body,
-        req.params,
+      const dto = validateCancelAppointment(req.body, req.params);
+      await appointmentService.cancelAppointment(
+        dto.appointment_id,
+        dto.reason,
         req.user
       );
-      return ok(res, appt, "Status updated");
+      return ok(res, null, "Appointment cancelled successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get clinician availability
+   */
+  async getClinicianAvailability(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const dto = validateAvailabilityQuery(req.query);
+      const slots = await appointmentService.checkClinicianAvailability(
+        dto.clinician_id,
+        dto.centre_id,
+        dto.date
+      );
+      return ok(res, slots);
+    } catch (err) {
+      next(err);
+    }
+  }
+  async create(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+      const appt = await appointmentService.createAppointment(
+        req.body,
+        req.user
+      );
+      return created(res, appt, "Appointment created");
     } catch (err) {
       next(err);
     }
