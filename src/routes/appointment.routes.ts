@@ -7,6 +7,18 @@ import { requireRole } from "../middlewares/role.middleware";
 const router = Router();
 
 /**
+ * GET /api/appointments/my-appointments
+ * Get current clinician's appointments (current, upcoming, past)
+ * Role: CLINICIAN only
+ */
+router.get(
+  "/my-appointments",
+  authenticate,
+  requireRole("CLINICIAN"),
+  (req, res, next) => appointmentController.getMyAppointments(req, res, next)
+);
+
+/**
  * GET /api/appointments
  * Get appointments with query filters (centreId, clinicianId, patientId, date, status)
  * Role-based filtering applied automatically

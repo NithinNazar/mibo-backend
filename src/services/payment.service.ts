@@ -1,6 +1,7 @@
 // src/services/payment.service.ts
 import { paymentRepository } from "../repositories/payment.repository";
 import { appointmentRepository } from "../repositories/appointment.repository";
+import { patientRepository } from "../repositories/patient.repository";
 import { razorpayUtil } from "../utils/razorpay";
 import { ApiError } from "../utils/apiError";
 import logger from "../config/logger";
@@ -39,8 +40,7 @@ export class PaymentService {
     }
 
     // Get consultation fee from clinician profile
-    // For now, using a default amount - should be fetched from clinician_profiles
-    const amount = 100000; // ₹1000 in paise (smallest unit)
+    const amount = await this.getConsultationFee(appointment.clinician_id);
     const currency = "INR";
 
     try {
@@ -299,6 +299,162 @@ export class PaymentService {
     } catch (error: any) {
       logger.error("Failed to create refund:", error);
       throw ApiError.internal("Failed to process refund");
+    }
+  }
+
+  /**
+   * Get consultation fee from clinician profile
+   */
+  private async getConsultationFee(clinicianId: number): Promise<number> {
+    try {
+      const { staffRepository } = await import(
+        "../repositories/staff.repository"
+      );
+      const clinician = await staffRepository.findClinicianById(clinicianId);
+
+      if (!clinician || !clinician.consultation_fee) {
+        // Default fee if not set
+        logger.warn(
+          `Consultation fee not found for clinician ${clinicianId}, using default`
+        );
+        return 100000; // ₹1000 in paise
+      }
+
+      return clinician.consultation_fee * 100; // Convert to paise
+    } catch (error) {
+      logger.error("Failed to fetch consultation fee:", error);
+      return 100000; // Default ₹1000 in paise
+    }
+  }
+
+  /**
+   * Create payment link and send to patient via WhatsApp
+   */
+  async createAndSendPaymentLink(appointmentId: number) {
+    // Check if Razorpay is configured
+    if (!razorpayUtil.isConfigured()) {
+      throw ApiError.serviceUnavailable(
+        "Payment service is not configured. Please contact support."
+      );
+    }
+
+    // Get appointment details
+    const appointment = await appointmentRepository.getAppointmentById(
+      appointmentId
+    );
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Get patient details
+    const patient = await patientRepository.findById(appointment.patient_id);
+    if (!patient) {
+      throw ApiError.notFound("Patient not found");
+    }
+
+    // Check if payment already exists
+    const existingPayment = await paymentRepository.findPaymentByAppointment(
+      appointmentId
+    );
+    if (existingPayment && existingPayment.status === "SUCCESS") {
+      throw ApiError.conflict("Payment already completed for this appointment");
+    }
+
+    // Get consultation fee
+    const amount = await this.getConsultationFee(appointment.clinician_id);
+
+    try {
+      // Create Razorpay payment link
+      const paymentLink = await razorpayUtil.createPaymentLink(
+        amount,
+        patient.user.full_name,
+        patient.user.phone,
+        `Consultation with ${appointment.clinician_name}`,
+        `appointment_${appointmentId}`
+      );
+
+      // Create payment record in database
+      const payment = await paymentRepository.createPayment({
+        patient_id: appointment.patient_id,
+        appointment_id: appointmentId,
+        amount: amount / 100, // Store in rupees
+        currency: "INR",
+        razorpay_order_id: paymentLink.id,
+        status: "CREATED",
+        notes: `Payment link for appointment #${appointmentId}`,
+      });
+
+      // Format appointment date and time
+      const appointmentDate = new Date(
+        appointment.scheduled_start_at
+      ).toLocaleDateString("en-IN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const appointmentTime = new Date(
+        appointment.scheduled_start_at
+      ).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // Send payment link via WhatsApp using Gallabox
+      const { gallaboxUtil } = await import("../utils/gallabox");
+      const whatsappResult = await gallaboxUtil.sendPaymentLink(
+        patient.user.phone,
+        patient.user.full_name,
+        amount / 100, // Amount in rupees
+        paymentLink.short_url,
+        appointment.clinician_name,
+        appointmentDate,
+        appointmentTime
+      );
+
+      logger.info(
+        `Payment link sent for appointment ${appointmentId} to ${patient.user.phone}`
+      );
+
+      return {
+        paymentLinkId: paymentLink.id,
+        shortUrl: paymentLink.short_url,
+        amount: amount / 100,
+        currency: "INR",
+        paymentId: payment.id,
+        whatsappSent: whatsappResult.success,
+        expiresAt: paymentLink.expire_by
+          ? new Date(paymentLink.expire_by * 1000)
+          : null,
+      };
+    } catch (error: any) {
+      logger.error("Failed to create and send payment link:", error);
+      throw ApiError.internal("Failed to create payment link");
+    }
+  }
+
+  /**
+   * Get payment link status
+   */
+  async getPaymentLinkStatus(paymentLinkId: string) {
+    try {
+      const paymentLink = await razorpayUtil.fetchPaymentLink(paymentLinkId);
+
+      return {
+        paymentLinkId: paymentLink.id,
+        status: paymentLink.status, // created, paid, partially_paid, expired, cancelled
+        amount: paymentLink.amount / 100,
+        amountPaid: paymentLink.amount_paid / 100,
+        shortUrl: paymentLink.short_url,
+        createdAt: new Date(paymentLink.created_at * 1000),
+        expiresAt: paymentLink.expire_by
+          ? new Date(paymentLink.expire_by * 1000)
+          : null,
+      };
+    } catch (error: any) {
+      logger.error("Failed to fetch payment link status:", error);
+      throw ApiError.internal("Failed to fetch payment link status");
     }
   }
 }

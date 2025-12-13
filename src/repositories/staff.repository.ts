@@ -29,9 +29,13 @@ interface CreateClinicianData {
   experience_years?: number;
   consultation_fee?: number;
   bio?: string;
+  consultation_modes?: string[];
+  default_consultation_duration_minutes?: number;
+  profile_picture_url?: string;
 }
 
 interface AvailabilityRule {
+  centre_id: number;
   day_of_week: number;
   start_time: string;
   end_time: string;
@@ -441,16 +445,22 @@ export class StaffRepository {
         primary_centre_id,
         specialization,
         registration_number,
-        experience_years,
+        years_of_experience,
         consultation_fee,
         bio,
+        consultation_modes,
+        default_consultation_duration_minutes,
         is_active
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE)
       RETURNING *;
     `;
 
-    return db.one(query, [
+    const consultationModes = data.consultation_modes
+      ? JSON.stringify(data.consultation_modes)
+      : null;
+
+    const clinician = await db.one(query, [
       data.user_id,
       data.primary_centre_id,
       data.specialization,
@@ -458,7 +468,21 @@ export class StaffRepository {
       data.experience_years || 0,
       data.consultation_fee || 0,
       data.bio || null,
+      consultationModes,
+      data.default_consultation_duration_minutes || 30,
     ]);
+
+    // Update staff profile with profile picture if provided
+    if (data.profile_picture_url) {
+      await db.none(
+        `UPDATE staff_profiles 
+         SET profile_picture_url = $1, updated_at = NOW() 
+         WHERE user_id = $2`,
+        [data.profile_picture_url, data.user_id]
+      );
+    }
+
+    return clinician;
   }
 
   /**
@@ -508,22 +532,51 @@ export class StaffRepository {
       paramIndex++;
     }
 
-    if (fields.length === 0) {
+    if (data.consultation_modes !== undefined) {
+      fields.push(`consultation_modes = $${paramIndex}`);
+      values.push(JSON.stringify(data.consultation_modes));
+      paramIndex++;
+    }
+
+    if (data.default_consultation_duration_minutes !== undefined) {
+      fields.push(`default_consultation_duration_minutes = $${paramIndex}`);
+      values.push(data.default_consultation_duration_minutes);
+      paramIndex++;
+    }
+
+    if (fields.length === 0 && !data.profile_picture_url) {
       throw new Error("No fields to update");
     }
 
-    fields.push("updated_at = NOW()");
+    if (fields.length > 0) {
+      fields.push("updated_at = NOW()");
 
-    const query = `
-      UPDATE clinician_profiles
-      SET ${fields.join(", ")}
-      WHERE id = $${paramIndex}
-      RETURNING *;
-    `;
+      const query = `
+        UPDATE clinician_profiles
+        SET ${fields.join(", ")}
+        WHERE id = $${paramIndex}
+        RETURNING *;
+      `;
 
-    values.push(clinicianId);
+      values.push(clinicianId);
+      await db.one(query, values);
+    }
 
-    return db.one(query, values);
+    // Update profile picture in staff_profiles if provided
+    if (data.profile_picture_url !== undefined) {
+      const clinician = await db.one(
+        "SELECT user_id FROM clinician_profiles WHERE id = $1",
+        [clinicianId]
+      );
+      await db.none(
+        `UPDATE staff_profiles 
+         SET profile_picture_url = $1, updated_at = NOW() 
+         WHERE user_id = $2`,
+        [data.profile_picture_url, clinician.user_id]
+      );
+    }
+
+    return this.findClinicianById(clinicianId);
   }
 
   /**
@@ -575,17 +628,19 @@ export class StaffRepository {
         `
         INSERT INTO clinician_availability_rules (
           clinician_id,
+          centre_id,
           day_of_week,
           start_time,
           end_time,
           slot_duration_minutes,
-          consultation_mode,
+          mode,
           is_active
         )
-        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
         `,
         [
           clinicianId,
+          rule.centre_id,
           rule.day_of_week,
           rule.start_time,
           rule.end_time,

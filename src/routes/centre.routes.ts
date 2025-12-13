@@ -29,24 +29,24 @@ router.get("/:id", authenticate, (req, res, next) =>
 
 /**
  * POST /api/centres
- * Create new centre (ADMIN only)
+ * Create new centre (ADMIN, MANAGER)
  */
 router.post(
   "/",
   authenticate,
-  requireRole("ADMIN"),
+  requireRole("ADMIN", "MANAGER"),
   validateCreateCentre,
   (req, res, next) => centreController.createCentre(req, res, next)
 );
 
 /**
  * PUT /api/centres/:id
- * Update centre (ADMIN, CENTRE_MANAGER)
+ * Update centre (ADMIN, MANAGER, CENTRE_MANAGER)
  */
 router.put(
   "/:id",
   authenticate,
-  requireRole("ADMIN", "CENTRE_MANAGER"),
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   validateUpdateCentre,
   (req, res, next) => centreController.updateCentre(req, res, next)
 );

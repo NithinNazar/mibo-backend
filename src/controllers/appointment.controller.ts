@@ -158,6 +158,24 @@ export class AppointmentController {
       next(err);
     }
   }
+
+  /**
+   * Get current clinician's appointments
+   * Returns appointments categorized by: current (today), upcoming, and past
+   */
+  async getMyAppointments(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+      const appointments = await appointmentService.getMyAppointments(req.user);
+      return ok(
+        res,
+        appointments,
+        "Clinician appointments retrieved successfully"
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const appointmentController = new AppointmentController();

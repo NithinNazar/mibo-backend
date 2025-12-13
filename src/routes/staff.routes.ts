@@ -74,48 +74,48 @@ router.get("/clinicians/:id", authenticate, (req, res, next) =>
 /**
  * POST /api/clinicians
  * Create clinician
- * Roles: ADMIN, CENTRE_MANAGER
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
  */
 router.post(
   "/clinicians",
   authenticate,
-  requireRole("ADMIN", "CENTRE_MANAGER"),
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.createClinician(req, res, next)
 );
 
 /**
  * PUT /api/clinicians/:id
  * Update clinician
- * Roles: ADMIN, CENTRE_MANAGER
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
  */
 router.put(
   "/clinicians/:id",
   authenticate,
-  requireRole("ADMIN", "CENTRE_MANAGER"),
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.updateClinician(req, res, next)
 );
 
 /**
  * DELETE /api/clinicians/:id
  * Delete clinician (soft delete)
- * Roles: ADMIN, CENTRE_MANAGER
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
  */
 router.delete(
   "/clinicians/:id",
   authenticate,
-  requireRole("ADMIN", "CENTRE_MANAGER"),
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.deleteClinician(req, res, next)
 );
 
 /**
  * PUT /api/clinicians/:id/availability
  * Update clinician availability rules
- * Roles: ADMIN, CENTRE_MANAGER
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
  */
 router.put(
   "/clinicians/:id/availability",
   authenticate,
-  requireRole("ADMIN", "CENTRE_MANAGER"),
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) =>
     staffController.updateClinicianAvailability(req, res, next)
 );

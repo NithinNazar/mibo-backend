@@ -145,6 +145,10 @@ export class StaffService {
       experience_years: dto.experience_years,
       consultation_fee: dto.consultation_fee,
       bio: dto.bio,
+      consultation_modes: dto.consultation_modes,
+      default_consultation_duration_minutes:
+        dto.default_consultation_duration_minutes,
+      profile_picture_url: dto.profile_picture_url,
     });
   }
 

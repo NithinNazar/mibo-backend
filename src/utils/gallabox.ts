@@ -314,6 +314,64 @@ Thank you for choosing Mibo Mental Hospital.`;
 
     return await this.sendWhatsAppMessage(phone, message);
   }
+
+  /**
+   * Send payment link to patient
+   */
+  async sendPaymentLink(
+    phone: string,
+    patientName: string,
+    amount: number,
+    paymentLink: string,
+    clinicianName: string,
+    appointmentDate: string,
+    appointmentTime: string
+  ): Promise<any> {
+    const message = `Hello ${patientName},
+
+Your appointment has been booked! 🎉
+
+📅 Date: ${appointmentDate}
+⏰ Time: ${appointmentTime}
+👨‍⚕️ Doctor: ${clinicianName}
+
+💰 Consultation Fee: ₹${amount}
+
+Please complete your payment to confirm the appointment:
+🔗 ${paymentLink}
+
+Payment Methods: UPI, Google Pay, PhonePe, Cards
+
+This link is valid for 24 hours.
+
+- Mibo Mental Hospital`;
+
+    return await this.sendWhatsAppMessage(phone, message);
+  }
+
+  /**
+   * Send payment reminder
+   */
+  async sendPaymentReminder(
+    phone: string,
+    patientName: string,
+    amount: number,
+    paymentLink: string,
+    appointmentDate: string
+  ): Promise<any> {
+    const message = `Hi ${patientName},
+
+This is a reminder to complete your payment for the appointment on ${appointmentDate}.
+
+💰 Amount: ₹${amount}
+🔗 Payment Link: ${paymentLink}
+
+Please complete the payment to confirm your appointment.
+
+- Mibo Mental Hospital`;
+
+    return await this.sendWhatsAppMessage(phone, message);
+  }
 }
 
 // Export singleton instance

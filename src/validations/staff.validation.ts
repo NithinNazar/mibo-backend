@@ -27,6 +27,9 @@ export interface CreateClinicianDto {
   experience_years?: number;
   consultation_fee?: number;
   bio?: string;
+  consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
+  default_consultation_duration_minutes?: number;
+  profile_picture_url?: string;
 }
 
 export interface UpdateClinicianDto {
@@ -36,9 +39,13 @@ export interface UpdateClinicianDto {
   experience_years?: number;
   consultation_fee?: number;
   bio?: string;
+  consultation_modes?: string[];
+  default_consultation_duration_minutes?: number;
+  profile_picture_url?: string;
 }
 
 export interface AvailabilityRuleDto {
+  centre_id: number; // Required: which centre this availability applies to
   day_of_week: number;
   start_time: string;
   end_time: string;
@@ -211,6 +218,35 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.bio = String(body.bio).trim();
   }
 
+  if (body.consultation_modes) {
+    if (!Array.isArray(body.consultation_modes)) {
+      throw ApiError.badRequest("consultation_modes must be an array");
+    }
+    const validModes = ["IN_PERSON", "ONLINE"];
+    for (const mode of body.consultation_modes) {
+      if (!validModes.includes(mode)) {
+        throw ApiError.badRequest(
+          "consultation_modes must contain only IN_PERSON or ONLINE"
+        );
+      }
+    }
+    dto.consultation_modes = body.consultation_modes;
+  }
+
+  if (body.default_consultation_duration_minutes !== undefined) {
+    const duration = Number(body.default_consultation_duration_minutes);
+    if (isNaN(duration) || duration < 1) {
+      throw ApiError.badRequest(
+        "default_consultation_duration_minutes must be at least 1"
+      );
+    }
+    dto.default_consultation_duration_minutes = duration;
+  }
+
+  if (body.profile_picture_url) {
+    dto.profile_picture_url = String(body.profile_picture_url).trim();
+  }
+
   return dto;
 }
 
@@ -247,6 +283,35 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     dto.bio = String(body.bio).trim();
   }
 
+  if (body.consultation_modes !== undefined) {
+    if (!Array.isArray(body.consultation_modes)) {
+      throw ApiError.badRequest("consultation_modes must be an array");
+    }
+    const validModes = ["IN_PERSON", "ONLINE"];
+    for (const mode of body.consultation_modes) {
+      if (!validModes.includes(mode)) {
+        throw ApiError.badRequest(
+          "consultation_modes must contain only IN_PERSON or ONLINE"
+        );
+      }
+    }
+    dto.consultation_modes = body.consultation_modes;
+  }
+
+  if (body.default_consultation_duration_minutes !== undefined) {
+    const duration = Number(body.default_consultation_duration_minutes);
+    if (isNaN(duration) || duration < 1) {
+      throw ApiError.badRequest(
+        "default_consultation_duration_minutes must be at least 1"
+      );
+    }
+    dto.default_consultation_duration_minutes = duration;
+  }
+
+  if (body.profile_picture_url !== undefined) {
+    dto.profile_picture_url = String(body.profile_picture_url).trim();
+  }
+
   if (Object.keys(dto).length === 0) {
     throw ApiError.badRequest("Nothing to update");
   }
@@ -264,6 +329,12 @@ export function validateUpdateClinicianAvailability(
   const rules: AvailabilityRuleDto[] = [];
 
   for (const rule of body.availability_rules) {
+    if (!rule.centre_id) {
+      throw ApiError.badRequest(
+        "centre_id is required for each availability rule"
+      );
+    }
+
     if (
       rule.day_of_week === undefined ||
       rule.day_of_week < 0 ||
@@ -296,6 +367,7 @@ export function validateUpdateClinicianAvailability(
     }
 
     rules.push({
+      centre_id: Number(rule.centre_id),
       day_of_week: Number(rule.day_of_week),
       start_time: rule.start_time.trim(),
       end_time: rule.end_time.trim(),

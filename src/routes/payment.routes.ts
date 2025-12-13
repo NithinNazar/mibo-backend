@@ -96,4 +96,40 @@ router.post(
   (req, res, next) => paymentController.createRefund(req, res, next)
 );
 
+/**
+ * POST /api/payments/send-payment-link
+ * Create and send payment link to patient via WhatsApp
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
+router.post(
+  "/send-payment-link",
+  authenticate,
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK"
+  ),
+  (req, res, next) => paymentController.sendPaymentLink(req, res, next)
+);
+
+/**
+ * GET /api/payments/link-status/:linkId
+ * Get payment link status
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK
+ */
+router.get(
+  "/link-status/:linkId",
+  authenticate,
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "FRONT_DESK"
+  ),
+  (req, res, next) => paymentController.getPaymentLinkStatus(req, res, next)
+);
+
 export default router;

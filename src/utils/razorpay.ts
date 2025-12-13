@@ -204,6 +204,95 @@ class RazorpayUtil {
       throw new Error(`Failed to create refund: ${error.message}`);
     }
   }
+
+  /**
+   * Create a Payment Link
+   * @param amount Amount in smallest currency unit (paise for INR)
+   * @param customerName Customer name
+   * @param customerPhone Customer phone number
+   * @param description Payment description
+   * @param referenceId Reference ID (e.g., appointment_id)
+   */
+  async createPaymentLink(
+    amount: number,
+    customerName: string,
+    customerPhone: string,
+    description: string,
+    referenceId: string
+  ): Promise<any> {
+    if (!this.razorpay) {
+      throw new Error("Razorpay is not configured");
+    }
+
+    try {
+      const options = {
+        amount: Math.round(amount), // Amount in paise
+        currency: "INR",
+        description: description,
+        customer: {
+          name: customerName,
+          contact: customerPhone.startsWith("+91")
+            ? customerPhone
+            : `+91${customerPhone}`,
+        },
+        notify: {
+          sms: false, // We'll send via Gallabox
+          email: false,
+          whatsapp: false,
+        },
+        reminder_enable: false, // We'll handle reminders ourselves
+        callback_url: `${ENV.CORS_ORIGIN}/payment-success`,
+        callback_method: "get",
+        reference_id: referenceId,
+      };
+
+      const paymentLink = await this.razorpay.paymentLink.create(options);
+
+      logger.info(`Payment link created: ${paymentLink.id}`);
+
+      return paymentLink;
+    } catch (error: any) {
+      logger.error("Payment link creation failed:", error);
+      throw new Error(`Failed to create payment link: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fetch payment link details
+   * @param paymentLinkId Payment link ID
+   */
+  async fetchPaymentLink(paymentLinkId: string): Promise<any> {
+    if (!this.razorpay) {
+      throw new Error("Razorpay is not configured");
+    }
+
+    try {
+      const paymentLink = await this.razorpay.paymentLink.fetch(paymentLinkId);
+      return paymentLink;
+    } catch (error: any) {
+      logger.error(`Failed to fetch payment link ${paymentLinkId}:`, error);
+      throw new Error(`Failed to fetch payment link: ${error.message}`);
+    }
+  }
+
+  /**
+   * Cancel a payment link
+   * @param paymentLinkId Payment link ID
+   */
+  async cancelPaymentLink(paymentLinkId: string): Promise<any> {
+    if (!this.razorpay) {
+      throw new Error("Razorpay is not configured");
+    }
+
+    try {
+      const paymentLink = await this.razorpay.paymentLink.cancel(paymentLinkId);
+      logger.info(`Payment link cancelled: ${paymentLinkId}`);
+      return paymentLink;
+    } catch (error: any) {
+      logger.error(`Failed to cancel payment link ${paymentLinkId}:`, error);
+      throw new Error(`Failed to cancel payment link: ${error.message}`);
+    }
+  }
 }
 
 // Export singleton instance

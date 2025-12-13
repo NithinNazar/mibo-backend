@@ -172,6 +172,50 @@ export class PaymentController {
       next(err);
     }
   }
+
+  /**
+   * Create and send payment link to patient
+   */
+  async sendPaymentLink(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const appointmentId = Number(req.body.appointment_id);
+
+      if (!appointmentId || isNaN(appointmentId)) {
+        return next(new Error("Valid appointment_id is required"));
+      }
+
+      const result = await paymentService.createAndSendPaymentLink(
+        appointmentId
+      );
+
+      return created(res, result, "Payment link created and sent successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get payment link status
+   */
+  async getPaymentLinkStatus(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const paymentLinkId = req.params.linkId;
+
+      if (!paymentLinkId) {
+        return next(new Error("Payment link ID is required"));
+      }
+
+      const status = await paymentService.getPaymentLinkStatus(paymentLinkId);
+
+      return ok(res, status);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const paymentController = new PaymentController();
