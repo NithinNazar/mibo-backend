@@ -231,7 +231,7 @@ class BookingRepository {
         c.city,
         p.status as payment_status,
         p.amount as payment_amount,
-        vs.join_url as meet_link
+        COALESCE(a.google_meet_link, vs.join_url) as meet_link
       FROM appointments a
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
       JOIN users u ON cp.user_id = u.id
@@ -300,6 +300,23 @@ class BookingRepository {
     );
 
     return parseInt(result.count);
+  }
+
+  /**
+   * Update appointment with Google Meet link and event ID
+   */
+  async updateAppointmentGoogleMeet(
+    appointmentId: number,
+    googleMeetLink: string,
+    googleMeetEventId: string
+  ): Promise<Appointment> {
+    return await db.one(
+      `UPDATE appointments 
+       SET google_meet_link = $1, google_meet_event_id = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [googleMeetLink, googleMeetEventId, appointmentId]
+    );
   }
 }
 

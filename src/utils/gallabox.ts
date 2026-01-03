@@ -370,6 +370,97 @@ The Mibo Care team`;
   }
 
   /**
+   * Send online consultation confirmation with Google Meet link
+   * Template: online_consultation_confirmation
+   * Variables: Patient Name, Doctor Name, Date, Time, Google Meet Link
+   */
+  async sendOnlineConsultationConfirmation(
+    phone: string,
+    patientName: string,
+    clinicianName: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    googleMeetLink: string
+  ): Promise<any> {
+    if (!this.isReady()) {
+      logger.warn(
+        "Gallabox not configured, skipping online consultation confirmation"
+      );
+      return { success: false, message: "Gallabox not configured" };
+    }
+
+    try {
+      const formattedPhone = phone.replace(/[+\s-]/g, "");
+
+      // Use the online_consultation_confirmation template
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: patientName,
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "online_consultation_confirmation",
+            bodyValues: {
+              "1": patientName,
+              "2": clinicianName,
+              "3": appointmentDate,
+              "4": appointmentTime,
+              "5": googleMeetLink,
+            },
+          },
+        },
+      };
+
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload
+      );
+
+      logger.info(
+        `✅ WhatsApp online consultation confirmation sent to ${formattedPhone} with Google Meet link`
+      );
+
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error(
+        "Failed to send online consultation confirmation template:",
+        {
+          error: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        }
+      );
+
+      // Fallback to plain text message if template fails
+      logger.info("Attempting fallback to plain text message...");
+      const fallbackMessage = `Hello ${patientName}, your online consultation with ${clinicianName} has been successfully scheduled.
+
+🗓️ Date: ${appointmentDate}
+⏰ Time: ${appointmentTime}
+
+Please join the session using the Google Meet link below:
+${googleMeetLink}
+
+If you face any issues, feel free to contact our support team.
+
+We look forward to assisting you.
+
+Regards,
+The Mibo Care team`;
+
+      return await this.sendWhatsAppMessage(phone, fallbackMessage);
+    }
+  }
+
+  /**
    * Send appointment reminder message
    */
   async sendAppointmentReminder(

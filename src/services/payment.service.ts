@@ -4,6 +4,7 @@ import { bookingRepository } from "../repositories/booking.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { razorpayUtil } from "../utils/razorpay";
 import { gallaboxUtil } from "../utils/gallabox";
+import { googleMeetUtil } from "../utils/google-meet";
 import logger from "../config/logger";
 
 class PaymentService {
@@ -208,6 +209,7 @@ class PaymentService {
 
   /**
    * Send payment confirmation via WhatsApp
+   * For online appointments, creates Google Meet link and sends it
    */
   private async sendPaymentConfirmation(
     appointment: any,
@@ -234,20 +236,88 @@ class PaymentService {
         minute: "2-digit",
       });
 
-      // Send confirmation message
-      if (gallaboxUtil.isReady()) {
-        await gallaboxUtil.sendAppointmentConfirmation(
-          user.phone,
-          user.full_name,
-          appointment.clinician_name,
-          dateStr,
-          timeStr,
-          appointment.centre_name
-        );
+      // Check if appointment is ONLINE type
+      const isOnlineAppointment = appointment.appointment_type === "ONLINE";
 
-        logger.info(
-          `✅ WhatsApp confirmation sent to ${user.phone} for appointment ${appointment.id}`
-        );
+      if (isOnlineAppointment) {
+        // Create Google Meet link for online appointments
+        try {
+          logger.info(
+            `📹 Creating Google Meet link for online appointment ${appointment.id}`
+          );
+
+          // Extract date and time for Google Meet
+          const appointmentDateOnly = appointmentDate
+            .toISOString()
+            .split("T")[0]; // YYYY-MM-DD
+          const appointmentTimeOnly = appointmentDate
+            .toTimeString()
+            .substring(0, 5); // HH:MM
+
+          const meetingDetails = await googleMeetUtil.createMeetingLink({
+            patientName: user.full_name,
+            clinicianName: appointment.clinician_name,
+            appointmentDate: appointmentDateOnly,
+            appointmentTime: appointmentTimeOnly,
+            durationMinutes: 50,
+          });
+
+          // Store Google Meet link in database
+          await bookingRepository.updateAppointmentGoogleMeet(
+            appointment.id,
+            meetingDetails.meetLink,
+            meetingDetails.eventId
+          );
+
+          logger.info(
+            `✅ Google Meet link created: ${meetingDetails.meetLink}`
+          );
+
+          // Send online consultation confirmation with Google Meet link
+          if (gallaboxUtil.isReady()) {
+            await gallaboxUtil.sendOnlineConsultationConfirmation(
+              user.phone,
+              user.full_name,
+              appointment.clinician_name,
+              dateStr,
+              timeStr,
+              meetingDetails.meetLink
+            );
+
+            logger.info(
+              `✅ WhatsApp online consultation confirmation sent to ${user.phone} with Google Meet link`
+            );
+          }
+        } catch (meetError: any) {
+          logger.error("Error creating Google Meet link:", meetError);
+          // Fallback to regular confirmation without Meet link
+          if (gallaboxUtil.isReady()) {
+            await gallaboxUtil.sendAppointmentConfirmation(
+              user.phone,
+              user.full_name,
+              appointment.clinician_name,
+              dateStr,
+              timeStr,
+              appointment.centre_name
+            );
+          }
+        }
+      } else {
+        // Send regular confirmation for in-person appointments
+        if (gallaboxUtil.isReady()) {
+          await gallaboxUtil.sendAppointmentConfirmation(
+            user.phone,
+            user.full_name,
+            appointment.clinician_name,
+            dateStr,
+            timeStr,
+            appointment.centre_name
+          );
+
+          logger.info(
+            `✅ WhatsApp confirmation sent to ${user.phone} for appointment ${appointment.id}`
+          );
+        }
       }
     } catch (error: any) {
       logger.error("Error sending WhatsApp confirmation:", error);
