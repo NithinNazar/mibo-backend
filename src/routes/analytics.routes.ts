@@ -1,7 +1,7 @@
 // src/routes/analytics.routes.ts
 import { Router } from "express";
 import { analyticsController } from "../controllers/analytics.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 
 const router = Router();
@@ -13,7 +13,7 @@ const analyticsRoles = requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER");
  * GET /api/analytics/dashboard
  * Get dashboard metrics (total patients, doctors, follow-ups, revenue)
  */
-router.get("/dashboard", authenticate, analyticsRoles, (req, res, next) =>
+router.get("/dashboard", authMiddleware, analyticsRoles, (req, res, next) =>
   analyticsController.getDashboardMetrics(req, res, next)
 );
 
@@ -22,7 +22,7 @@ router.get("/dashboard", authenticate, analyticsRoles, (req, res, next) =>
  * Get top performing doctors
  * Query params: ?limit=10&centreId=1
  */
-router.get("/top-doctors", authenticate, analyticsRoles, (req, res, next) =>
+router.get("/top-doctors", authMiddleware, analyticsRoles, (req, res, next) =>
   analyticsController.getTopDoctors(req, res, next)
 );
 
@@ -31,7 +31,7 @@ router.get("/top-doctors", authenticate, analyticsRoles, (req, res, next) =>
  * Get revenue data by period
  * Query params: ?period=month&centreId=1
  */
-router.get("/revenue", authenticate, analyticsRoles, (req, res, next) =>
+router.get("/revenue", authMiddleware, analyticsRoles, (req, res, next) =>
   analyticsController.getRevenueData(req, res, next)
 );
 
@@ -40,8 +40,11 @@ router.get("/revenue", authenticate, analyticsRoles, (req, res, next) =>
  * Get appointment sources distribution
  * Query params: ?centreId=1
  */
-router.get("/leads-by-source", authenticate, analyticsRoles, (req, res, next) =>
-  analyticsController.getLeadsBySource(req, res, next)
+router.get(
+  "/leads-by-source",
+  authMiddleware,
+  analyticsRoles,
+  (req, res, next) => analyticsController.getLeadsBySource(req, res, next)
 );
 
 export default router;

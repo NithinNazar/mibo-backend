@@ -1,7 +1,7 @@
 // src/routes/centre.routes.ts
 import { Router } from "express";
 import { centreController } from "../controllers/centre.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 import {
   validateCreateCentre,
@@ -15,7 +15,7 @@ const router = Router();
  * Get all centres (all authenticated users)
  * Query params: ?city=bangalore
  */
-router.get("/", authenticate, (req, res, next) =>
+router.get("/", authMiddleware, (req, res, next) =>
   centreController.getCentres(req, res, next)
 );
 
@@ -23,7 +23,7 @@ router.get("/", authenticate, (req, res, next) =>
  * GET /api/centres/:id
  * Get centre by ID (all authenticated users)
  */
-router.get("/:id", authenticate, (req, res, next) =>
+router.get("/:id", authMiddleware, (req, res, next) =>
   centreController.getCentreById(req, res, next)
 );
 
@@ -33,7 +33,7 @@ router.get("/:id", authenticate, (req, res, next) =>
  */
 router.post(
   "/",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   validateCreateCentre,
   (req, res, next) => centreController.createCentre(req, res, next)
@@ -45,7 +45,7 @@ router.post(
  */
 router.put(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   validateUpdateCentre,
   (req, res, next) => centreController.updateCentre(req, res, next)
@@ -55,7 +55,7 @@ router.put(
  * DELETE /api/centres/:id
  * Delete centre (ADMIN only)
  */
-router.delete("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.delete("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   centreController.deleteCentre(req, res, next)
 );
 

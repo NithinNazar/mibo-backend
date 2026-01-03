@@ -1,0 +1,146 @@
+=== GALLABOX API REQUEST - AUTHENTICATION TEMPLATE ===
+
+Issue: Getting 401 Unauthorized when trying to send OTP via authentication template
+
+API Credentials:
+- API Key: 695652f2540814a19bebf8b5
+- API Secret: edd9fb89a68548d6a7fb080ea8255b1e
+- Channel ID: 693a63bfeba0dac02ac3d624
+- Template Name: otp_verification
+- Template Type: AUTHENTICATION
+
+=== cURL REQUEST (Format 1: type=template) ===
+
+curl -X POST https://server.gallabox.com/api/v1/devapi/messages/whatsapp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer 695652f2540814a19bebf8b5" \
+  -d '{
+    "channelId": "693a63bfeba0dac02ac3d624",
+    "channelType": "whatsapp",
+    "recipient": {
+      "name": "Test User",
+      "phone": "919048810697"
+    },
+    "whatsapp": {
+      "type": "template",
+      "template": {
+        "name": "otp_verification",
+        "languageCode": "en",
+        "bodyValues": ["123456"]
+      }
+    }
+  }'
+
+Response: 401 Unauthorized
+
+=== cURL REQUEST (Format 2: type=authentication) ===
+
+curl -X POST https://server.gallabox.com/api/v1/devapi/messages/whatsapp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer 695652f2540814a19bebf8b5" \
+  -d '{
+    "channelId": "693a63bfeba0dac02ac3d624",
+    "channelType": "whatsapp",
+    "recipient": {
+      "name": "Test User",
+      "phone": "919048810697"
+    },
+    "whatsapp": {
+      "type": "authentication",
+      "template": {
+        "name": "otp_verification",
+        "languageCode": "en",
+        "bodyValues": ["123456"]
+      }
+    }
+  }'
+
+Response: 401 Unauthorized
+
+=== cURL REQUEST (Format 3: authentication with components) ===
+
+curl -X POST https://server.gallabox.com/api/v1/devapi/messages/whatsapp \
+  -H "Content-Type": application/json" \
+  -H "Authorization: Bearer 695652f2540814a19bebf8b5" \
+  -d '{
+    "channelId": "693a63bfeba0dac02ac3d624",
+    "channelType": "whatsapp",
+    "recipient": {
+      "name": "Test User",
+      "phone": "919048810697"
+    },
+    "whatsapp": {
+      "type": "authentication",
+      "authentication": {
+        "name": "otp_verification",
+        "language": {
+          "code": "en"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "123456"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": 0,
+            "parameters": [
+              {
+                "type": "text",
+                "text": "123456"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }'
+
+Response: 401 Unauthorized
+
+=== ALSO TRIED ===
+
+1. Using API Secret as Bearer token instead of API Key - 401 Unauthorized
+2. Using apiKey and apiSecret as separate headers - 401 Unauthorized
+3. Different endpoint URL: https://server.gallabox.com/api/v1/messages/whatsapp - 401 Unauthorized
+4. Different endpoint URL: https://server.gallabox.com/api/v1/devapi/messages/whatsapp - 401 Unauthorized
+
+Both endpoint URLs return the same 401 Unauthorized error.
+
+=== TEMPLATE DETAILS ===
+
+Template Name: otp_verification
+Template Status: Active (APPROVED)
+Template Category: AUTHENTICATION
+Template Language: en
+
+Template Body:
+{{1}} is your verification code. For your security, do not share this code.
+
+Template Footer:
+This code expires in 10 minutes
+
+Template Button:
+Copy code
+
+=== QUESTIONS FOR SUPPORT ===
+
+1. Is the Channel ID (693a63bfeba0dac02ac3d624) correct for this API key?
+2. Is API access enabled for this channel?
+3. What is the correct authentication header format?
+4. What is the correct payload structure for authentication templates?
+5. Should we use "type": "template" or "type": "authentication"?
+6. Is there any additional setup required to enable API access?
+
+=== ADDITIONAL INFO ===
+
+- Template works correctly when tested from Gallabox dashboard
+- All API requests return 401 Unauthorized
+- Using latest API key created with full permissions
+- Account is active and verified

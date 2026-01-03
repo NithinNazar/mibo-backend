@@ -1,0 +1,1879 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.5
+-- Dumped by pg_dump version 17.5
+
+-- Started on 2026-01-02 16:43:28
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 244 (class 1259 OID 17505)
+-- Name: appointment_status_history; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.appointment_status_history (
+    id bigint NOT NULL,
+    appointment_id bigint NOT NULL,
+    previous_status character varying(20),
+    new_status character varying(20) NOT NULL,
+    changed_by_user_id bigint NOT NULL,
+    changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    reason text
+);
+
+
+ALTER TABLE public.appointment_status_history OWNER TO postgres;
+
+--
+-- TOC entry 243 (class 1259 OID 17504)
+-- Name: appointment_status_history_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.appointment_status_history_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.appointment_status_history_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5204 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: appointment_status_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.appointment_status_history_id_seq OWNED BY public.appointment_status_history.id;
+
+
+--
+-- TOC entry 242 (class 1259 OID 17461)
+-- Name: appointments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.appointments (
+    id bigint NOT NULL,
+    patient_id bigint NOT NULL,
+    clinician_id bigint NOT NULL,
+    centre_id bigint NOT NULL,
+    appointment_type character varying(30) NOT NULL,
+    scheduled_start_at timestamp with time zone NOT NULL,
+    scheduled_end_at timestamp with time zone NOT NULL,
+    duration_minutes integer NOT NULL,
+    status character varying(20) NOT NULL,
+    parent_appointment_id bigint,
+    booked_by_user_id bigint NOT NULL,
+    source character varying(30) NOT NULL,
+    notes text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT appointments_appointment_type_check CHECK (((appointment_type)::text = ANY ((ARRAY['IN_PERSON'::character varying, 'ONLINE'::character varying, 'INPATIENT_ASSESSMENT'::character varying, 'FOLLOW_UP'::character varying])::text[]))),
+    CONSTRAINT appointments_source_check CHECK (((source)::text = ANY ((ARRAY['WEB_PATIENT'::character varying, 'ADMIN_FRONT_DESK'::character varying, 'ADMIN_CARE_COORDINATOR'::character varying, 'ADMIN_MANAGER'::character varying])::text[]))),
+    CONSTRAINT appointments_status_check CHECK (((status)::text = ANY ((ARRAY['BOOKED'::character varying, 'CONFIRMED'::character varying, 'RESCHEDULED'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying, 'NO_SHOW'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.appointments OWNER TO postgres;
+
+--
+-- TOC entry 241 (class 1259 OID 17460)
+-- Name: appointments_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.appointments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.appointments_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5205 (class 0 OID 0)
+-- Dependencies: 241
+-- Name: appointments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.appointments_id_seq OWNED BY public.appointments.id;
+
+
+--
+-- TOC entry 262 (class 1259 OID 17670)
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.audit_logs (
+    id bigint NOT NULL,
+    user_id bigint,
+    action character varying(100) NOT NULL,
+    entity_type character varying(50) NOT NULL,
+    entity_id bigint,
+    metadata jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.audit_logs OWNER TO postgres;
+
+--
+-- TOC entry 261 (class 1259 OID 17669)
+-- Name: audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.audit_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.audit_logs_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5206 (class 0 OID 0)
+-- Dependencies: 261
+-- Name: audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.audit_logs_id_seq OWNED BY public.audit_logs.id;
+
+
+--
+-- TOC entry 228 (class 1259 OID 17312)
+-- Name: auth_sessions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.auth_sessions (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    refresh_token_hash text NOT NULL,
+    user_agent text,
+    ip_address inet,
+    expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.auth_sessions OWNER TO postgres;
+
+--
+-- TOC entry 227 (class 1259 OID 17311)
+-- Name: auth_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.auth_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.auth_sessions_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5207 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: auth_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.auth_sessions_id_seq OWNED BY public.auth_sessions.id;
+
+
+--
+-- TOC entry 238 (class 1259 OID 17411)
+-- Name: centre_staff_assignments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.centre_staff_assignments (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    centre_id bigint NOT NULL,
+    role_id bigint NOT NULL,
+    is_primary boolean DEFAULT false NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.centre_staff_assignments OWNER TO postgres;
+
+--
+-- TOC entry 237 (class 1259 OID 17410)
+-- Name: centre_staff_assignments_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.centre_staff_assignments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.centre_staff_assignments_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5208 (class 0 OID 0)
+-- Dependencies: 237
+-- Name: centre_staff_assignments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.centre_staff_assignments_id_seq OWNED BY public.centre_staff_assignments.id;
+
+
+--
+-- TOC entry 220 (class 1259 OID 17243)
+-- Name: centres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.centres (
+    id bigint NOT NULL,
+    name character varying(150) NOT NULL,
+    city character varying(100) NOT NULL,
+    address_line1 character varying(255),
+    address_line2 character varying(255),
+    pincode character varying(20),
+    contact_phone character varying(20),
+    timezone character varying(100) DEFAULT 'Asia/Kolkata'::character varying NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.centres OWNER TO postgres;
+
+--
+-- TOC entry 219 (class 1259 OID 17242)
+-- Name: centres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.centres_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.centres_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5209 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: centres_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.centres_id_seq OWNED BY public.centres.id;
+
+
+--
+-- TOC entry 240 (class 1259 OID 17439)
+-- Name: clinician_availability_rules; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.clinician_availability_rules (
+    id bigint NOT NULL,
+    clinician_id bigint NOT NULL,
+    centre_id bigint NOT NULL,
+    day_of_week smallint NOT NULL,
+    start_time time without time zone NOT NULL,
+    end_time time without time zone NOT NULL,
+    slot_duration_minutes integer NOT NULL,
+    mode character varying(20) NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT clinician_availability_rules_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6))),
+    CONSTRAINT clinician_availability_rules_mode_check CHECK (((mode)::text = ANY ((ARRAY['IN_PERSON'::character varying, 'ONLINE'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.clinician_availability_rules OWNER TO postgres;
+
+--
+-- TOC entry 239 (class 1259 OID 17438)
+-- Name: clinician_availability_rules_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.clinician_availability_rules_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.clinician_availability_rules_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5210 (class 0 OID 0)
+-- Dependencies: 239
+-- Name: clinician_availability_rules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.clinician_availability_rules_id_seq OWNED BY public.clinician_availability_rules.id;
+
+
+--
+-- TOC entry 236 (class 1259 OID 17386)
+-- Name: clinician_profiles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.clinician_profiles (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    primary_centre_id bigint NOT NULL,
+    specialization character varying(150),
+    registration_number character varying(100),
+    years_of_experience integer,
+    bio text,
+    consultation_modes jsonb,
+    default_consultation_duration_minutes integer DEFAULT 30 NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    consultation_fee integer DEFAULT 1600
+);
+
+
+ALTER TABLE public.clinician_profiles OWNER TO postgres;
+
+--
+-- TOC entry 235 (class 1259 OID 17385)
+-- Name: clinician_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.clinician_profiles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.clinician_profiles_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5211 (class 0 OID 0)
+-- Dependencies: 235
+-- Name: clinician_profiles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.clinician_profiles_id_seq OWNED BY public.clinician_profiles.id;
+
+
+--
+-- TOC entry 252 (class 1259 OID 17588)
+-- Name: notification_templates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notification_templates (
+    id bigint NOT NULL,
+    name character varying(100) NOT NULL,
+    channel character varying(20) NOT NULL,
+    provider_template_id character varying(150) NOT NULL,
+    description text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT notification_templates_channel_check CHECK (((channel)::text = 'WHATSAPP'::text))
+);
+
+
+ALTER TABLE public.notification_templates OWNER TO postgres;
+
+--
+-- TOC entry 251 (class 1259 OID 17587)
+-- Name: notification_templates_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.notification_templates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.notification_templates_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5212 (class 0 OID 0)
+-- Dependencies: 251
+-- Name: notification_templates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.notification_templates_id_seq OWNED BY public.notification_templates.id;
+
+
+--
+-- TOC entry 256 (class 1259 OID 17626)
+-- Name: notification_webhook_events; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notification_webhook_events (
+    id bigint NOT NULL,
+    provider character varying(30) DEFAULT 'GALLABOX'::character varying NOT NULL,
+    provider_event_id character varying(150),
+    raw_payload jsonb NOT NULL,
+    processed boolean DEFAULT false NOT NULL,
+    processed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.notification_webhook_events OWNER TO postgres;
+
+--
+-- TOC entry 255 (class 1259 OID 17625)
+-- Name: notification_webhook_events_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.notification_webhook_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.notification_webhook_events_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5213 (class 0 OID 0)
+-- Dependencies: 255
+-- Name: notification_webhook_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.notification_webhook_events_id_seq OWNED BY public.notification_webhook_events.id;
+
+
+--
+-- TOC entry 254 (class 1259 OID 17603)
+-- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notifications (
+    id bigint NOT NULL,
+    user_id bigint,
+    phone character varying(20),
+    channel character varying(20) NOT NULL,
+    template_id bigint,
+    payload_data jsonb,
+    status character varying(20) NOT NULL,
+    error_message text,
+    sent_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT notifications_channel_check CHECK (((channel)::text = 'WHATSAPP'::text)),
+    CONSTRAINT notifications_status_check CHECK (((status)::text = ANY ((ARRAY['QUEUED'::character varying, 'SENT'::character varying, 'DELIVERED'::character varying, 'FAILED'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.notifications OWNER TO postgres;
+
+--
+-- TOC entry 253 (class 1259 OID 17602)
+-- Name: notifications_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.notifications_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.notifications_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5214 (class 0 OID 0)
+-- Dependencies: 253
+-- Name: notifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.notifications_id_seq OWNED BY public.notifications.id;
+
+
+--
+-- TOC entry 226 (class 1259 OID 17299)
+-- Name: otp_requests; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.otp_requests (
+    id bigint NOT NULL,
+    phone character varying(20) NOT NULL,
+    otp_hash text NOT NULL,
+    purpose character varying(30) NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    is_used boolean DEFAULT false NOT NULL,
+    attempts_count integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT otp_requests_purpose_check CHECK (((purpose)::text = ANY ((ARRAY['LOGIN'::character varying, 'SIGNUP'::character varying, 'PASSWORD_RESET'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.otp_requests OWNER TO postgres;
+
+--
+-- TOC entry 225 (class 1259 OID 17298)
+-- Name: otp_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.otp_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.otp_requests_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5215 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: otp_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.otp_requests_id_seq OWNED BY public.otp_requests.id;
+
+
+--
+-- TOC entry 232 (class 1259 OID 17346)
+-- Name: patient_medical_notes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.patient_medical_notes (
+    id bigint NOT NULL,
+    patient_id bigint NOT NULL,
+    author_user_id bigint NOT NULL,
+    note_text text NOT NULL,
+    visibility character varying(20) DEFAULT 'INTERNAL'::character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.patient_medical_notes OWNER TO postgres;
+
+--
+-- TOC entry 231 (class 1259 OID 17345)
+-- Name: patient_medical_notes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.patient_medical_notes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.patient_medical_notes_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5216 (class 0 OID 0)
+-- Dependencies: 231
+-- Name: patient_medical_notes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.patient_medical_notes_id_seq OWNED BY public.patient_medical_notes.id;
+
+
+--
+-- TOC entry 230 (class 1259 OID 17327)
+-- Name: patient_profiles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.patient_profiles (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    date_of_birth date,
+    gender character varying(20),
+    blood_group character varying(10),
+    emergency_contact_name character varying(150),
+    emergency_contact_phone character varying(20),
+    notes text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.patient_profiles OWNER TO postgres;
+
+--
+-- TOC entry 229 (class 1259 OID 17326)
+-- Name: patient_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.patient_profiles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.patient_profiles_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5217 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: patient_profiles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.patient_profiles_id_seq OWNED BY public.patient_profiles.id;
+
+
+--
+-- TOC entry 250 (class 1259 OID 17576)
+-- Name: payment_webhook_events; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payment_webhook_events (
+    id bigint NOT NULL,
+    provider character varying(30) DEFAULT 'RAZORPAY'::character varying NOT NULL,
+    provider_event_id character varying(150),
+    event_type character varying(100),
+    raw_payload jsonb NOT NULL,
+    processed boolean DEFAULT false NOT NULL,
+    processed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.payment_webhook_events OWNER TO postgres;
+
+--
+-- TOC entry 249 (class 1259 OID 17575)
+-- Name: payment_webhook_events_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.payment_webhook_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.payment_webhook_events_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5218 (class 0 OID 0)
+-- Dependencies: 249
+-- Name: payment_webhook_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.payment_webhook_events_id_seq OWNED BY public.payment_webhook_events.id;
+
+
+--
+-- TOC entry 248 (class 1259 OID 17550)
+-- Name: payments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments (
+    id bigint NOT NULL,
+    patient_id bigint NOT NULL,
+    appointment_id bigint NOT NULL,
+    provider character varying(30) DEFAULT 'RAZORPAY'::character varying NOT NULL,
+    order_id character varying(100) NOT NULL,
+    payment_id character varying(100),
+    amount numeric(10,2) NOT NULL,
+    currency character varying(10) DEFAULT 'INR'::character varying NOT NULL,
+    status character varying(20) NOT NULL,
+    payment_method_details jsonb,
+    error_code character varying(100),
+    error_description text,
+    paid_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payments_status_check CHECK (((status)::text = ANY ((ARRAY['CREATED'::character varying, 'PENDING'::character varying, 'SUCCESS'::character varying, 'FAILED'::character varying, 'REFUNDED'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.payments OWNER TO postgres;
+
+--
+-- TOC entry 247 (class 1259 OID 17549)
+-- Name: payments_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.payments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.payments_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5219 (class 0 OID 0)
+-- Dependencies: 247
+-- Name: payments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.payments_id_seq OWNED BY public.payments.id;
+
+
+--
+-- TOC entry 218 (class 1259 OID 17230)
+-- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.roles (
+    id bigint NOT NULL,
+    name character varying(50) NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.roles OWNER TO postgres;
+
+--
+-- TOC entry 217 (class 1259 OID 17229)
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.roles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5220 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
+
+
+--
+-- TOC entry 260 (class 1259 OID 17657)
+-- Name: settings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.settings (
+    id bigint NOT NULL,
+    key character varying(150) NOT NULL,
+    value_json jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.settings OWNER TO postgres;
+
+--
+-- TOC entry 259 (class 1259 OID 17656)
+-- Name: settings_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.settings_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5221 (class 0 OID 0)
+-- Dependencies: 259
+-- Name: settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.settings_id_seq OWNED BY public.settings.id;
+
+
+--
+-- TOC entry 234 (class 1259 OID 17367)
+-- Name: staff_profiles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.staff_profiles (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    designation character varying(100),
+    profile_picture_url text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.staff_profiles OWNER TO postgres;
+
+--
+-- TOC entry 233 (class 1259 OID 17366)
+-- Name: staff_profiles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.staff_profiles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.staff_profiles_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5222 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: staff_profiles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.staff_profiles_id_seq OWNED BY public.staff_profiles.id;
+
+
+--
+-- TOC entry 224 (class 1259 OID 17272)
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.user_roles (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    role_id bigint NOT NULL,
+    centre_id bigint,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.user_roles OWNER TO postgres;
+
+--
+-- TOC entry 223 (class 1259 OID 17271)
+-- Name: user_roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.user_roles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.user_roles_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5223 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: user_roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.user_roles_id_seq OWNED BY public.user_roles.id;
+
+
+--
+-- TOC entry 222 (class 1259 OID 17256)
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    id bigint NOT NULL,
+    phone character varying(20),
+    email character varying(255),
+    username character varying(50),
+    password_hash text,
+    full_name character varying(150) NOT NULL,
+    user_type character varying(20) NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_user_type_check CHECK (((user_type)::text = ANY ((ARRAY['PATIENT'::character varying, 'STAFF'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- TOC entry 221 (class 1259 OID 17255)
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5224 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- TOC entry 258 (class 1259 OID 17638)
+-- Name: video_sessions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.video_sessions (
+    id bigint NOT NULL,
+    appointment_id bigint NOT NULL,
+    provider character varying(30) DEFAULT 'GOOGLE_MEET'::character varying NOT NULL,
+    meeting_id character varying(150),
+    join_url text,
+    host_url text,
+    status character varying(20) NOT NULL,
+    scheduled_start_at timestamp with time zone,
+    scheduled_end_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT video_sessions_status_check CHECK (((status)::text = ANY ((ARRAY['SCHEDULED'::character varying, 'STARTED'::character varying, 'ENDED'::character varying, 'CANCELLED'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.video_sessions OWNER TO postgres;
+
+--
+-- TOC entry 257 (class 1259 OID 17637)
+-- Name: video_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.video_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.video_sessions_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5225 (class 0 OID 0)
+-- Dependencies: 257
+-- Name: video_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.video_sessions_id_seq OWNED BY public.video_sessions.id;
+
+
+--
+-- TOC entry 246 (class 1259 OID 17525)
+-- Name: waiting_queue_entries; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.waiting_queue_entries (
+    id bigint NOT NULL,
+    centre_id bigint NOT NULL,
+    clinician_id bigint,
+    patient_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    status character varying(20) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT waiting_queue_entries_status_check CHECK (((status)::text = ANY ((ARRAY['WAITING'::character varying, 'CALLED_IN'::character varying, 'SKIPPED'::character varying, 'COMPLETED'::character varying])::text[])))
+);
+
+
+ALTER TABLE public.waiting_queue_entries OWNER TO postgres;
+
+--
+-- TOC entry 245 (class 1259 OID 17524)
+-- Name: waiting_queue_entries_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.waiting_queue_entries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.waiting_queue_entries_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5226 (class 0 OID 0)
+-- Dependencies: 245
+-- Name: waiting_queue_entries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.waiting_queue_entries_id_seq OWNED BY public.waiting_queue_entries.id;
+
+
+--
+-- TOC entry 4904 (class 2604 OID 17508)
+-- Name: appointment_status_history id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointment_status_history ALTER COLUMN id SET DEFAULT nextval('public.appointment_status_history_id_seq'::regclass);
+
+
+--
+-- TOC entry 4900 (class 2604 OID 17464)
+-- Name: appointments id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments ALTER COLUMN id SET DEFAULT nextval('public.appointments_id_seq'::regclass);
+
+
+--
+-- TOC entry 4936 (class 2604 OID 17673)
+-- Name: audit_logs id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.audit_logs ALTER COLUMN id SET DEFAULT nextval('public.audit_logs_id_seq'::regclass);
+
+
+--
+-- TOC entry 4872 (class 2604 OID 17315)
+-- Name: auth_sessions id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_sessions ALTER COLUMN id SET DEFAULT nextval('public.auth_sessions_id_seq'::regclass);
+
+
+--
+-- TOC entry 4891 (class 2604 OID 17414)
+-- Name: centre_staff_assignments id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments ALTER COLUMN id SET DEFAULT nextval('public.centre_staff_assignments_id_seq'::regclass);
+
+
+--
+-- TOC entry 4855 (class 2604 OID 17246)
+-- Name: centres id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centres ALTER COLUMN id SET DEFAULT nextval('public.centres_id_seq'::regclass);
+
+
+--
+-- TOC entry 4896 (class 2604 OID 17442)
+-- Name: clinician_availability_rules id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_availability_rules ALTER COLUMN id SET DEFAULT nextval('public.clinician_availability_rules_id_seq'::regclass);
+
+
+--
+-- TOC entry 4885 (class 2604 OID 17389)
+-- Name: clinician_profiles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_profiles ALTER COLUMN id SET DEFAULT nextval('public.clinician_profiles_id_seq'::regclass);
+
+
+--
+-- TOC entry 4918 (class 2604 OID 17591)
+-- Name: notification_templates id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notification_templates ALTER COLUMN id SET DEFAULT nextval('public.notification_templates_id_seq'::regclass);
+
+
+--
+-- TOC entry 4925 (class 2604 OID 17629)
+-- Name: notification_webhook_events id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notification_webhook_events ALTER COLUMN id SET DEFAULT nextval('public.notification_webhook_events_id_seq'::regclass);
+
+
+--
+-- TOC entry 4922 (class 2604 OID 17606)
+-- Name: notifications id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('public.notifications_id_seq'::regclass);
+
+
+--
+-- TOC entry 4868 (class 2604 OID 17302)
+-- Name: otp_requests id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.otp_requests ALTER COLUMN id SET DEFAULT nextval('public.otp_requests_id_seq'::regclass);
+
+
+--
+-- TOC entry 4878 (class 2604 OID 17349)
+-- Name: patient_medical_notes id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_medical_notes ALTER COLUMN id SET DEFAULT nextval('public.patient_medical_notes_id_seq'::regclass);
+
+
+--
+-- TOC entry 4874 (class 2604 OID 17330)
+-- Name: patient_profiles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_profiles ALTER COLUMN id SET DEFAULT nextval('public.patient_profiles_id_seq'::regclass);
+
+
+--
+-- TOC entry 4914 (class 2604 OID 17579)
+-- Name: payment_webhook_events id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payment_webhook_events ALTER COLUMN id SET DEFAULT nextval('public.payment_webhook_events_id_seq'::regclass);
+
+
+--
+-- TOC entry 4909 (class 2604 OID 17553)
+-- Name: payments id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments ALTER COLUMN id SET DEFAULT nextval('public.payments_id_seq'::regclass);
+
+
+--
+-- TOC entry 4852 (class 2604 OID 17233)
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
+
+
+--
+-- TOC entry 4933 (class 2604 OID 17660)
+-- Name: settings id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.settings ALTER COLUMN id SET DEFAULT nextval('public.settings_id_seq'::regclass);
+
+
+--
+-- TOC entry 4881 (class 2604 OID 17370)
+-- Name: staff_profiles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.staff_profiles ALTER COLUMN id SET DEFAULT nextval('public.staff_profiles_id_seq'::regclass);
+
+
+--
+-- TOC entry 4864 (class 2604 OID 17275)
+-- Name: user_roles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles ALTER COLUMN id SET DEFAULT nextval('public.user_roles_id_seq'::regclass);
+
+
+--
+-- TOC entry 4860 (class 2604 OID 17259)
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- TOC entry 4929 (class 2604 OID 17641)
+-- Name: video_sessions id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.video_sessions ALTER COLUMN id SET DEFAULT nextval('public.video_sessions_id_seq'::regclass);
+
+
+--
+-- TOC entry 4906 (class 2604 OID 17528)
+-- Name: waiting_queue_entries id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.waiting_queue_entries ALTER COLUMN id SET DEFAULT nextval('public.waiting_queue_entries_id_seq'::regclass);
+
+
+--
+-- TOC entry 4997 (class 2606 OID 17513)
+-- Name: appointment_status_history appointment_status_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointment_status_history
+    ADD CONSTRAINT appointment_status_history_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4991 (class 2606 OID 17474)
+-- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5022 (class 2606 OID 17678)
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4969 (class 2606 OID 17320)
+-- Name: auth_sessions auth_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_sessions
+    ADD CONSTRAINT auth_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4985 (class 2606 OID 17420)
+-- Name: centre_staff_assignments centre_staff_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments
+    ADD CONSTRAINT centre_staff_assignments_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4956 (class 2606 OID 17254)
+-- Name: centres centres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centres
+    ADD CONSTRAINT centres_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4989 (class 2606 OID 17449)
+-- Name: clinician_availability_rules clinician_availability_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_availability_rules
+    ADD CONSTRAINT clinician_availability_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4981 (class 2606 OID 17397)
+-- Name: clinician_profiles clinician_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_profiles
+    ADD CONSTRAINT clinician_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4983 (class 2606 OID 17399)
+-- Name: clinician_profiles clinician_profiles_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_profiles
+    ADD CONSTRAINT clinician_profiles_user_id_key UNIQUE (user_id);
+
+
+--
+-- TOC entry 5007 (class 2606 OID 17601)
+-- Name: notification_templates notification_templates_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_name_key UNIQUE (name);
+
+
+--
+-- TOC entry 5009 (class 2606 OID 17599)
+-- Name: notification_templates notification_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5013 (class 2606 OID 17636)
+-- Name: notification_webhook_events notification_webhook_events_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notification_webhook_events
+    ADD CONSTRAINT notification_webhook_events_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5011 (class 2606 OID 17614)
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4967 (class 2606 OID 17310)
+-- Name: otp_requests otp_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.otp_requests
+    ADD CONSTRAINT otp_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4975 (class 2606 OID 17355)
+-- Name: patient_medical_notes patient_medical_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_medical_notes
+    ADD CONSTRAINT patient_medical_notes_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4971 (class 2606 OID 17337)
+-- Name: patient_profiles patient_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_profiles
+    ADD CONSTRAINT patient_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4973 (class 2606 OID 17339)
+-- Name: patient_profiles patient_profiles_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_profiles
+    ADD CONSTRAINT patient_profiles_user_id_key UNIQUE (user_id);
+
+
+--
+-- TOC entry 5005 (class 2606 OID 17586)
+-- Name: payment_webhook_events payment_webhook_events_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payment_webhook_events
+    ADD CONSTRAINT payment_webhook_events_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5003 (class 2606 OID 17562)
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4952 (class 2606 OID 17241)
+-- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_name_key UNIQUE (name);
+
+
+--
+-- TOC entry 4954 (class 2606 OID 17239)
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 5018 (class 2606 OID 17668)
+-- Name: settings settings_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.settings
+    ADD CONSTRAINT settings_key_key UNIQUE (key);
+
+
+--
+-- TOC entry 5020 (class 2606 OID 17666)
+-- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.settings
+    ADD CONSTRAINT settings_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4977 (class 2606 OID 17377)
+-- Name: staff_profiles staff_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.staff_profiles
+    ADD CONSTRAINT staff_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4979 (class 2606 OID 17379)
+-- Name: staff_profiles staff_profiles_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.staff_profiles
+    ADD CONSTRAINT staff_profiles_user_id_key UNIQUE (user_id);
+
+
+--
+-- TOC entry 4963 (class 2606 OID 17280)
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4958 (class 2606 OID 17267)
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4987 (class 2606 OID 17422)
+-- Name: centre_staff_assignments ux_centre_staff; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments
+    ADD CONSTRAINT ux_centre_staff UNIQUE (user_id, centre_id, role_id);
+
+
+--
+-- TOC entry 4965 (class 2606 OID 17282)
+-- Name: user_roles ux_user_roles; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT ux_user_roles UNIQUE (user_id, role_id, centre_id);
+
+
+--
+-- TOC entry 5016 (class 2606 OID 17649)
+-- Name: video_sessions video_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.video_sessions
+    ADD CONSTRAINT video_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4999 (class 2606 OID 17533)
+-- Name: waiting_queue_entries waiting_queue_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.waiting_queue_entries
+    ADD CONSTRAINT waiting_queue_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4992 (class 1259 OID 17502)
+-- Name: idx_appointments_centre; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_appointments_centre ON public.appointments USING btree (centre_id);
+
+
+--
+-- TOC entry 4993 (class 1259 OID 17501)
+-- Name: idx_appointments_clinician; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_appointments_clinician ON public.appointments USING btree (clinician_id);
+
+
+--
+-- TOC entry 4994 (class 1259 OID 17500)
+-- Name: idx_appointments_patient; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_appointments_patient ON public.appointments USING btree (patient_id);
+
+
+--
+-- TOC entry 4995 (class 1259 OID 17503)
+-- Name: idx_appointments_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_appointments_status ON public.appointments USING btree (status);
+
+
+--
+-- TOC entry 5000 (class 1259 OID 17573)
+-- Name: idx_payments_appointment; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_payments_appointment ON public.payments USING btree (appointment_id);
+
+
+--
+-- TOC entry 5001 (class 1259 OID 17574)
+-- Name: idx_payments_patient; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_payments_patient ON public.payments USING btree (patient_id);
+
+
+--
+-- TOC entry 5014 (class 1259 OID 17655)
+-- Name: idx_video_sessions_appointment; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_video_sessions_appointment ON public.video_sessions USING btree (appointment_id);
+
+
+--
+-- TOC entry 4959 (class 1259 OID 17269)
+-- Name: ux_users_email; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX ux_users_email ON public.users USING btree (email) WHERE (email IS NOT NULL);
+
+
+--
+-- TOC entry 4960 (class 1259 OID 17268)
+-- Name: ux_users_phone; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX ux_users_phone ON public.users USING btree (phone) WHERE (phone IS NOT NULL);
+
+
+--
+-- TOC entry 4961 (class 1259 OID 17270)
+-- Name: ux_users_username; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX ux_users_username ON public.users USING btree (username) WHERE (username IS NOT NULL);
+
+
+--
+-- TOC entry 5043 (class 2606 OID 17514)
+-- Name: appointment_status_history appointment_status_history_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointment_status_history
+    ADD CONSTRAINT appointment_status_history_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointments(id);
+
+
+--
+-- TOC entry 5044 (class 2606 OID 17519)
+-- Name: appointment_status_history appointment_status_history_changed_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointment_status_history
+    ADD CONSTRAINT appointment_status_history_changed_by_user_id_fkey FOREIGN KEY (changed_by_user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5038 (class 2606 OID 17495)
+-- Name: appointments appointments_booked_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_booked_by_user_id_fkey FOREIGN KEY (booked_by_user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5039 (class 2606 OID 17485)
+-- Name: appointments appointments_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5040 (class 2606 OID 17480)
+-- Name: appointments appointments_clinician_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_clinician_id_fkey FOREIGN KEY (clinician_id) REFERENCES public.clinician_profiles(id);
+
+
+--
+-- TOC entry 5041 (class 2606 OID 17490)
+-- Name: appointments appointments_parent_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_parent_appointment_id_fkey FOREIGN KEY (parent_appointment_id) REFERENCES public.appointments(id);
+
+
+--
+-- TOC entry 5042 (class 2606 OID 17475)
+-- Name: appointments appointments_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient_profiles(id);
+
+
+--
+-- TOC entry 5053 (class 2606 OID 17679)
+-- Name: audit_logs audit_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5026 (class 2606 OID 17321)
+-- Name: auth_sessions auth_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_sessions
+    ADD CONSTRAINT auth_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5033 (class 2606 OID 17428)
+-- Name: centre_staff_assignments centre_staff_assignments_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments
+    ADD CONSTRAINT centre_staff_assignments_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5034 (class 2606 OID 17433)
+-- Name: centre_staff_assignments centre_staff_assignments_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments
+    ADD CONSTRAINT centre_staff_assignments_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id);
+
+
+--
+-- TOC entry 5035 (class 2606 OID 17423)
+-- Name: centre_staff_assignments centre_staff_assignments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.centre_staff_assignments
+    ADD CONSTRAINT centre_staff_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5036 (class 2606 OID 17455)
+-- Name: clinician_availability_rules clinician_availability_rules_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_availability_rules
+    ADD CONSTRAINT clinician_availability_rules_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5037 (class 2606 OID 17450)
+-- Name: clinician_availability_rules clinician_availability_rules_clinician_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_availability_rules
+    ADD CONSTRAINT clinician_availability_rules_clinician_id_fkey FOREIGN KEY (clinician_id) REFERENCES public.clinician_profiles(id);
+
+
+--
+-- TOC entry 5031 (class 2606 OID 17405)
+-- Name: clinician_profiles clinician_profiles_primary_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_profiles
+    ADD CONSTRAINT clinician_profiles_primary_centre_id_fkey FOREIGN KEY (primary_centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5032 (class 2606 OID 17400)
+-- Name: clinician_profiles clinician_profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clinician_profiles
+    ADD CONSTRAINT clinician_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5050 (class 2606 OID 17620)
+-- Name: notifications notifications_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_template_id_fkey FOREIGN KEY (template_id) REFERENCES public.notification_templates(id);
+
+
+--
+-- TOC entry 5051 (class 2606 OID 17615)
+-- Name: notifications notifications_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5028 (class 2606 OID 17361)
+-- Name: patient_medical_notes patient_medical_notes_author_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_medical_notes
+    ADD CONSTRAINT patient_medical_notes_author_user_id_fkey FOREIGN KEY (author_user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5029 (class 2606 OID 17356)
+-- Name: patient_medical_notes patient_medical_notes_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_medical_notes
+    ADD CONSTRAINT patient_medical_notes_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient_profiles(id);
+
+
+--
+-- TOC entry 5027 (class 2606 OID 17340)
+-- Name: patient_profiles patient_profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.patient_profiles
+    ADD CONSTRAINT patient_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5048 (class 2606 OID 17568)
+-- Name: payments payments_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointments(id);
+
+
+--
+-- TOC entry 5049 (class 2606 OID 17563)
+-- Name: payments payments_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient_profiles(id);
+
+
+--
+-- TOC entry 5030 (class 2606 OID 17380)
+-- Name: staff_profiles staff_profiles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.staff_profiles
+    ADD CONSTRAINT staff_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5023 (class 2606 OID 17293)
+-- Name: user_roles user_roles_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5024 (class 2606 OID 17288)
+-- Name: user_roles user_roles_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id);
+
+
+--
+-- TOC entry 5025 (class 2606 OID 17283)
+-- Name: user_roles user_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- TOC entry 5052 (class 2606 OID 17650)
+-- Name: video_sessions video_sessions_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.video_sessions
+    ADD CONSTRAINT video_sessions_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointments(id);
+
+
+--
+-- TOC entry 5045 (class 2606 OID 17534)
+-- Name: waiting_queue_entries waiting_queue_entries_centre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.waiting_queue_entries
+    ADD CONSTRAINT waiting_queue_entries_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.centres(id);
+
+
+--
+-- TOC entry 5046 (class 2606 OID 17539)
+-- Name: waiting_queue_entries waiting_queue_entries_clinician_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.waiting_queue_entries
+    ADD CONSTRAINT waiting_queue_entries_clinician_id_fkey FOREIGN KEY (clinician_id) REFERENCES public.clinician_profiles(id);
+
+
+--
+-- TOC entry 5047 (class 2606 OID 17544)
+-- Name: waiting_queue_entries waiting_queue_entries_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.waiting_queue_entries
+    ADD CONSTRAINT waiting_queue_entries_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient_profiles(id);
+
+
+-- Completed on 2026-01-02 16:43:29
+
+--
+-- PostgreSQL database dump complete
+--
+

@@ -1,460 +1,420 @@
 // src/services/payment.service.ts
 import { paymentRepository } from "../repositories/payment.repository";
-import { appointmentRepository } from "../repositories/appointment.repository";
+import { bookingRepository } from "../repositories/booking.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { razorpayUtil } from "../utils/razorpay";
-import { ApiError } from "../utils/apiError";
+import { gallaboxUtil } from "../utils/gallabox";
 import logger from "../config/logger";
 
-export class PaymentService {
+class PaymentService {
   /**
-   * Create Razorpay order with appointment amount lookup
+   * Create Razorpay order for appointment
    */
-  async createRazorpayOrder(appointmentId: number, patientId: number) {
-    // Check if Razorpay is configured
-    if (!razorpayUtil.isConfigured()) {
-      throw ApiError.serviceUnavailable(
-        "Payment service is not configured. Please contact support."
-      );
-    }
-
-    // Get appointment details
-    const appointment = await appointmentRepository.getAppointmentById(
-      appointmentId
-    );
-    if (!appointment) {
-      throw ApiError.notFound("Appointment not found");
-    }
-
-    // Verify patient owns the appointment
-    if (appointment.patient_id !== patientId) {
-      throw ApiError.forbidden("You do not have access to this appointment");
-    }
-
-    // Check if payment already exists
-    const existingPayment = await paymentRepository.findPaymentByAppointment(
-      appointmentId
-    );
-    if (existingPayment && existingPayment.status === "SUCCESS") {
-      throw ApiError.conflict("Payment already completed for this appointment");
-    }
-
-    // Get consultation fee from clinician profile
-    const amount = await this.getConsultationFee(appointment.clinician_id);
-    const currency = "INR";
-
+  async createPaymentOrder(
+    userId: number,
+    appointmentId: number
+  ): Promise<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    razorpayKeyId: string;
+    appointment: any;
+  }> {
     try {
+      // Get patient profile
+      const patient = await patientRepository.findPatientProfileByUserId(
+        userId
+      );
+      if (!patient) {
+        throw new Error("Patient profile not found");
+      }
+
+      // Get appointment details
+      const appointment = await bookingRepository.findAppointmentByIdAndPatient(
+        appointmentId,
+        patient.id
+      );
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      // Check if appointment is already paid
+      const existingPayment =
+        await paymentRepository.findPaymentByAppointmentId(appointmentId);
+
+      if (existingPayment && existingPayment.status === "SUCCESS") {
+        throw new Error("Appointment is already paid");
+      }
+
+      // Get consultation fee (in rupees)
+      const consultationFee = appointment.consultation_fee || 500;
+      const amountInPaise = consultationFee * 100; // Convert to paise
+
       // Create Razorpay order
-      const order = await razorpayUtil.createOrder(
-        amount,
-        currency,
+      const razorpayOrder = await razorpayUtil.createOrder(
+        amountInPaise,
+        "INR",
         `appointment_${appointmentId}`,
         {
-          appointment_id: appointmentId.toString(),
-          patient_id: patientId.toString(),
+          appointmentId: appointmentId.toString(),
+          patientId: patient.id.toString(),
+          clinicianName: appointment.clinician_name,
         }
       );
 
-      // Create payment record in database
-      const payment = await paymentRepository.createPayment({
-        patient_id: patientId,
-        appointment_id: appointmentId,
-        amount: amount / 100, // Store in rupees
-        currency,
-        razorpay_order_id: order.id,
-        status: "CREATED",
-        notes: `Payment for appointment #${appointmentId}`,
+      // Store payment record in database
+      await paymentRepository.createPayment({
+        patientId: patient.id,
+        appointmentId: appointmentId,
+        orderId: razorpayOrder.id,
+        amount: consultationFee,
+        currency: "INR",
       });
 
+      logger.info(
+        `✅ Payment order created: ${razorpayOrder.id} for appointment ${appointmentId}`
+      );
+
       return {
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        paymentId: payment.id,
+        orderId: razorpayOrder.id,
+        amount: amountInPaise,
+        currency: "INR",
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID || "",
+        appointment: {
+          id: appointment.id,
+          clinicianName: appointment.clinician_name,
+          specialization: appointment.specialization,
+          scheduledStartAt: appointment.scheduled_start_at,
+          appointmentType: appointment.appointment_type,
+        },
       };
     } catch (error: any) {
-      logger.error("Failed to create Razorpay order:", error);
-      throw ApiError.internal("Failed to create payment order");
+      logger.error("Error creating payment order:", error);
+      throw error;
     }
   }
 
   /**
-   * Verify payment with signature verification
+   * Verify payment and update appointment status
    */
-  async verifyPayment(orderId: string, paymentId: string, signature: string) {
-    // Verify signature
-    const isValid = razorpayUtil.verifyPaymentSignature(
-      orderId,
-      paymentId,
-      signature
-    );
-
-    if (!isValid) {
-      throw ApiError.badRequest("Invalid payment signature");
+  async verifyPayment(
+    userId: number,
+    data: {
+      appointmentId: number;
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature: string;
     }
-
-    // Find payment record
-    const payment = await paymentRepository.findPaymentByOrderId(orderId);
-    if (!payment) {
-      throw ApiError.notFound("Payment record not found");
-    }
-
-    // Update payment status
-    const updatedPayment = await paymentRepository.updatePaymentStatus(
-      payment.id,
-      {
-        razorpay_payment_id: paymentId,
-        razorpay_signature: signature,
-        status: "SUCCESS",
-        paid_at: new Date(),
-      }
-    );
-
-    // Handle payment success
-    await this.handlePaymentSuccess(payment.appointment_id);
-
-    return updatedPayment;
-  }
-
-  /**
-   * Handle payment success - update appointment status
-   */
-  async handlePaymentSuccess(appointmentId: number) {
+  ): Promise<{
+    success: boolean;
+    appointment: any;
+    payment: any;
+  }> {
     try {
+      // Get patient profile
+      const patient = await patientRepository.findPatientProfileByUserId(
+        userId
+      );
+      if (!patient) {
+        throw new Error("Patient profile not found");
+      }
+
+      // Verify appointment belongs to patient
+      const appointment = await bookingRepository.findAppointmentByIdAndPatient(
+        data.appointmentId,
+        patient.id
+      );
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      // Verify payment signature
+      const isValidSignature = razorpayUtil.verifyPaymentSignature(
+        data.razorpayOrderId,
+        data.razorpayPaymentId,
+        data.razorpaySignature
+      );
+
+      if (!isValidSignature) {
+        // Update payment as failed
+        await paymentRepository.updatePaymentFailed(
+          data.razorpayOrderId,
+          "SIGNATURE_VERIFICATION_FAILED",
+          "Payment signature verification failed"
+        );
+
+        throw new Error("Payment verification failed. Invalid signature.");
+      }
+
+      // Fetch payment details from Razorpay
+      const razorpayPayment = await razorpayUtil.fetchPayment(
+        data.razorpayPaymentId
+      );
+
+      // Update payment status to success
+      const payment = await paymentRepository.updatePaymentSuccess(
+        data.razorpayOrderId,
+        data.razorpayPaymentId,
+        {
+          method: razorpayPayment.method,
+          card_id: razorpayPayment.card_id,
+          bank: razorpayPayment.bank,
+          wallet: razorpayPayment.wallet,
+          vpa: razorpayPayment.vpa,
+        }
+      );
+
       // Update appointment status to CONFIRMED
-      await appointmentRepository.updateStatus(
-        appointmentId,
-        "CONFIRMED",
-        1, // System user ID
-        "Payment completed successfully"
+      await bookingRepository.updateAppointmentStatus(
+        data.appointmentId,
+        "CONFIRMED"
       );
 
       logger.info(
-        `Appointment ${appointmentId} confirmed after successful payment`
+        `✅ Payment verified: ${data.razorpayPaymentId} for appointment ${data.appointmentId}`
       );
 
-      // TODO: Trigger appointment confirmation notification
-      // await notificationService.sendAppointmentConfirmation(appointmentId);
-    } catch (error) {
-      logger.error(`Failed to update appointment status after payment:`, error);
+      // Send WhatsApp confirmation
+      await this.sendPaymentConfirmation(appointment, payment, patient);
+
+      // Get updated appointment details
+      const updatedAppointment = await bookingRepository.findAppointmentById(
+        data.appointmentId
+      );
+
+      return {
+        success: true,
+        appointment: {
+          id: updatedAppointment.id,
+          status: updatedAppointment.status,
+          scheduledStartAt: updatedAppointment.scheduled_start_at,
+          clinicianName: updatedAppointment.clinician_name,
+          centreName: updatedAppointment.centre_name,
+        },
+        payment: {
+          id: payment.id,
+          amount: payment.amount,
+          status: payment.status,
+          paidAt: payment.paid_at,
+        },
+      };
+    } catch (error: any) {
+      logger.error("Error verifying payment:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send payment confirmation via WhatsApp
+   */
+  private async sendPaymentConfirmation(
+    appointment: any,
+    payment: any,
+    patient: any
+  ): Promise<void> {
+    try {
+      // Get user details
+      const user = await patientRepository.findUserById(patient.user_id);
+      if (!user || !user.phone) {
+        logger.warn("Cannot send WhatsApp confirmation: No phone number");
+        return;
+      }
+
+      // Format date and time
+      const appointmentDate = new Date(appointment.scheduled_start_at);
+      const dateStr = appointmentDate.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const timeStr = appointmentDate.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // Send confirmation message
+      if (gallaboxUtil.isReady()) {
+        await gallaboxUtil.sendAppointmentConfirmation(
+          user.phone,
+          user.full_name,
+          appointment.clinician_name,
+          dateStr,
+          timeStr,
+          appointment.centre_name
+        );
+
+        logger.info(
+          `✅ WhatsApp confirmation sent to ${user.phone} for appointment ${appointment.id}`
+        );
+      }
+    } catch (error: any) {
+      logger.error("Error sending WhatsApp confirmation:", error);
       // Don't throw error - payment is already successful
     }
   }
 
   /**
-   * Handle payment failure
-   */
-  async handlePaymentFailure(orderId: string, reason: string) {
-    const payment = await paymentRepository.findPaymentByOrderId(orderId);
-    if (!payment) {
-      throw ApiError.notFound("Payment record not found");
-    }
-
-    await paymentRepository.updatePaymentStatus(payment.id, {
-      status: "FAILED",
-      failure_reason: reason,
-    });
-
-    logger.warn(`Payment failed for order ${orderId}: ${reason}`);
-  }
-
-  /**
-   * Get payments by patient
-   */
-  async getPaymentsByPatient(patientId: number) {
-    return await paymentRepository.findPaymentsByPatient(patientId);
-  }
-
-  /**
-   * Get payment by ID
-   */
-  async getPaymentById(paymentId: number) {
-    const payment = await paymentRepository.findPaymentById(paymentId);
-    if (!payment) {
-      throw ApiError.notFound("Payment not found");
-    }
-    return payment;
-  }
-
-  /**
-   * Get all payments with filters
-   */
-  async getPayments(filters?: {
-    status?: string;
-    patientId?: number;
-    startDate?: string;
-    endDate?: string;
-  }) {
-    return await paymentRepository.findPayments(filters as any);
-  }
-
-  /**
    * Handle Razorpay webhook
    */
-  async handleWebhook(body: any, signature: string) {
-    // Verify webhook signature
-    const isValid = razorpayUtil.verifyWebhookSignature(
-      JSON.stringify(body),
-      signature
-    );
-
-    if (!isValid) {
-      throw ApiError.badRequest("Invalid webhook signature");
-    }
-
-    const event = body.event;
-    const payload = body.payload.payment.entity;
-
-    logger.info(`Received Razorpay webhook: ${event}`);
-
-    switch (event) {
-      case "payment.captured":
-        await this.handlePaymentCaptured(payload);
-        break;
-
-      case "payment.failed":
-        await this.handlePaymentFailure(
-          payload.order_id,
-          payload.error_description || "Payment failed"
-        );
-        break;
-
-      case "refund.created":
-        // Handle refund
-        logger.info(`Refund created: ${payload.id}`);
-        break;
-
-      default:
-        logger.info(`Unhandled webhook event: ${event}`);
-    }
-
-    return { received: true };
-  }
-
-  /**
-   * Handle payment captured event
-   */
-  private async handlePaymentCaptured(payload: any) {
-    const payment = await paymentRepository.findPaymentByOrderId(
-      payload.order_id
-    );
-
-    if (payment) {
-      await paymentRepository.updatePaymentStatus(payment.id, {
-        razorpay_payment_id: payload.id,
-        status: "SUCCESS",
-        paid_at: new Date(payload.created_at * 1000),
+  async handleWebhook(signature: string, payload: any): Promise<void> {
+    try {
+      // Store webhook event
+      const webhookEvent = await paymentRepository.storeWebhookEvent({
+        provider: "RAZORPAY",
+        providerEventId: payload.event,
+        eventType: payload.event,
+        rawPayload: payload,
       });
 
-      await this.handlePaymentSuccess(payment.appointment_id);
-    }
-  }
-
-  /**
-   * Create refund
-   */
-  async createRefund(paymentId: number, amount?: number, reason?: string) {
-    const payment = await paymentRepository.findPaymentById(paymentId);
-    if (!payment) {
-      throw ApiError.notFound("Payment not found");
-    }
-
-    if (payment.status !== "SUCCESS") {
-      throw ApiError.badRequest("Can only refund successful payments");
-    }
-
-    if (!payment.razorpay_payment_id) {
-      throw ApiError.badRequest("Payment ID not found");
-    }
-
-    try {
-      // Create refund in Razorpay
-      const refund = await razorpayUtil.createRefund(
-        payment.razorpay_payment_id,
-        amount ? amount * 100 : undefined // Convert to paise
+      // Verify webhook signature
+      const isValid = razorpayUtil.verifyWebhookSignature(
+        JSON.stringify(payload),
+        signature
       );
 
-      // Create refund record
-      const refundRecord = await paymentRepository.createRefund(
-        paymentId,
-        amount || payment.amount,
-        reason || "Refund requested"
-      );
-
-      // Update refund with Razorpay ID
-      await paymentRepository.updateRefundStatus(
-        refundRecord.id,
-        "SUCCESS",
-        refund.id
-      );
-
-      // Update payment status
-      await paymentRepository.updatePaymentStatus(paymentId, {
-        status: "REFUNDED",
-      });
-
-      logger.info(`Refund created for payment ${paymentId}`);
-
-      return refundRecord;
-    } catch (error: any) {
-      logger.error("Failed to create refund:", error);
-      throw ApiError.internal("Failed to process refund");
-    }
-  }
-
-  /**
-   * Get consultation fee from clinician profile
-   */
-  private async getConsultationFee(clinicianId: number): Promise<number> {
-    try {
-      const { staffRepository } = await import(
-        "../repositories/staff.repository"
-      );
-      const clinician = await staffRepository.findClinicianById(clinicianId);
-
-      if (!clinician || !clinician.consultation_fee) {
-        // Default fee if not set
-        logger.warn(
-          `Consultation fee not found for clinician ${clinicianId}, using default`
-        );
-        return 100000; // ₹1000 in paise
+      if (!isValid) {
+        logger.warn("Invalid webhook signature");
+        return;
       }
 
-      return clinician.consultation_fee * 100; // Convert to paise
-    } catch (error) {
-      logger.error("Failed to fetch consultation fee:", error);
-      return 100000; // Default ₹1000 in paise
+      // Process webhook based on event type
+      const event = payload.event;
+      const paymentEntity = payload.payload?.payment?.entity;
+
+      if (event === "payment.captured" && paymentEntity) {
+        // Payment successful
+        const orderId = paymentEntity.order_id;
+        const paymentId = paymentEntity.id;
+
+        // Update payment status
+        await paymentRepository.updatePaymentSuccess(orderId, paymentId, {
+          method: paymentEntity.method,
+          amount: paymentEntity.amount,
+        });
+
+        // Get payment details
+        const payment = await paymentRepository.findPaymentByOrderId(orderId);
+
+        if (payment) {
+          // Update appointment status
+          await bookingRepository.updateAppointmentStatus(
+            payment.appointment_id,
+            "CONFIRMED"
+          );
+
+          logger.info(
+            `✅ Webhook processed: Payment ${paymentId} captured for appointment ${payment.appointment_id}`
+          );
+        }
+      } else if (event === "payment.failed" && paymentEntity) {
+        // Payment failed
+        const orderId = paymentEntity.order_id;
+
+        await paymentRepository.updatePaymentFailed(
+          orderId,
+          paymentEntity.error_code,
+          paymentEntity.error_description
+        );
+
+        logger.info(
+          `⚠️ Webhook processed: Payment failed for order ${orderId}`
+        );
+      }
+
+      // Mark webhook as processed
+      await paymentRepository.markWebhookProcessed(webhookEvent.id);
+    } catch (error: any) {
+      logger.error("Error handling webhook:", error);
+      throw error;
     }
   }
 
   /**
-   * Create payment link and send to patient via WhatsApp
+   * Get payment details
    */
-  async createAndSendPaymentLink(appointmentId: number) {
-    // Check if Razorpay is configured
-    if (!razorpayUtil.isConfigured()) {
-      throw ApiError.serviceUnavailable(
-        "Payment service is not configured. Please contact support."
-      );
-    }
-
-    // Get appointment details
-    const appointment = await appointmentRepository.getAppointmentById(
-      appointmentId
-    );
-    if (!appointment) {
-      throw ApiError.notFound("Appointment not found");
-    }
-
-    // Get patient details
-    const patient = await patientRepository.findById(appointment.patient_id);
-    if (!patient) {
-      throw ApiError.notFound("Patient not found");
-    }
-
-    // Check if payment already exists
-    const existingPayment = await paymentRepository.findPaymentByAppointment(
-      appointmentId
-    );
-    if (existingPayment && existingPayment.status === "SUCCESS") {
-      throw ApiError.conflict("Payment already completed for this appointment");
-    }
-
-    // Get consultation fee
-    const amount = await this.getConsultationFee(appointment.clinician_id);
-
+  async getPaymentDetails(userId: number, appointmentId: number): Promise<any> {
     try {
-      // Create Razorpay payment link
-      const paymentLink = await razorpayUtil.createPaymentLink(
-        amount,
-        patient.user.full_name,
-        patient.user.phone,
-        `Consultation with ${appointment.clinician_name}`,
-        `appointment_${appointmentId}`
+      // Get patient profile
+      const patient = await patientRepository.findPatientProfileByUserId(
+        userId
+      );
+      if (!patient) {
+        throw new Error("Patient profile not found");
+      }
+
+      // Get payment
+      const payment = await paymentRepository.findPaymentByAppointmentId(
+        appointmentId
       );
 
-      // Create payment record in database
-      const payment = await paymentRepository.createPayment({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        amount: amount / 100, // Store in rupees
-        currency: "INR",
-        razorpay_order_id: paymentLink.id,
-        status: "CREATED",
-        notes: `Payment link for appointment #${appointmentId}`,
-      });
+      if (!payment) {
+        throw new Error("Payment not found");
+      }
 
-      // Format appointment date and time
-      const appointmentDate = new Date(
-        appointment.scheduled_start_at
-      ).toLocaleDateString("en-IN", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-      const appointmentTime = new Date(
-        appointment.scheduled_start_at
-      ).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      // Send payment link via WhatsApp using Gallabox
-      const { gallaboxUtil } = await import("../utils/gallabox");
-      const whatsappResult = await gallaboxUtil.sendPaymentLink(
-        patient.user.phone,
-        patient.user.full_name,
-        amount / 100, // Amount in rupees
-        paymentLink.short_url,
-        appointment.clinician_name,
-        appointmentDate,
-        appointmentTime
-      );
-
-      logger.info(
-        `Payment link sent for appointment ${appointmentId} to ${patient.user.phone}`
-      );
+      // Verify payment belongs to patient
+      if (payment.patient_id !== patient.id) {
+        throw new Error("Unauthorized");
+      }
 
       return {
-        paymentLinkId: paymentLink.id,
-        shortUrl: paymentLink.short_url,
-        amount: amount / 100,
-        currency: "INR",
-        paymentId: payment.id,
-        whatsappSent: whatsappResult.success,
-        expiresAt: paymentLink.expire_by
-          ? new Date(paymentLink.expire_by * 1000)
-          : null,
+        id: payment.id,
+        orderId: payment.order_id,
+        paymentId: payment.payment_id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        paidAt: payment.paid_at,
+        createdAt: payment.created_at,
       };
     } catch (error: any) {
-      logger.error("Failed to create and send payment link:", error);
-      throw ApiError.internal("Failed to create payment link");
+      logger.error("Error getting payment details:", error);
+      throw error;
     }
   }
 
   /**
-   * Get payment link status
+   * Get patient payment history
    */
-  async getPaymentLinkStatus(paymentLinkId: string) {
+  async getPaymentHistory(
+    userId: number,
+    filters?: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<any[]> {
     try {
-      const paymentLink = await razorpayUtil.fetchPaymentLink(paymentLinkId);
+      // Get patient profile
+      const patient = await patientRepository.findPatientProfileByUserId(
+        userId
+      );
+      if (!patient) {
+        throw new Error("Patient profile not found");
+      }
 
-      return {
-        paymentLinkId: paymentLink.id,
-        status: paymentLink.status, // created, paid, partially_paid, expired, cancelled
-        amount: paymentLink.amount / 100,
-        amountPaid: paymentLink.amount_paid / 100,
-        shortUrl: paymentLink.short_url,
-        createdAt: new Date(paymentLink.created_at * 1000),
-        expiresAt: paymentLink.expire_by
-          ? new Date(paymentLink.expire_by * 1000)
-          : null,
-      };
+      // Get payments
+      const payments = await paymentRepository.getPatientPayments(
+        patient.id,
+        filters
+      );
+
+      return payments.map((payment: any) => ({
+        id: payment.id,
+        orderId: payment.order_id,
+        paymentId: payment.payment_id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        paidAt: payment.paid_at,
+        appointmentDate: payment.scheduled_start_at,
+        appointmentType: payment.appointment_type,
+        createdAt: payment.created_at,
+      }));
     } catch (error: any) {
-      logger.error("Failed to fetch payment link status:", error);
-      throw ApiError.internal("Failed to fetch payment link status");
+      logger.error("Error getting payment history:", error);
+      throw error;
     }
   }
 }

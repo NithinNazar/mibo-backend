@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 .env.*
+
+# Credentials and sensitive files
+CREDENTIALS.md
+*.pem
+*.key
+*.cert

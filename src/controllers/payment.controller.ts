@@ -1,219 +1,222 @@
 // src/controllers/payment.controller.ts
-import { Response, NextFunction, Request } from "express";
+import { Request, Response } from "express";
 import { paymentService } from "../services/payment.service";
-import { ok, created } from "../utils/response";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import {
-  validateCreateOrder,
-  validateVerifyPayment,
-  validateCreateRefund,
-  validateWebhookPayload,
-} from "../validations/payment.validation";
+import logger from "../config/logger";
 
-export class PaymentController {
+class PaymentController {
   /**
    * Create Razorpay order
+   * POST /api/payment/create-order
    */
-  async createOrder(req: AuthRequest, res: Response, next: NextFunction) {
+  async createOrder(req: Request, res: Response): Promise<void> {
     try {
-      if (!req.user) return;
-
-      const dto = validateCreateOrder(req.body);
-
-      // Get patient ID from authenticated user
-      let patientId: number;
-      if (req.user.userType === "PATIENT") {
-        patientId = req.user.userId;
-      } else {
-        // Staff creating order for patient
-        if (!req.body.patient_id) {
-          return next(new Error("patient_id is required for staff users"));
-        }
-        patientId = Number(req.body.patient_id);
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
       }
 
-      const order = await paymentService.createRazorpayOrder(
-        dto.appointment_id,
-        patientId
+      const { appointmentId } = req.body;
+
+      if (!appointmentId) {
+        res.status(400).json({
+          success: false,
+          message: "Appointment ID is required",
+        });
+        return;
+      }
+
+      const result = await paymentService.createPaymentOrder(
+        req.user.userId,
+        parseInt(appointmentId)
       );
 
-      return created(res, order, "Payment order created successfully");
-    } catch (err) {
-      next(err);
+      res.json({
+        success: true,
+        message: "Payment order created successfully",
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error("Error creating payment order:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to create payment order",
+      });
     }
   }
 
   /**
    * Verify payment
+   * POST /api/payment/verify
    */
-  async verifyPayment(req: AuthRequest, res: Response, next: NextFunction) {
+  async verifyPayment(req: Request, res: Response): Promise<void> {
     try {
-      const dto = validateVerifyPayment(req.body);
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
+      }
 
-      const payment = await paymentService.verifyPayment(
-        dto.razorpay_order_id,
-        dto.razorpay_payment_id,
-        dto.razorpay_signature
-      );
+      const {
+        appointmentId,
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+      } = req.body;
 
-      return ok(res, payment, "Payment verified successfully");
-    } catch (err) {
-      next(err);
+      // Validate required fields
+      if (
+        !appointmentId ||
+        !razorpayOrderId ||
+        !razorpayPaymentId ||
+        !razorpaySignature
+      ) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Missing required fields: appointmentId, razorpayOrderId, razorpayPaymentId, razorpaySignature",
+        });
+        return;
+      }
+
+      const result = await paymentService.verifyPayment(req.user.userId, {
+        appointmentId: parseInt(appointmentId),
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+      });
+
+      res.json({
+        success: true,
+        message:
+          "Payment verified successfully! Your appointment is confirmed.",
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error("Error verifying payment:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Payment verification failed",
+      });
     }
   }
 
   /**
    * Handle Razorpay webhook
+   * POST /api/payment/webhook
    */
-  async handleWebhook(req: Request, res: Response, next: NextFunction) {
+  async handleWebhook(req: Request, res: Response): Promise<void> {
     try {
       const signature = req.headers["x-razorpay-signature"] as string;
 
       if (!signature) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
-          error: {
-            code: "MISSING_SIGNATURE",
-            message: "Webhook signature is missing",
-          },
+          message: "Missing webhook signature",
         });
+        return;
       }
 
-      const payload = validateWebhookPayload(req.body);
+      await paymentService.handleWebhook(signature, req.body);
 
-      await paymentService.handleWebhook(payload, signature);
-
-      return res.status(200).json({ received: true });
-    } catch (err) {
-      next(err);
+      res.json({
+        success: true,
+        message: "Webhook processed successfully",
+      });
+    } catch (error: any) {
+      logger.error("Error handling webhook:", error);
+      res.status(500).json({
+        success: false,
+        message: "Webhook processing failed",
+      });
     }
   }
 
   /**
-   * Get payments by patient
+   * Get payment details
+   * GET /api/payment/:appointmentId
    */
-  async getPaymentsByPatient(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  async getPaymentDetails(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = Number(req.params.id);
-
-      const payments = await paymentService.getPaymentsByPatient(patientId);
-
-      return ok(res, payments);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Get payment by ID
-   */
-  async getPaymentById(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const paymentId = Number(req.params.id);
-
-      const payment = await paymentService.getPaymentById(paymentId);
-
-      return ok(res, payment);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Get all payments with filters
-   */
-  async getPayments(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const filters: any = {};
-
-      if (req.query.status) {
-        filters.status = String(req.query.status);
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
       }
 
-      if (req.query.patientId) {
-        filters.patientId = Number(req.query.patientId);
+      const appointmentId = parseInt(req.params.appointmentId);
+
+      if (isNaN(appointmentId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid appointment ID",
+        });
+        return;
       }
 
-      if (req.query.startDate) {
-        filters.startDate = String(req.query.startDate);
-      }
-
-      if (req.query.endDate) {
-        filters.endDate = String(req.query.endDate);
-      }
-
-      const payments = await paymentService.getPayments(filters);
-
-      return ok(res, payments);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Create refund
-   */
-  async createRefund(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const dto = validateCreateRefund(req.body);
-
-      const refund = await paymentService.createRefund(
-        dto.payment_id,
-        dto.amount,
-        dto.reason
-      );
-
-      return created(res, refund, "Refund created successfully");
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Create and send payment link to patient
-   */
-  async sendPaymentLink(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const appointmentId = Number(req.body.appointment_id);
-
-      if (!appointmentId || isNaN(appointmentId)) {
-        return next(new Error("Valid appointment_id is required"));
-      }
-
-      const result = await paymentService.createAndSendPaymentLink(
+      const payment = await paymentService.getPaymentDetails(
+        req.user.userId,
         appointmentId
       );
 
-      return created(res, result, "Payment link created and sent successfully");
-    } catch (err) {
-      next(err);
+      res.json({
+        success: true,
+        data: payment,
+      });
+    } catch (error: any) {
+      logger.error("Error getting payment details:", error);
+      res.status(404).json({
+        success: false,
+        message: error.message || "Payment not found",
+      });
     }
   }
 
   /**
-   * Get payment link status
+   * Get payment history
+   * GET /api/payment/history
    */
-  async getPaymentLinkStatus(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+  async getPaymentHistory(req: Request, res: Response): Promise<void> {
     try {
-      const paymentLinkId = req.params.linkId;
-
-      if (!paymentLinkId) {
-        return next(new Error("Payment link ID is required"));
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
       }
 
-      const status = await paymentService.getPaymentLinkStatus(paymentLinkId);
+      const { status, limit, offset } = req.query;
 
-      return ok(res, status);
-    } catch (err) {
-      next(err);
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (limit) filters.limit = parseInt(limit as string);
+      if (offset) filters.offset = parseInt(offset as string);
+
+      const payments = await paymentService.getPaymentHistory(
+        req.user.userId,
+        filters
+      );
+
+      res.json({
+        success: true,
+        data: {
+          payments,
+          total: payments.length,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error getting payment history:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to get payment history",
+      });
     }
   }
 }

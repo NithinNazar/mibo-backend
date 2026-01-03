@@ -1,7 +1,7 @@
 // src/routes/appointment.routes.ts
 import { Router } from "express";
 import { appointmentController } from "../controllers/appointment.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 
 const router = Router();
@@ -13,7 +13,7 @@ const router = Router();
  */
 router.get(
   "/my-appointments",
-  authenticate,
+  authMiddleware,
   requireRole("CLINICIAN"),
   (req, res, next) => appointmentController.getMyAppointments(req, res, next)
 );
@@ -23,7 +23,7 @@ router.get(
  * Get appointments with query filters (centreId, clinicianId, patientId, date, status)
  * Role-based filtering applied automatically
  */
-router.get("/", authenticate, (req, res, next) =>
+router.get("/", authMiddleware, (req, res, next) =>
   appointmentController.getAppointments(req, res, next)
 );
 
@@ -32,7 +32,7 @@ router.get("/", authenticate, (req, res, next) =>
  * Get clinician availability for a specific date
  * Query params: clinician_id, centre_id, date (YYYY-MM-DD)
  */
-router.get("/availability", authenticate, (req, res, next) =>
+router.get("/availability", authMiddleware, (req, res, next) =>
   appointmentController.getClinicianAvailability(req, res, next)
 );
 
@@ -40,7 +40,7 @@ router.get("/availability", authenticate, (req, res, next) =>
  * GET /api/appointments/:id
  * Get appointment by ID with access control
  */
-router.get("/:id", authenticate, (req, res, next) =>
+router.get("/:id", authMiddleware, (req, res, next) =>
   appointmentController.getAppointmentById(req, res, next)
 );
 
@@ -53,7 +53,7 @@ router.get("/:id", authenticate, (req, res, next) =>
  */
 router.post(
   "/",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -71,7 +71,7 @@ router.post(
  */
 router.put(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER", "CARE_COORDINATOR"),
   (req, res, next) => appointmentController.updateAppointment(req, res, next)
 );
@@ -83,7 +83,7 @@ router.put(
  */
 router.delete(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",

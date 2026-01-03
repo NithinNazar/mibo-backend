@@ -1,6 +1,6 @@
 // src/routes/notification.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 import { notificationController } from "../controllers/notification.controller";
 
@@ -14,7 +14,7 @@ const router = Router();
  */
 router.post(
   "/appointment-confirmation",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -34,7 +34,7 @@ router.post(
  */
 router.post(
   "/appointment-reminder",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) =>
     notificationController.sendAppointmentReminder(req, res, next)
@@ -48,7 +48,7 @@ router.post(
  */
 router.get(
   "/history",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) =>
     notificationController.getNotificationHistory(req, res, next)
@@ -62,7 +62,7 @@ router.get(
  */
 router.get(
   "/stats",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) =>
     notificationController.getNotificationStats(req, res, next)
@@ -75,7 +75,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => notificationController.getNotificationById(req, res, next)
 );

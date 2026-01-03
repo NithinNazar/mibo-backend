@@ -66,6 +66,10 @@ const authLimiter = rateLimit({
 // Apply auth rate limiter to authentication routes
 app.use("/api/auth/send-otp", authLimiter);
 app.use("/api/auth/login", authLimiter);
+app.use("/api/patient-auth/send-otp", authLimiter);
+app.use("/api/patient-auth/verify-otp", authLimiter);
+app.use("/api/booking/initiate", authLimiter);
+app.use("/api/booking/confirm", authLimiter);
 
 // Request timeout (30 seconds)
 app.use((req, res, next) => {

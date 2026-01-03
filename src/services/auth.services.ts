@@ -11,6 +11,7 @@ import {
 import { verifyPassword } from "../utils/password";
 import { ENV } from "../config/env";
 import logger from "../config/logger";
+import { gallaboxUtil } from "../utils/gallabox";
 
 interface AuthResponse {
   user: {
@@ -57,10 +58,38 @@ export class AuthService {
       expiresAt,
     });
 
-    // TODO: Send OTP via SMS (Twilio integration)
+    // Send OTP via WhatsApp using Gallabox
+    // Gallabox expects phone with country code (12 digits)
+    const phoneWithCountryCode = phone.startsWith("91") ? phone : `91${phone}`;
+
+    if (gallaboxUtil.isReady()) {
+      try {
+        const result = await gallaboxUtil.sendOTP(phoneWithCountryCode, otp);
+
+        if (result.success) {
+          logger.info(`✅ OTP sent to ${phoneWithCountryCode} via WhatsApp`);
+        } else {
+          logger.warn(
+            `⚠️ WhatsApp send failed for ${phoneWithCountryCode}, but OTP stored in database`
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `Error sending OTP via WhatsApp to ${phoneWithCountryCode}:`,
+          error
+        );
+        // Continue - OTP is stored in database
+      }
+    } else {
+      logger.warn(
+        `⚠️ Gallabox not configured - OTP stored but not sent via WhatsApp`
+      );
+    }
+
     // For development, log OTP
     if (ENV.NODE_ENV === "development") {
-      logger.info(`OTP for ${phone}: ${otp}`);
+      logger.info(`🔐 OTP for ${phone}: ${otp}`);
+      console.log(`\n🔐 OTP for ${phone}: ${otp}\n`);
     }
 
     return { message: "OTP sent successfully" };

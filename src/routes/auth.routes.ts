@@ -1,7 +1,7 @@
 // src/routes/auth.routes.ts
 import { Router } from "express";
 import { authController } from "../controllers/auth.controllers";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import {
   validateSendOtp,
   validateLoginPhoneOtp,
@@ -43,12 +43,12 @@ router.post("/refresh", validateRefreshToken, (req, res, next) =>
 );
 
 // Logout (protected route)
-router.post("/logout", authenticate, validateLogout, (req, res, next) =>
+router.post("/logout", authMiddleware, validateLogout, (req, res, next) =>
   authController.logout(req, res, next)
 );
 
 // Get current user (protected route)
-router.get("/me", authenticate, (req, res, next) =>
+router.get("/me", authMiddleware, (req, res, next) =>
   authController.getCurrentUser(req, res, next)
 );
 

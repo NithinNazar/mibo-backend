@@ -1,29 +1,108 @@
 // src/middlewares/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken, JwtPayload } from "../utils/jwt";
-import { ApiError } from "../utils/apiError";
+import { patientAuthService } from "../services/patient-auth.service";
+import logger from "../config/logger";
+
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: number;
+        phone: string;
+        userType: string;
+        roles: string[];
+      };
+    }
+  }
+}
 
 export interface AuthRequest extends Request {
-  user?: JwtPayload;
+  user?: {
+    userId: number;
+    phone: string;
+    userType: string;
+    roles: string[];
+  };
 }
 
-export function authenticate(
-  req: AuthRequest,
+/**
+ * Middleware to verify JWT access token
+ */
+export const authMiddleware = async (
+  req: Request,
   res: Response,
   next: NextFunction
-) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return next(ApiError.unauthorized());
-  }
-
-  const token = authHeader.split(" ")[1];
-
+) => {
   try {
-    const payload = verifyAccessToken(token);
-    req.user = payload;
-    return next();
-  } catch {
-    return next(ApiError.unauthorized("Invalid or expired token"));
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided. Please login.",
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    // Verify token
+    const payload = patientAuthService.verifyAccessToken(token);
+
+    // Attach user info to request
+    req.user = {
+      userId: payload.userId,
+      phone: payload.phone,
+      userType: payload.userType,
+      roles: payload.roles || [],
+    };
+
+    next();
+  } catch (error: any) {
+    logger.error("Auth middleware error:", error);
+
+    if (error.message.includes("expired")) {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired. Please refresh your token.",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token. Please login again.",
+    });
   }
-}
+};
+
+/**
+ * Optional auth middleware - doesn't fail if no token
+ */
+export const optionalAuthMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const payload = patientAuthService.verifyAccessToken(token);
+
+      req.user = {
+        userId: payload.userId,
+        phone: payload.phone,
+        userType: payload.userType,
+        roles: payload.roles || [],
+      };
+    }
+
+    next();
+  } catch (error) {
+    // Ignore errors for optional auth
+    next();
+  }
+};

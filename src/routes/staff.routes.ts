@@ -1,6 +1,6 @@
 // src/routes/staff.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 import { staffController } from "../controllers/staff.controller";
 
@@ -12,7 +12,7 @@ const router = Router();
  * Query params: roleId, centreId
  * Roles: ADMIN only
  */
-router.get("/", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.get("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   staffController.getStaffUsers(req, res, next)
 );
 
@@ -21,7 +21,7 @@ router.get("/", authenticate, requireRole("ADMIN"), (req, res, next) =>
  * Get staff user by ID
  * Roles: ADMIN only
  */
-router.get("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.get("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   staffController.getStaffById(req, res, next)
 );
 
@@ -30,7 +30,7 @@ router.get("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
  * Create staff user
  * Roles: ADMIN only
  */
-router.post("/", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.post("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   staffController.createStaffUser(req, res, next)
 );
 
@@ -39,7 +39,7 @@ router.post("/", authenticate, requireRole("ADMIN"), (req, res, next) =>
  * Update staff user
  * Roles: ADMIN only
  */
-router.put("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.put("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   staffController.updateStaffUser(req, res, next)
 );
 
@@ -48,7 +48,7 @@ router.put("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
  * Delete staff user (soft delete)
  * Roles: ADMIN only
  */
-router.delete("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
+router.delete("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
   staffController.deleteStaffUser(req, res, next)
 );
 
@@ -58,7 +58,7 @@ router.delete("/:id", authenticate, requireRole("ADMIN"), (req, res, next) =>
  * Query params: centreId, specialization
  * Roles: All authenticated users
  */
-router.get("/clinicians", authenticate, (req, res, next) =>
+router.get("/clinicians", authMiddleware, (req, res, next) =>
   staffController.getClinicians(req, res, next)
 );
 
@@ -67,7 +67,7 @@ router.get("/clinicians", authenticate, (req, res, next) =>
  * Get clinician by ID
  * Roles: All authenticated users
  */
-router.get("/clinicians/:id", authenticate, (req, res, next) =>
+router.get("/clinicians/:id", authMiddleware, (req, res, next) =>
   staffController.getClinicianById(req, res, next)
 );
 
@@ -78,7 +78,7 @@ router.get("/clinicians/:id", authenticate, (req, res, next) =>
  */
 router.post(
   "/clinicians",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.createClinician(req, res, next)
 );
@@ -90,7 +90,7 @@ router.post(
  */
 router.put(
   "/clinicians/:id",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.updateClinician(req, res, next)
 );
@@ -102,7 +102,7 @@ router.put(
  */
 router.delete(
   "/clinicians/:id",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => staffController.deleteClinician(req, res, next)
 );
@@ -114,7 +114,7 @@ router.delete(
  */
 router.put(
   "/clinicians/:id/availability",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) =>
     staffController.updateClinicianAvailability(req, res, next)

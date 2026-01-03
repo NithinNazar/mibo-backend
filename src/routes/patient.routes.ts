@@ -1,6 +1,6 @@
 // src/routes/patient.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 import { patientController } from "../controllers/patient.controller";
 
@@ -14,7 +14,7 @@ const router = Router();
  */
 router.get(
   "/",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -32,7 +32,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -51,7 +51,7 @@ router.get(
  */
 router.post(
   "/",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -69,7 +69,7 @@ router.post(
  */
 router.put(
   "/:id",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -87,7 +87,7 @@ router.put(
  */
 router.get(
   "/:id/appointments",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -106,7 +106,7 @@ router.get(
  */
 router.post(
   "/:id/notes",
-  authenticate,
+  authMiddleware,
   requireRole("CLINICIAN", "ADMIN"),
   (req, res, next) => patientController.addMedicalNote(req, res, next)
 );

@@ -1,6 +1,6 @@
 // src/routes/video.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authMiddleware } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/role.middleware";
 import { videoController } from "../controllers/video.controller";
 
@@ -13,7 +13,7 @@ const router = Router();
  */
 router.post(
   "/generate-meet-link",
-  authenticate,
+  authMiddleware,
   requireRole(
     "ADMIN",
     "MANAGER",
@@ -29,7 +29,7 @@ router.post(
  * Get Meet link for appointment
  * Authentication: Required
  */
-router.get("/appointment/:id/meet-link", authenticate, (req, res, next) =>
+router.get("/appointment/:id/meet-link", authMiddleware, (req, res, next) =>
   videoController.getMeetLinkForAppointment(req, res, next)
 );
 
@@ -40,7 +40,7 @@ router.get("/appointment/:id/meet-link", authenticate, (req, res, next) =>
  */
 router.put(
   "/appointment/:id/meet-link",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => videoController.updateMeetLink(req, res, next)
 );
@@ -52,7 +52,7 @@ router.put(
  */
 router.delete(
   "/appointment/:id/meet-link",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   (req, res, next) => videoController.deleteMeetLink(req, res, next)
 );
@@ -65,7 +65,7 @@ router.delete(
  */
 router.get(
   "/links",
-  authenticate,
+  authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) => videoController.getAllVideoLinks(req, res, next)
 );

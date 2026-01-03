@@ -25,6 +25,7 @@ interface EnvironmentConfig {
   GALLABOX_BASE_URL: string;
   GALLABOX_API_KEY: string;
   GALLABOX_API_SECRET: string;
+  GALLABOX_CHANNEL_ID: string;
 
   // Razorpay Configuration
   RAZORPAY_KEY_ID: string;
@@ -80,9 +81,10 @@ function validateEnv(): EnvironmentConfig {
 
     // Gallabox (WhatsApp) Configuration
     GALLABOX_BASE_URL:
-      process.env.GALLABOX_BASE_URL || "https://api.gallabox.com/wa/api/v1",
+      process.env.GALLABOX_BASE_URL || "https://server.gallabox.com/api/v1",
     GALLABOX_API_KEY: process.env.GALLABOX_API_KEY || "",
     GALLABOX_API_SECRET: process.env.GALLABOX_API_SECRET || "",
+    GALLABOX_CHANNEL_ID: process.env.GALLABOX_CHANNEL_ID || "",
 
     // Razorpay Configuration
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",

@@ -1,264 +1,246 @@
 // src/repositories/payment.repository.ts
 import { db } from "../config/db";
 
-interface CreatePaymentData {
+export interface Payment {
+  id: number;
   patient_id: number;
   appointment_id: number;
+  provider: string;
+  order_id: string;
+  payment_id: string | null;
   amount: number;
   currency: string;
-  razorpay_order_id: string;
-  status: PaymentStatus;
-  payment_method?: string;
-  notes?: string;
+  status: string;
+  payment_method_details: any;
+  error_code: string | null;
+  error_description: string | null;
+  paid_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
-interface UpdatePaymentStatusData {
-  razorpay_payment_id?: string;
-  razorpay_signature?: string;
-  status: PaymentStatus;
-  paid_at?: Date;
-  failure_reason?: string;
-}
-
-type PaymentStatus = "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
-
-export class PaymentRepository {
+class PaymentRepository {
   /**
-   * Create payment record with status CREATED
+   * Create payment record
    */
-  async createPayment(data: CreatePaymentData) {
-    const query = `
-      INSERT INTO payments (
-        patient_id,
-        appointment_id,
-        amount,
-        currency,
-        razorpay_order_id,
-        status,
-        payment_method,
-        notes,
-        created_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-      RETURNING *;
-    `;
-
-    return db.one(query, [
-      data.patient_id,
-      data.appointment_id,
-      data.amount,
-      data.currency,
-      data.razorpay_order_id,
-      data.status,
-      data.payment_method || null,
-      data.notes || null,
-    ]);
-  }
-
-  /**
-   * Update payment status and payment_id
-   */
-  async updatePaymentStatus(paymentId: number, data: UpdatePaymentStatusData) {
-    const fields: string[] = ["status = $1", "updated_at = NOW()"];
-    const values: any[] = [data.status];
-    let paramIndex = 2;
-
-    if (data.razorpay_payment_id !== undefined) {
-      fields.push(`razorpay_payment_id = $${paramIndex}`);
-      values.push(data.razorpay_payment_id);
-      paramIndex++;
-    }
-
-    if (data.razorpay_signature !== undefined) {
-      fields.push(`razorpay_signature = $${paramIndex}`);
-      values.push(data.razorpay_signature);
-      paramIndex++;
-    }
-
-    if (data.paid_at !== undefined) {
-      fields.push(`paid_at = $${paramIndex}`);
-      values.push(data.paid_at);
-      paramIndex++;
-    }
-
-    if (data.failure_reason !== undefined) {
-      fields.push(`failure_reason = $${paramIndex}`);
-      values.push(data.failure_reason);
-      paramIndex++;
-    }
-
-    const query = `
-      UPDATE payments
-      SET ${fields.join(", ")}
-      WHERE id = $${paramIndex}
-      RETURNING *;
-    `;
-
-    values.push(paymentId);
-
-    return db.one(query, values);
+  async createPayment(data: {
+    patientId: number;
+    appointmentId: number;
+    orderId: string;
+    amount: number;
+    currency?: string;
+  }): Promise<Payment> {
+    return await db.one(
+      `INSERT INTO payments (
+        patient_id, appointment_id, provider, order_id,
+        amount, currency, status
+      ) VALUES ($1, $2, 'RAZORPAY', $3, $4, $5, 'CREATED')
+      RETURNING *`,
+      [
+        data.patientId,
+        data.appointmentId,
+        data.orderId,
+        data.amount,
+        data.currency || "INR",
+      ]
+    );
   }
 
   /**
    * Find payment by order ID
    */
-  async findPaymentByOrderId(orderId: string) {
-    const query = `
-      SELECT *
-      FROM payments
-      WHERE razorpay_order_id = $1
-    `;
-
-    return db.oneOrNone(query, [orderId]);
+  async findPaymentByOrderId(orderId: string): Promise<Payment | null> {
+    return await db.oneOrNone("SELECT * FROM payments WHERE order_id = $1", [
+      orderId,
+    ]);
   }
 
   /**
-   * Find payment by ID
+   * Find payment by appointment ID
    */
-  async findPaymentById(paymentId: number) {
-    const query = `
-      SELECT
-        p.*,
-        u.full_name as patient_name,
-        u.phone as patient_phone,
-        a.scheduled_start_at as appointment_date,
-        a.appointment_type
-      FROM payments p
-      JOIN users u ON p.patient_id = u.id
-      JOIN appointments a ON p.appointment_id = a.id
-      WHERE p.id = $1
-    `;
-
-    return db.oneOrNone(query, [paymentId]);
+  async findPaymentByAppointmentId(
+    appointmentId: number
+  ): Promise<Payment | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM payments WHERE appointment_id = $1 ORDER BY created_at DESC LIMIT 1",
+      [appointmentId]
+    );
   }
 
   /**
-   * Find payments by patient
+   * Update payment status to success
    */
-  async findPaymentsByPatient(patientId: number) {
-    const query = `
-      SELECT
+  async updatePaymentSuccess(
+    orderId: string,
+    paymentId: string,
+    paymentMethodDetails?: any
+  ): Promise<Payment> {
+    return await db.one(
+      `UPDATE payments 
+       SET payment_id = $1,
+           status = 'SUCCESS',
+           paid_at = NOW(),
+           payment_method_details = $2,
+           updated_at = NOW()
+       WHERE order_id = $3
+       RETURNING *`,
+      [paymentId, paymentMethodDetails || null, orderId]
+    );
+  }
+
+  /**
+   * Update payment status to failed
+   */
+  async updatePaymentFailed(
+    orderId: string,
+    errorCode?: string,
+    errorDescription?: string
+  ): Promise<Payment> {
+    return await db.one(
+      `UPDATE payments 
+       SET status = 'FAILED',
+           error_code = $1,
+           error_description = $2,
+           updated_at = NOW()
+       WHERE order_id = $3
+       RETURNING *`,
+      [errorCode || null, errorDescription || null, orderId]
+    );
+  }
+
+  /**
+   * Get payment details with appointment info
+   */
+  async getPaymentDetails(paymentId: number): Promise<any | null> {
+    return await db.oneOrNone(
+      `SELECT 
         p.*,
-        a.scheduled_start_at as appointment_date,
+        a.scheduled_start_at,
+        a.scheduled_end_at,
         a.appointment_type,
-        u_clinician.full_name as clinician_name
+        a.status as appointment_status,
+        u.full_name as clinician_name,
+        cp.specialization,
+        c.name as centre_name,
+        pu.full_name as patient_name,
+        pu.phone as patient_phone,
+        pu.email as patient_email
       FROM payments p
       JOIN appointments a ON p.appointment_id = a.id
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
-      JOIN users u_clinician ON cp.user_id = u_clinician.id
+      JOIN users u ON cp.user_id = u.id
+      JOIN centres c ON a.centre_id = c.id
+      JOIN patient_profiles pp ON a.patient_id = pp.id
+      JOIN users pu ON pp.user_id = pu.id
+      WHERE p.id = $1`,
+      [paymentId]
+    );
+  }
+
+  /**
+   * Get patient payments
+   */
+  async getPatientPayments(
+    patientId: number,
+    filters?: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<Payment[]> {
+    let query = `
+      SELECT p.*, a.scheduled_start_at, a.appointment_type
+      FROM payments p
+      JOIN appointments a ON p.appointment_id = a.id
       WHERE p.patient_id = $1
-      ORDER BY p.created_at DESC
     `;
 
-    return db.any(query, [patientId]);
-  }
-
-  /**
-   * Find payment by appointment
-   */
-  async findPaymentByAppointment(appointmentId: number) {
-    const query = `
-      SELECT *
-      FROM payments
-      WHERE appointment_id = $1
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-
-    return db.oneOrNone(query, [appointmentId]);
-  }
-
-  /**
-   * Find all payments with filters
-   */
-  async findPayments(filters?: {
-    status?: PaymentStatus;
-    patientId?: number;
-    startDate?: string;
-    endDate?: string;
-  }) {
-    const conditions: string[] = ["1=1"];
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [patientId];
+    let paramIndex = 2;
 
     if (filters?.status) {
-      conditions.push(`p.status = $${paramIndex}`);
+      query += ` AND p.status = $${paramIndex}`;
       params.push(filters.status);
       paramIndex++;
     }
 
-    if (filters?.patientId) {
-      conditions.push(`p.patient_id = $${paramIndex}`);
-      params.push(filters.patientId);
+    query += ` ORDER BY p.created_at DESC`;
+
+    if (filters?.limit) {
+      query += ` LIMIT $${paramIndex}`;
+      params.push(filters.limit);
       paramIndex++;
     }
 
-    if (filters?.startDate) {
-      conditions.push(`p.created_at >= $${paramIndex}`);
-      params.push(filters.startDate);
-      paramIndex++;
+    if (filters?.offset) {
+      query += ` OFFSET $${paramIndex}`;
+      params.push(filters.offset);
     }
 
-    if (filters?.endDate) {
-      conditions.push(`p.created_at <= $${paramIndex}`);
-      params.push(filters.endDate);
-      paramIndex++;
-    }
-
-    const query = `
-      SELECT
-        p.*,
-        u.full_name as patient_name,
-        u.phone as patient_phone,
-        a.scheduled_start_at as appointment_date,
-        a.appointment_type
-      FROM payments p
-      JOIN users u ON p.patient_id = u.id
-      JOIN appointments a ON p.appointment_id = a.id
-      WHERE ${conditions.join(" AND ")}
-      ORDER BY p.created_at DESC
-    `;
-
-    return db.any(query, params);
+    return await db.any(query, params);
   }
 
   /**
-   * Create refund record
+   * Store payment webhook event
    */
-  async createRefund(paymentId: number, amount: number, reason: string) {
-    const query = `
-      INSERT INTO payment_refunds (
-        payment_id,
-        amount,
-        reason,
-        status,
-        created_at
-      )
-      VALUES ($1, $2, $3, 'PENDING', NOW())
-      RETURNING *;
-    `;
-
-    return db.one(query, [paymentId, amount, reason]);
+  async storeWebhookEvent(data: {
+    provider: string;
+    providerEventId?: string;
+    eventType?: string;
+    rawPayload: any;
+  }): Promise<any> {
+    return await db.one(
+      `INSERT INTO payment_webhook_events (
+        provider, provider_event_id, event_type, raw_payload, processed
+      ) VALUES ($1, $2, $3, $4, false)
+      RETURNING *`,
+      [
+        data.provider,
+        data.providerEventId || null,
+        data.eventType || null,
+        data.rawPayload,
+      ]
+    );
   }
 
   /**
-   * Update refund status
+   * Mark webhook event as processed
    */
-  async updateRefundStatus(
-    refundId: number,
-    status: string,
-    razorpayRefundId?: string
-  ) {
-    const query = `
-      UPDATE payment_refunds
-      SET status = $1,
-          razorpay_refund_id = $2,
-          updated_at = NOW()
-      WHERE id = $3
-      RETURNING *;
-    `;
+  async markWebhookProcessed(eventId: number): Promise<void> {
+    await db.none(
+      `UPDATE payment_webhook_events 
+       SET processed = true, processed_at = NOW()
+       WHERE id = $1`,
+      [eventId]
+    );
+  }
 
-    return db.one(query, [status, razorpayRefundId || null, refundId]);
+  /**
+   * Get payment statistics for patient
+   */
+  async getPatientPaymentStats(patientId: number): Promise<{
+    totalPaid: number;
+    totalPending: number;
+    successfulPayments: number;
+    failedPayments: number;
+  }> {
+    const stats = await db.one(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN status = 'SUCCESS' THEN amount ELSE 0 END), 0) as total_paid,
+        COALESCE(SUM(CASE WHEN status IN ('CREATED', 'PENDING') THEN amount ELSE 0 END), 0) as total_pending,
+        COUNT(CASE WHEN status = 'SUCCESS' THEN 1 END) as successful_payments,
+        COUNT(CASE WHEN status = 'FAILED' THEN 1 END) as failed_payments
+      FROM payments
+      WHERE patient_id = $1`,
+      [patientId]
+    );
+
+    return {
+      totalPaid: parseFloat(stats.total_paid),
+      totalPending: parseFloat(stats.total_pending),
+      successfulPayments: parseInt(stats.successful_payments),
+      failedPayments: parseInt(stats.failed_payments),
+    };
   }
 }
 

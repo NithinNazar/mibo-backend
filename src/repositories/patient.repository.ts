@@ -1,8 +1,19 @@
 // src/repositories/patient.repository.ts
 import { db } from "../config/db";
-import { User } from "../types/user.types";
+import bcrypt from "bcrypt";
 
-interface PatientProfile {
+export interface User {
+  id: number;
+  phone: string;
+  email: string | null;
+  full_name: string;
+  user_type: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface PatientProfile {
   id: number;
   user_id: number;
   date_of_birth: Date | null;
@@ -16,308 +27,402 @@ interface PatientProfile {
   updated_at: Date;
 }
 
-interface CreatePatientData {
+export interface OTPRequest {
+  id: number;
   phone: string;
-  full_name: string;
-  email?: string;
-  date_of_birth?: string;
-  gender?: string;
-  blood_group?: string;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
+  otp_hash: string;
+  purpose: string;
+  expires_at: Date;
+  is_used: boolean;
+  attempts_count: number;
+  created_at: Date;
 }
 
-export class PatientRepository {
+export interface AuthSession {
+  id: number;
+  user_id: number;
+  refresh_token_hash: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  expires_at: Date;
+  revoked_at: Date | null;
+  created_at: Date;
+}
+
+class PatientRepository {
   /**
-   * Find patients with search filters (name, phone)
+   * Find user by phone number
    */
-  async findPatients(search?: string, phone?: string) {
-    const conditions: string[] = [
-      "u.user_type = 'PATIENT'",
-      "u.is_active = TRUE",
-      "pp.is_active = TRUE",
-    ];
-    const params: any[] = [];
+  async findUserByPhone(phone: string): Promise<User | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM users WHERE phone = $1 AND user_type = 'PATIENT'",
+      [phone]
+    );
+  }
+
+  /**
+   * Find user by ID
+   */
+  async findUserById(userId: number): Promise<User | null> {
+    return await db.oneOrNone("SELECT * FROM users WHERE id = $1", [userId]);
+  }
+
+  /**
+   * Create new user
+   */
+  async createUser(
+    phone: string,
+    fullName: string,
+    email?: string
+  ): Promise<User> {
+    return await db.one(
+      `INSERT INTO users (phone, full_name, email, user_type, is_active)
+       VALUES ($1, $2, $3, 'PATIENT', true)
+       RETURNING *`,
+      [phone, fullName, email || null]
+    );
+  }
+
+  /**
+   * Update user information
+   */
+  async updateUser(
+    userId: number,
+    data: { full_name?: string; email?: string }
+  ): Promise<User> {
+    const updates: string[] = [];
+    const values: any[] = [];
     let paramIndex = 1;
 
-    if (search) {
-      conditions.push(`u.full_name ILIKE $${paramIndex}`);
-      params.push(`%${search}%`);
-      paramIndex++;
+    if (data.full_name) {
+      updates.push(`full_name = $${paramIndex++}`);
+      values.push(data.full_name);
     }
 
-    if (phone) {
-      conditions.push(`u.phone LIKE $${paramIndex}`);
-      params.push(`%${phone}%`);
-      paramIndex++;
+    if (data.email !== undefined) {
+      updates.push(`email = $${paramIndex++}`);
+      values.push(data.email);
     }
 
-    const query = `
-      SELECT
-        pp.id,
-        u.id as user_id,
-        u.full_name,
-        u.phone,
-        u.email,
-        pp.date_of_birth,
-        pp.gender,
-        pp.blood_group,
-        pp.created_at,
-        pp.updated_at
-      FROM patient_profiles pp
-      JOIN users u ON pp.user_id = u.id
-      WHERE ${conditions.join(" AND ")}
-      ORDER BY u.full_name ASC
-    `;
+    updates.push(`updated_at = NOW()`);
+    values.push(userId);
 
-    return db.any(query, params);
-  }
-  async findByUserId(userId: number) {
-    const user = await db.oneOrNone<User>(
-      "SELECT * FROM users WHERE id = $1 AND user_type = 'PATIENT' AND is_active = TRUE",
-      [userId]
+    return await db.one(
+      `UPDATE users SET ${updates.join(
+        ", "
+      )} WHERE id = $${paramIndex} RETURNING *`,
+      values
     );
-    if (!user) return null;
-
-    const profile = await db.oneOrNone(
-      "SELECT * FROM patient_profiles WHERE user_id = $1 AND is_active = TRUE",
-      [userId]
-    );
-
-    return { user, profile };
   }
 
   /**
-   * Find patient by ID with user details
+   * Find patient profile by user ID
    */
-  async findPatientById(patientId: number) {
-    const query = `
-      SELECT
-        pp.*,
-        u.full_name,
-        u.phone,
-        u.email,
-        u.created_at as user_created_at
-      FROM patient_profiles pp
-      JOIN users u ON pp.user_id = u.id
-      WHERE pp.id = $1
-        AND pp.is_active = TRUE
-        AND u.is_active = TRUE
-    `;
-
-    return db.oneOrNone(query, [patientId]);
-  }
-
-  async findById(patientId: number) {
-    const profile = await db.oneOrNone(
-      "SELECT * FROM patient_profiles WHERE id = $1 AND is_active = TRUE",
-      [patientId]
+  async findPatientProfileByUserId(
+    userId: number
+  ): Promise<PatientProfile | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM patient_profiles WHERE user_id = $1",
+      [userId]
     );
-    if (!profile) return null;
-
-    const user = await db.one(
-      "SELECT * FROM users WHERE id = $1 AND user_type = 'PATIENT'",
-      [profile.user_id]
-    );
-
-    return { user, profile };
-  }
-
-  async updatePatient(userId: number, data: any) {
-    const fields = Object.keys(data);
-    const values = Object.values(data);
-
-    const updates = fields.map((key, idx) => `${key} = $${idx + 1}`).join(", ");
-
-    const query = `
-      UPDATE patient_profiles
-      SET ${updates}, updated_at = NOW()
-      WHERE user_id = $${fields.length + 1}
-      RETURNING *;
-    `;
-
-    const updated = await db.one(query, [...values, userId]);
-    return updated;
   }
 
   /**
-   * Create patient with user and patient_profile creation
+   * Create patient profile
    */
-  async createPatient(data: CreatePatientData) {
-    // Create user record
-    const userQuery = `
-      INSERT INTO users (phone, full_name, email, user_type, is_active)
-      VALUES ($1, $2, $3, 'PATIENT', TRUE)
-      RETURNING *;
-    `;
-
-    const user = await db.one<User>(userQuery, [
-      data.phone,
-      data.full_name,
-      data.email || null,
-    ]);
-
-    // Create patient profile
-    const profileQuery = `
-      INSERT INTO patient_profiles (
-        user_id,
-        date_of_birth,
-        gender,
-        blood_group,
-        emergency_contact_name,
-        emergency_contact_phone,
-        is_active
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-      RETURNING *;
-    `;
-
-    const profile = await db.one<PatientProfile>(profileQuery, [
-      user.id,
-      data.date_of_birth || null,
-      data.gender || null,
-      data.blood_group || null,
-      data.emergency_contact_name || null,
-      data.emergency_contact_phone || null,
-    ]);
-
-    return { user, profile };
+  async createPatientProfile(userId: number): Promise<PatientProfile> {
+    return await db.one(
+      `INSERT INTO patient_profiles (user_id, is_active)
+       VALUES ($1, true)
+       RETURNING *`,
+      [userId]
+    );
   }
 
   /**
    * Update patient profile
    */
-  async updatePatientProfile(patientId: number, data: Partial<PatientProfile>) {
-    const fields: string[] = [];
+  async updatePatientProfile(
+    userId: number,
+    data: {
+      date_of_birth?: Date;
+      gender?: string;
+      blood_group?: string;
+      emergency_contact_name?: string;
+      emergency_contact_phone?: string;
+    }
+  ): Promise<PatientProfile> {
+    const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (data.date_of_birth !== undefined) {
-      fields.push(`date_of_birth = $${paramIndex}`);
+    if (data.date_of_birth) {
+      updates.push(`date_of_birth = $${paramIndex++}`);
       values.push(data.date_of_birth);
-      paramIndex++;
     }
 
-    if (data.gender !== undefined) {
-      fields.push(`gender = $${paramIndex}`);
+    if (data.gender) {
+      updates.push(`gender = $${paramIndex++}`);
       values.push(data.gender);
-      paramIndex++;
     }
 
-    if (data.blood_group !== undefined) {
-      fields.push(`blood_group = $${paramIndex}`);
+    if (data.blood_group) {
+      updates.push(`blood_group = $${paramIndex++}`);
       values.push(data.blood_group);
-      paramIndex++;
     }
 
-    if (data.emergency_contact_name !== undefined) {
-      fields.push(`emergency_contact_name = $${paramIndex}`);
+    if (data.emergency_contact_name) {
+      updates.push(`emergency_contact_name = $${paramIndex++}`);
       values.push(data.emergency_contact_name);
-      paramIndex++;
     }
 
-    if (data.emergency_contact_phone !== undefined) {
-      fields.push(`emergency_contact_phone = $${paramIndex}`);
+    if (data.emergency_contact_phone) {
+      updates.push(`emergency_contact_phone = $${paramIndex++}`);
       values.push(data.emergency_contact_phone);
-      paramIndex++;
     }
 
-    if (data.notes !== undefined) {
-      fields.push(`notes = $${paramIndex}`);
-      values.push(data.notes);
-      paramIndex++;
-    }
+    updates.push(`updated_at = NOW()`);
+    values.push(userId);
 
-    if (fields.length === 0) {
-      throw new Error("No fields to update");
-    }
-
-    fields.push("updated_at = NOW()");
-
-    const query = `
-      UPDATE patient_profiles
-      SET ${fields.join(", ")}
-      WHERE id = $${paramIndex}
-      RETURNING *;
-    `;
-
-    values.push(patientId);
-
-    return db.one<PatientProfile>(query, values);
+    return await db.one(
+      `UPDATE patient_profiles SET ${updates.join(
+        ", "
+      )} WHERE user_id = $${paramIndex} RETURNING *`,
+      values
+    );
   }
 
   /**
-   * Get patient appointments with appointment history
+   * Store OTP request
    */
-  async getPatientAppointments(patientId: number) {
-    const query = `
-      SELECT
+  async storeOTP(
+    phone: string,
+    otp: string,
+    purpose: string = "LOGIN"
+  ): Promise<OTPRequest> {
+    // Hash OTP before storing
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    // Delete any existing unused OTPs for this phone
+    await db.none(
+      "DELETE FROM otp_requests WHERE phone = $1 AND is_used = false",
+      [phone]
+    );
+
+    // Store new OTP
+    return await db.one(
+      `INSERT INTO otp_requests (phone, otp_hash, purpose, expires_at, is_used, attempts_count)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes', false, 0)
+       RETURNING *`,
+      [phone, otpHash, purpose]
+    );
+  }
+
+  /**
+   * Find valid OTP request
+   */
+  async findValidOTP(phone: string): Promise<OTPRequest | null> {
+    return await db.oneOrNone(
+      `SELECT * FROM otp_requests 
+       WHERE phone = $1 
+       AND is_used = false 
+       AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [phone]
+    );
+  }
+
+  /**
+   * Verify OTP
+   */
+  async verifyOTP(phone: string, otp: string): Promise<boolean> {
+    const otpRequest = await this.findValidOTP(phone);
+
+    if (!otpRequest) {
+      return false;
+    }
+
+    // Increment attempts
+    await db.none(
+      "UPDATE otp_requests SET attempts_count = attempts_count + 1 WHERE id = $1",
+      [otpRequest.id]
+    );
+
+    // Check if too many attempts (max 5)
+    if (otpRequest.attempts_count >= 5) {
+      await this.markOTPAsUsed(otpRequest.id);
+      return false;
+    }
+
+    // Verify OTP hash
+    const isValid = await bcrypt.compare(otp, otpRequest.otp_hash);
+
+    if (isValid) {
+      // Mark OTP as used
+      await this.markOTPAsUsed(otpRequest.id);
+    }
+
+    return isValid;
+  }
+
+  /**
+   * Mark OTP as used
+   */
+  async markOTPAsUsed(otpId: number): Promise<void> {
+    await db.none("UPDATE otp_requests SET is_used = true WHERE id = $1", [
+      otpId,
+    ]);
+  }
+
+  /**
+   * Create auth session
+   */
+  async createAuthSession(
+    userId: number,
+    refreshToken: string,
+    userAgent?: string,
+    ipAddress?: string
+  ): Promise<AuthSession> {
+    // Hash refresh token before storing
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    return await db.one(
+      `INSERT INTO auth_sessions (user_id, refresh_token_hash, user_agent, ip_address, expires_at)
+       VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days')
+       RETURNING *`,
+      [userId, refreshTokenHash, userAgent || null, ipAddress || null]
+    );
+  }
+
+  /**
+   * Find auth session by user ID and refresh token
+   */
+  async findAuthSession(
+    userId: number,
+    refreshToken: string
+  ): Promise<AuthSession | null> {
+    const sessions = await db.any(
+      `SELECT * FROM auth_sessions 
+       WHERE user_id = $1 
+       AND revoked_at IS NULL 
+       AND expires_at > NOW()
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    // Check each session's refresh token hash
+    for (const session of sessions) {
+      const isValid = await bcrypt.compare(
+        refreshToken,
+        session.refresh_token_hash
+      );
+      if (isValid) {
+        return session;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Revoke auth session
+   */
+  async revokeAuthSession(sessionId: number): Promise<void> {
+    await db.none("UPDATE auth_sessions SET revoked_at = NOW() WHERE id = $1", [
+      sessionId,
+    ]);
+  }
+
+  /**
+   * Revoke all user sessions
+   */
+  async revokeAllUserSessions(userId: number): Promise<void> {
+    await db.none(
+      "UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
+      [userId]
+    );
+  }
+
+  /**
+   * Find user and patient profile by user ID
+   */
+  async findByUserId(userId: number): Promise<{
+    user: User;
+    profile: PatientProfile;
+  } | null> {
+    const user = await this.findUserById(userId);
+    if (!user) return null;
+
+    const profile = await this.findPatientProfileByUserId(userId);
+    if (!profile) return null;
+
+    return { user, profile };
+  }
+
+  /**
+   * Get patient appointments with details
+   */
+  async getPatientAppointments(patientId: number): Promise<any[]> {
+    return await db.any(
+      `SELECT 
         a.*,
-        u_clinician.full_name as clinician_name,
-        cp.specialization as clinician_specialization,
-        c.name as centre_name
+        u.full_name as clinician_name,
+        cp.specialization,
+        c.name as centre_name,
+        c.address_line1,
+        c.city,
+        vs.join_url as meet_link,
+        vs.status as video_status,
+        p.status as payment_status,
+        p.amount as payment_amount
       FROM appointments a
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
-      JOIN users u_clinician ON cp.user_id = u_clinician.id
+      JOIN users u ON cp.user_id = u.id
       JOIN centres c ON a.centre_id = c.id
+      LEFT JOIN video_sessions vs ON a.id = vs.appointment_id
+      LEFT JOIN payments p ON a.id = p.appointment_id
       WHERE a.patient_id = $1
-        AND a.is_active = TRUE
-      ORDER BY a.scheduled_start_at DESC
-    `;
-
-    return db.any(query, [patientId]);
+      ORDER BY a.scheduled_start_at DESC`,
+      [patientId]
+    );
   }
 
   /**
-   * Get patient payments with payment history
+   * Get patient payments with details
    */
-  async getPatientPayments(patientId: number) {
-    const query = `
-      SELECT
+  async getPatientPayments(patientId: number): Promise<any[]> {
+    return await db.any(
+      `SELECT 
         p.*,
+        a.scheduled_start_at,
         a.appointment_type,
-        a.scheduled_start_at
+        u.full_name as clinician_name,
+        c.name as centre_name
       FROM payments p
       JOIN appointments a ON p.appointment_id = a.id
+      JOIN clinician_profiles cp ON a.clinician_id = cp.id
+      JOIN users u ON cp.user_id = u.id
+      JOIN centres c ON a.centre_id = c.id
       WHERE p.patient_id = $1
-      ORDER BY p.created_at DESC
-    `;
-
-    return db.any(query, [patientId]);
+      ORDER BY p.created_at DESC`,
+      [patientId]
+    );
   }
 
   /**
-   * Add medical note to patient_medical_notes table
+   * Clean up expired OTPs and sessions (maintenance task)
    */
-  async addMedicalNote(patientId: number, note: string, authorUserId: number) {
-    const query = `
-      INSERT INTO patient_medical_notes (
-        patient_id,
-        note,
-        author_user_id,
-        created_at
-      )
-      VALUES ($1, $2, $3, NOW())
-      RETURNING *;
-    `;
+  async cleanupExpiredData(): Promise<void> {
+    // Delete expired OTPs older than 24 hours
+    await db.none(
+      "DELETE FROM otp_requests WHERE expires_at < NOW() - INTERVAL '24 hours'"
+    );
 
-    return db.one(query, [patientId, note, authorUserId]);
-  }
-
-  /**
-   * Check if phone exists to prevent duplicates
-   */
-  async checkPhoneExists(phone: string): Promise<boolean> {
-    const query = `
-      SELECT COUNT(*) as count
-      FROM users
-      WHERE phone = $1
-        AND user_type = 'PATIENT'
-        AND is_active = TRUE
-    `;
-
-    const result = await db.one<{ count: string }>(query, [phone]);
-    return parseInt(result.count) > 0;
+    // Delete expired sessions older than 30 days
+    await db.none(
+      "DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '30 days'"
+    );
   }
 }
 

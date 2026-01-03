@@ -33,7 +33,7 @@ class GallaboxUtil {
     if (ENV.GALLABOX_API_KEY && ENV.GALLABOX_API_SECRET) {
       try {
         this.client = axios.create({
-          baseURL: ENV.GALLABOX_BASE_URL,
+          baseURL: "https://server.gallabox.com",
           headers: {
             "Content-Type": "application/json",
             apiKey: ENV.GALLABOX_API_KEY,
@@ -62,6 +62,65 @@ class GallaboxUtil {
   }
 
   /**
+   * Send OTP via WhatsApp using template
+   * @param phone Phone number with country code
+   * @param otp OTP code to send
+   */
+  async sendOTP(phone: string, otp: string): Promise<any> {
+    if (!this.isReady()) {
+      logger.warn("Gallabox not configured, skipping WhatsApp OTP");
+      return { success: false, message: "Gallabox not configured" };
+    }
+
+    try {
+      const formattedPhone = phone.replace(/[+\s-]/g, "");
+
+      // Correct format as per Gallabox support
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: "User",
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "otp_verification",
+            bodyValues: {
+              otp: otp, // Named parameter as per template
+            },
+          },
+        },
+      };
+
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload
+      );
+
+      logger.info(`✅ WhatsApp OTP sent to ${formattedPhone}`);
+
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error("Failed to send WhatsApp OTP:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * Send plain text WhatsApp message
    * @param to Phone number with country code (e.g., 919876543210)
    * @param message Message text
@@ -76,34 +135,73 @@ class GallaboxUtil {
       // Format phone number (remove + and spaces)
       const formattedPhone = to.replace(/[+\s-]/g, "");
 
-      const payload = {
-        channelId: formattedPhone,
-        channelType: "whatsapp",
-        recipient: {
-          name: "User",
-          phone: formattedPhone,
-        },
-        whatsapp: {
-          type: "text",
-          text: {
-            body: message,
+      // Try multiple payload formats for compatibility
+      const payloads = [
+        // Format 1: Standard Gallabox format
+        {
+          channelId: ENV.GALLABOX_CHANNEL_ID,
+          channelType: "whatsapp",
+          recipient: {
+            name: "User",
+            phone: formattedPhone,
+          },
+          whatsapp: {
+            type: "text",
+            text: {
+              body: message,
+            },
           },
         },
-      };
+        // Format 2: Simplified format
+        {
+          channelId: ENV.GALLABOX_CHANNEL_ID,
+          recipient: formattedPhone,
+          message: {
+            type: "text",
+            text: message,
+          },
+        },
+        // Format 3: Direct format
+        {
+          to: formattedPhone,
+          type: "text",
+          message: message,
+        },
+      ];
 
-      const response = await this.client!.post("/messages/whatsapp", payload);
+      let lastError: any = null;
 
-      logger.info(`WhatsApp message sent to ${formattedPhone}`);
+      // Try each format
+      for (let i = 0; i < payloads.length; i++) {
+        try {
+          const response = await this.client!.post(
+            "/devapi/messages/whatsapp",
+            payloads[i]
+          );
 
-      return {
-        success: true,
-        messageId: response.data.messageId || response.data.id,
-        data: response.data,
-      };
+          logger.info(
+            `WhatsApp message sent to ${formattedPhone} using format ${i + 1}`
+          );
+
+          return {
+            success: true,
+            messageId: response.data.messageId || response.data.id,
+            data: response.data,
+          };
+        } catch (err: any) {
+          lastError = err;
+          logger.warn(`Format ${i + 1} failed, trying next...`);
+          continue;
+        }
+      }
+
+      // All formats failed
+      throw lastError;
     } catch (error: any) {
       logger.error("Failed to send WhatsApp message:", {
         error: error.message,
         response: error.response?.data,
+        status: error.response?.status,
       });
 
       // Don't throw error - log and continue
@@ -163,7 +261,10 @@ class GallaboxUtil {
         },
       };
 
-      const response = await this.client!.post("/messages/whatsapp", payload);
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload
+      );
 
       logger.info(
         `WhatsApp template message sent to ${formattedPhone}: ${templateName}`
@@ -188,7 +289,7 @@ class GallaboxUtil {
   }
 
   /**
-   * Send appointment confirmation message
+   * Send appointment confirmation message using template
    */
   async sendAppointmentConfirmation(
     phone: string,
@@ -198,22 +299,74 @@ class GallaboxUtil {
     appointmentTime: string,
     centreName: string
   ): Promise<any> {
-    const message = `Hello ${patientName},
+    if (!this.isReady()) {
+      logger.warn("Gallabox not configured, skipping booking confirmation");
+      return { success: false, message: "Gallabox not configured" };
+    }
 
-Your appointment has been confirmed! 🎉
+    try {
+      const formattedPhone = phone.replace(/[+\s-]/g, "");
 
-📅 Date: ${appointmentDate}
-⏰ Time: ${appointmentTime}
-👨‍⚕️ Doctor: ${clinicianName}
-🏥 Centre: ${centreName}
+      // Use the booking_conformation template
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: patientName,
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "booking_conformation",
+            bodyValues: {
+              "1": patientName,
+              "2": clinicianName,
+              "3": centreName,
+              "4": appointmentDate,
+              "5": appointmentTime,
+              "6": "Mibo Care",
+            },
+          },
+        },
+      };
 
-Please arrive 10 minutes before your scheduled time.
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload
+      );
 
-For any changes, please contact us.
+      logger.info(
+        `✅ WhatsApp booking confirmation sent to ${formattedPhone} using template`
+      );
 
-- Mibo Mental Hospital`;
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error("Failed to send booking confirmation template:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
 
-    return await this.sendWhatsAppMessage(phone, message);
+      // Fallback to plain text message if template fails
+      logger.info("Attempting fallback to plain text message...");
+      const fallbackMessage = `Hello ${patientName},
+
+This is to confirm your appointment with Dr. ${clinicianName} at the ${centreName} centre.
+
+The session is scheduled on ${appointmentDate} at ${appointmentTime}.
+
+Please arrive at least 10 minutes early. If you need assistance, you can reply to this message.
+
+Regards,
+The Mibo Care team`;
+
+      return await this.sendWhatsAppMessage(phone, fallbackMessage);
+    }
   }
 
   /**
