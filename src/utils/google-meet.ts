@@ -3,10 +3,6 @@ import { google } from "googleapis";
 import path from "path";
 import logger from "../config/logger";
 
-const GOOGLE_CREDENTIALS_PATH = path.join(
-  __dirname,
-  "../../clinic-booking-system-483212-31e92efb492d.json"
-);
 const ORGANIZER_EMAIL = "reach@mibocare.com";
 
 interface MeetingDetails {
@@ -29,11 +25,29 @@ class GoogleMeetUtil {
 
   constructor() {
     try {
-      // Load service account credentials
-      const auth = new google.auth.GoogleAuth({
-        keyFile: GOOGLE_CREDENTIALS_PATH,
-        scopes: ["https://www.googleapis.com/auth/calendar"],
-      });
+      let auth;
+
+      // Check if credentials are provided as environment variable (production)
+      if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+        // Parse JSON from environment variable
+        const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+        auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ["https://www.googleapis.com/auth/calendar"],
+        });
+        logger.info("✅ Using Google credentials from environment variable");
+      } else {
+        // Fallback to file (development only)
+        const GOOGLE_CREDENTIALS_PATH = path.join(
+          __dirname,
+          "../../clinic-booking-system-483212-31e92efb492d.json"
+        );
+        auth = new google.auth.GoogleAuth({
+          keyFile: GOOGLE_CREDENTIALS_PATH,
+          scopes: ["https://www.googleapis.com/auth/calendar"],
+        });
+        logger.warn("⚠️ Using Google credentials from file (development only)");
+      }
 
       this.calendar = google.calendar({ version: "v3", auth });
       logger.info("✅ Google Meet utility initialized");
