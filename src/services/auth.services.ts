@@ -198,6 +198,7 @@ export class AuthService {
       // Generate new access token
       const accessToken = signAccessToken({
         userId: payload.userId,
+        phone: payload.phone,
         userType: payload.userType,
         roles: payload.roles,
       });
@@ -246,6 +247,7 @@ export class AuthService {
     // Generate tokens
     const payload = {
       userId: userWithRoles.id,
+      phone: userWithRoles.phone || "",
       userType: userWithRoles.user_type,
       roles: userWithRoles.roles,
     };

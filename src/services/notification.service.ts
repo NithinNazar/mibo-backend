@@ -22,7 +22,7 @@ export class NotificationService {
       }
 
       // Get patient details
-      const patient = await patientRepository.findById(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
@@ -91,7 +91,7 @@ export class NotificationService {
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findById(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
@@ -161,7 +161,7 @@ Please arrive 10 minutes before your scheduled time.
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findById(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
@@ -216,7 +216,7 @@ Please arrive 10 minutes before your scheduled time.
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findById(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
@@ -277,7 +277,7 @@ Please arrive 10 minutes before your scheduled time.
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findById(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }

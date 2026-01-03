@@ -4,6 +4,7 @@ import { ENV } from "../config/env";
 
 export interface JwtPayload {
   userId: number;
+  phone: string;
   userType: "PATIENT" | "STAFF";
   roles: string[];
 }

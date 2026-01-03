@@ -1,29 +1,20 @@
 // src/middlewares/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
 import { patientAuthService } from "../services/patient-auth.service";
+import { JwtPayload } from "../utils/jwt";
 import logger from "../config/logger";
 
 // Extend Express Request type to include user
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        userId: number;
-        phone: string;
-        userType: string;
-        roles: string[];
-      };
+      user?: JwtPayload;
     }
   }
 }
 
 export interface AuthRequest extends Request {
-  user?: {
-    userId: number;
-    phone: string;
-    userType: string;
-    roles: string[];
-  };
+  user?: JwtPayload;
 }
 
 /**
@@ -51,12 +42,7 @@ export const authMiddleware = async (
     const payload = patientAuthService.verifyAccessToken(token);
 
     // Attach user info to request
-    req.user = {
-      userId: payload.userId,
-      phone: payload.phone,
-      userType: payload.userType,
-      roles: payload.roles || [],
-    };
+    req.user = payload;
 
     next();
   } catch (error: any) {
@@ -92,12 +78,7 @@ export const optionalAuthMiddleware = async (
       const token = authHeader.replace("Bearer ", "");
       const payload = patientAuthService.verifyAccessToken(token);
 
-      req.user = {
-        userId: payload.userId,
-        phone: payload.phone,
-        userType: payload.userType,
-        roles: payload.roles || [],
-      };
+      req.user = payload;
     }
 
     next();

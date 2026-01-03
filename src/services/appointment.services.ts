@@ -108,7 +108,7 @@ export class AppointmentService {
           "patient_id is required when staff creates an appointment"
         );
       }
-      const patient = await patientRepository.findById(dto.patient_id);
+      const patient = await patientRepository.findByUserId(dto.patient_id);
       if (!patient) {
         throw ApiError.badRequest("Target patient not found");
       }
@@ -196,7 +196,7 @@ export class AppointmentService {
           );
 
           // Get patient and clinician details for notifications
-          const patient = await patientRepository.findById(patient_id);
+          const patient = await patientRepository.findByUserId(patient_id);
           const clinician = await db.oneOrNone(
             `SELECT u.full_name FROM clinician_profiles cp 
              JOIN users u ON cp.user_id = u.id 

@@ -3,13 +3,8 @@ import jwt from "jsonwebtoken";
 import { ENV } from "../config/env";
 import { patientRepository } from "../repositories/patient.repository";
 import { gallaboxUtil } from "../utils/gallabox";
+import { JwtPayload } from "../utils/jwt";
 import logger from "../config/logger";
-
-interface JWTPayload {
-  userId: number;
-  phone: string;
-  userType: string;
-}
 
 class PatientAuthService {
   /**
@@ -22,27 +17,27 @@ class PatientAuthService {
   /**
    * Generate JWT access token
    */
-  private generateAccessToken(payload: JWTPayload): string {
-    return jwt.sign(payload, ENV.JWT_ACCESS_SECRET, {
+  private generateAccessToken(payload: JwtPayload): string {
+    return jwt.sign(payload as any, ENV.JWT_ACCESS_SECRET, {
       expiresIn: ENV.JWT_ACCESS_EXPIRY,
-    });
+    } as jwt.SignOptions);
   }
 
   /**
    * Generate JWT refresh token
    */
-  private generateRefreshToken(payload: JWTPayload): string {
-    return jwt.sign(payload, ENV.JWT_REFRESH_SECRET, {
+  private generateRefreshToken(payload: JwtPayload): string {
+    return jwt.sign(payload as any, ENV.JWT_REFRESH_SECRET, {
       expiresIn: ENV.JWT_REFRESH_EXPIRY,
-    });
+    } as jwt.SignOptions);
   }
 
   /**
    * Verify JWT access token
    */
-  verifyAccessToken(token: string): JWTPayload {
+  verifyAccessToken(token: string): JwtPayload {
     try {
-      return jwt.verify(token, ENV.JWT_ACCESS_SECRET) as JWTPayload;
+      return jwt.verify(token, ENV.JWT_ACCESS_SECRET) as JwtPayload;
     } catch (error) {
       throw new Error("Invalid or expired access token");
     }
@@ -51,9 +46,9 @@ class PatientAuthService {
   /**
    * Verify JWT refresh token
    */
-  verifyRefreshToken(token: string): JWTPayload {
+  verifyRefreshToken(token: string): JwtPayload {
     try {
-      return jwt.verify(token, ENV.JWT_REFRESH_SECRET) as JWTPayload;
+      return jwt.verify(token, ENV.JWT_REFRESH_SECRET) as JwtPayload;
     } catch (error) {
       throw new Error("Invalid or expired refresh token");
     }
@@ -153,10 +148,11 @@ class PatientAuthService {
       }
 
       // Generate tokens
-      const tokenPayload: JWTPayload = {
+      const tokenPayload: JwtPayload = {
         userId: user.id,
         phone: user.phone,
-        userType: user.user_type,
+        userType: user.user_type as "PATIENT" | "STAFF",
+        roles: [],
       };
 
       const accessToken = this.generateAccessToken(tokenPayload);
@@ -222,7 +218,8 @@ class PatientAuthService {
       const newAccessToken = this.generateAccessToken({
         userId: user.id,
         phone: user.phone,
-        userType: user.user_type,
+        userType: user.user_type as "PATIENT" | "STAFF",
+        roles: [],
       });
 
       return {
