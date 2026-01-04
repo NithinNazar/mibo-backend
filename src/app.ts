@@ -9,6 +9,8 @@ import { ENV } from "./config/env";
 
 const app = express();
 
+app.set("trust proxy", 1); // ✅ REQUIRED on Render
+
 // Security headers
 app.use(helmet());
 
