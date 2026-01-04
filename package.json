@@ -31,9 +31,7 @@
     "nodemailer": "^6.9.8",
     "pg-promise": "^12.3.0",
     "razorpay": "^2.9.6",
-    "winston": "^3.18.3"
-  },
-  "devDependencies": {
+    "winston": "^3.18.3",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -41,7 +39,9 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^6.4.14",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
   }
 }
