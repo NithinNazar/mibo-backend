@@ -86,7 +86,7 @@ class GoogleMeetUtil {
         `📅 Creating Google Meet event for ${patientName} with ${clinicianName}`
       );
 
-      // Create a simple calendar event
+      // Create calendar event with Google Meet conference
       const event = {
         summary: `Online Consultation - ${patientName} with ${clinicianName}`,
         description: `Online consultation session between ${patientName} and ${clinicianName}.\n\nScheduled via Mibo Care booking system.\n\nOrganizer: ${ORGANIZER_EMAIL}`,
@@ -98,19 +98,29 @@ class GoogleMeetUtil {
           dateTime: endDateTime.toISOString(),
           timeZone: "Asia/Kolkata",
         },
+        conferenceData: {
+          createRequest: {
+            requestId: `mibo-${Date.now()}-${Math.random()
+              .toString(36)
+              .substring(7)}`,
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
       };
 
       const response = await this.calendar.events.insert({
         calendarId: "primary",
         resource: event,
+        conferenceDataVersion: 1, // Required to create Google Meet
       });
 
       const eventId = response.data.id || "";
-
-      // Generate Google Meet link
-      // Format: meet.google.com/xxx-xxxx-xxx
-      const meetCode = this.generateMeetCode(eventId);
-      const meetLink = `https://meet.google.com/${meetCode}`;
+      const meetLink =
+        response.data.hangoutLink ||
+        response.data.conferenceData?.entryPoints?.[0]?.uri ||
+        "";
 
       logger.info(`✅ Google Meet link created: ${meetLink}`);
       logger.info(`📅 Calendar event ID: ${eventId}`);
@@ -125,22 +135,6 @@ class GoogleMeetUtil {
       logger.error("❌ Error creating Google Meet link:", error);
       throw new Error(`Failed to create Google Meet link: ${error.message}`);
     }
-  }
-
-  /**
-   * Generate a Google Meet code from event ID
-   * Format: xxx-xxxx-xxx (e.g., abc-defg-hij)
-   */
-  private generateMeetCode(eventId: string): string {
-    // Remove non-alphanumeric characters and convert to lowercase
-    const hash = eventId.replace(/[^a-z0-9]/gi, "").toLowerCase();
-
-    // Generate parts for the meet code
-    const part1 = (hash.substring(0, 3) || "mib").padEnd(3, "x");
-    const part2 = (hash.substring(3, 7) || "ocar").padEnd(4, "y");
-    const part3 = (hash.substring(7, 10) || "e01").padEnd(3, "z");
-
-    return `${part1}-${part2}-${part3}`;
   }
 
   /**
@@ -193,13 +187,16 @@ class GoogleMeetUtil {
         calendarId: "primary",
         eventId: eventId,
         resource: existingEvent.data,
+        conferenceDataVersion: 1,
       });
 
       logger.info(`✅ Google Meet event updated: ${eventId}`);
 
-      // Regenerate meet link from event ID
-      const meetCode = this.generateMeetCode(eventId);
-      const meetLink = `https://meet.google.com/${meetCode}`;
+      // Get the actual Meet link from the response
+      const meetLink =
+        response.data.hangoutLink ||
+        response.data.conferenceData?.entryPoints?.[0]?.uri ||
+        "";
 
       return {
         meetLink,

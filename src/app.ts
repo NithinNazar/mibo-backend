@@ -24,11 +24,13 @@ app.use(helmet());
  * Supports:
  * - Vercel production domain
  * - Vercel preview deployments
+ * - Local development
  * - Non-browser requests (Render health checks, Postman)
  */
 const allowedOrigins = [
   "https://mibo-alt-v2.vercel.app",
   "https://mibo-alt-v2-git-main-nithin-nazars-projects.vercel.app",
+  "http://localhost:5173", // Local development
 ];
 
 app.use(
