@@ -35,8 +35,20 @@ const initOptions: IInitOptions = {
 
 const pgp = pgPromise(initOptions);
 
+// SSL configuration for AWS RDS
+// AWS RDS requires SSL but uses self-signed certificates
+const isAWSRDS = ENV.DATABASE_URL.includes("rds.amazonaws.com");
+const connectionConfig = isAWSRDS
+  ? {
+      connectionString: ENV.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false, // AWS RDS uses self-signed certificates
+      },
+    }
+  : ENV.DATABASE_URL;
+
 // Database connection with pooling configuration
-export const db: IDatabase<any> = pgp(ENV.DATABASE_URL);
+export const db: IDatabase<any> = pgp(connectionConfig);
 
 /**
  * Test database connection

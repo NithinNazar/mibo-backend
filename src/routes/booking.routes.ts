@@ -59,4 +59,15 @@ router.get(
   bookingController.getAvailableSlots.bind(bookingController)
 );
 
+/**
+ * POST /api/booking/front-desk
+ * Book appointment for patient (Front Desk staff)
+ * Protected endpoint - requires FRONT_DESK, ADMIN, or MANAGER role
+ */
+router.post(
+  "/front-desk",
+  authMiddleware,
+  bookingController.bookForPatient.bind(bookingController)
+);
+
 export default router;

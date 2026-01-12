@@ -29,12 +29,14 @@ class PaymentRepository {
     orderId: string;
     amount: number;
     currency?: string;
+    paymentLinkId?: string;
+    paymentLinkUrl?: string;
   }): Promise<Payment> {
     return await db.one(
       `INSERT INTO payments (
         patient_id, appointment_id, provider, order_id,
-        amount, currency, status
-      ) VALUES ($1, $2, 'RAZORPAY', $3, $4, $5, 'CREATED')
+        amount, currency, status, payment_link_id, payment_link_url
+      ) VALUES ($1, $2, 'RAZORPAY', $3, $4, $5, 'CREATED', $6, $7)
       RETURNING *`,
       [
         data.patientId,
@@ -42,6 +44,8 @@ class PaymentRepository {
         data.orderId,
         data.amount,
         data.currency || "INR",
+        data.paymentLinkId || null,
+        data.paymentLinkUrl || null,
       ]
     );
   }
@@ -241,6 +245,26 @@ class PaymentRepository {
       successfulPayments: parseInt(stats.successful_payments),
       failedPayments: parseInt(stats.failed_payments),
     };
+  }
+
+  /**
+   * Update payment with payment link details
+   */
+  async updatePaymentLink(
+    paymentId: number,
+    paymentLinkId: string,
+    paymentLinkUrl: string
+  ): Promise<Payment> {
+    return await db.one(
+      `UPDATE payments 
+       SET payment_link_id = $1,
+           payment_link_url = $2,
+           payment_link_sent_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [paymentLinkId, paymentLinkUrl, paymentId]
+    );
   }
 }
 

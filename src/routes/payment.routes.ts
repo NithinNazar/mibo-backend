@@ -59,4 +59,15 @@ router.get(
   paymentController.getPaymentHistory.bind(paymentController)
 );
 
+/**
+ * POST /api/payment/send-link
+ * Send payment link to patient via WhatsApp
+ * Protected endpoint - requires authentication (FRONT_DESK, ADMIN, MANAGER)
+ */
+router.post(
+  "/send-link",
+  authMiddleware,
+  paymentController.sendPaymentLink.bind(paymentController)
+);
+
 export default router;

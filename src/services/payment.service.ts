@@ -487,6 +487,130 @@ class PaymentService {
       throw error;
     }
   }
+
+  /**
+   * Send payment link to patient via WhatsApp
+   * Used by front desk staff to send payment links after booking
+   */
+  async sendPaymentLink(
+    appointmentId: number,
+    patientPhone: string,
+    patientName: string
+  ): Promise<{
+    paymentLink: string;
+    whatsappSent: boolean;
+    amount: number;
+    expiresAt: Date;
+  }> {
+    try {
+      // Get appointment details
+      const appointment = await bookingRepository.findAppointmentById(
+        appointmentId
+      );
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      // Check if payment already exists and is successful
+      const existingPayment =
+        await paymentRepository.findPaymentByAppointmentId(appointmentId);
+
+      if (existingPayment && existingPayment.status === "SUCCESS") {
+        throw new Error("Appointment is already paid");
+      }
+
+      // Get consultation fee
+      const consultationFee = appointment.consultation_fee || 500;
+      const amountInPaise = consultationFee * 100; // Convert to paise
+
+      // Create Razorpay payment link
+      const paymentLink = await razorpayUtil.createPaymentLink(
+        amountInPaise,
+        patientName,
+        patientPhone,
+        `Consultation with ${appointment.clinician_name}`,
+        `appointment_${appointmentId}`
+      );
+
+      logger.info(
+        `✅ Payment link created: ${paymentLink.short_url} for appointment ${appointmentId}`
+      );
+
+      // Store payment link in database
+      if (existingPayment) {
+        // Update existing payment record with payment link
+        await paymentRepository.updatePaymentLink(
+          existingPayment.id,
+          paymentLink.id,
+          paymentLink.short_url
+        );
+      } else {
+        // Create new payment record with payment link
+        await paymentRepository.createPayment({
+          patientId: appointment.patient_id,
+          appointmentId: appointmentId,
+          orderId: paymentLink.id,
+          amount: consultationFee,
+          currency: "INR",
+          paymentLinkId: paymentLink.id,
+          paymentLinkUrl: paymentLink.short_url,
+        });
+      }
+
+      // Format appointment date and time
+      const appointmentDate = new Date(appointment.scheduled_start_at);
+      const dateStr = appointmentDate.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const timeStr = appointmentDate.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // Send payment link via WhatsApp
+      let whatsappSent = false;
+      if (gallaboxUtil.isReady()) {
+        const result = await gallaboxUtil.sendPaymentLink(
+          patientPhone,
+          patientName,
+          consultationFee,
+          paymentLink.short_url,
+          appointment.clinician_name,
+          dateStr,
+          timeStr
+        );
+
+        whatsappSent = result.success;
+
+        if (whatsappSent) {
+          logger.info(
+            `✅ Payment link sent via WhatsApp to ${patientPhone} for appointment ${appointmentId}`
+          );
+        } else {
+          logger.warn(
+            `⚠️ Failed to send payment link via WhatsApp to ${patientPhone}`
+          );
+        }
+      } else {
+        logger.warn(
+          "Gallabox not configured, payment link not sent via WhatsApp"
+        );
+      }
+
+      return {
+        paymentLink: paymentLink.short_url,
+        whatsappSent,
+        amount: consultationFee,
+        expiresAt: new Date(paymentLink.expire_by * 1000), // Convert Unix timestamp to Date
+      };
+    } catch (error: any) {
+      logger.error("Error sending payment link:", error);
+      throw error;
+    }
+  }
 }
 
 export const paymentService = new PaymentService();

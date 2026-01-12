@@ -165,6 +165,26 @@ export class StaffController {
       next(err);
     }
   }
+
+  /**
+   * Create front desk staff with auto-generated credentials
+   */
+  async createFrontDeskStaff(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await staffService.createFrontDeskStaff(req.body);
+      return created(
+        res,
+        result,
+        "Front desk staff created successfully. Please save the credentials - they will not be shown again."
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const staffController = new StaffController();

@@ -219,6 +219,51 @@ class PaymentController {
       });
     }
   }
+
+  /**
+   * Send payment link to patient via WhatsApp
+   * POST /api/payment/send-link
+   */
+  async sendPaymentLink(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
+      }
+
+      const { appointmentId, patientPhone, patientName } = req.body;
+
+      if (!appointmentId || !patientPhone || !patientName) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Missing required fields: appointmentId, patientPhone, patientName",
+        });
+        return;
+      }
+
+      const result = await paymentService.sendPaymentLink(
+        parseInt(appointmentId),
+        patientPhone,
+        patientName
+      );
+
+      res.json({
+        success: true,
+        message: "Payment link sent successfully via WhatsApp",
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error("Error sending payment link:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to send payment link",
+      });
+    }
+  }
 }
 
 export const paymentController = new PaymentController();

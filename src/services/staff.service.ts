@@ -202,6 +202,88 @@ export class StaffService {
       dto.availability_rules
     );
   }
+
+  /**
+   * Create front desk staff with auto-generated credentials
+   */
+  async createFrontDeskStaff(body: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    centreId: number;
+  }) {
+    // Validate input
+    if (!body.full_name || !body.phone || !body.centreId) {
+      throw ApiError.badRequest(
+        "Missing required fields: full_name, phone, centreId"
+      );
+    }
+
+    // Check if phone already exists
+    const existingStaff = await staffRepository.findStaffUsers();
+    const phoneExists = existingStaff.some((s: any) => s.phone === body.phone);
+    if (phoneExists) {
+      throw ApiError.conflict(
+        "A staff user with this phone number already exists"
+      );
+    }
+
+    // Generate username from name (e.g., "John Doe" -> "frontdesk_john_doe")
+    const nameParts = body.full_name.toLowerCase().trim().split(/\s+/);
+    const baseUsername = `frontdesk_${nameParts.join("_")}`;
+
+    // Check if username exists and add number if needed
+    let username = baseUsername;
+    let counter = 1;
+    while (existingStaff.some((s: any) => s.username === username)) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    // Generate random password (8 characters: letters + numbers)
+    const generatePassword = () => {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+      let password = "";
+      for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
+
+    const password = generatePassword();
+
+    // Create staff user with FRONT_DESK role
+    const result = await staffRepository.createStaffUser(
+      {
+        full_name: body.full_name,
+        phone: body.phone,
+        email: body.email,
+        username: username,
+        password: password,
+        designation: "Front Desk",
+      },
+      [6], // FRONT_DESK role ID (assuming 6 based on typical role setup)
+      [body.centreId]
+    );
+
+    return {
+      user: {
+        id: result.user.id,
+        full_name: result.user.full_name,
+        phone: result.user.phone,
+        email: result.user.email,
+        username: result.user.username,
+        role: "FRONT_DESK",
+        centreId: body.centreId,
+        isActive: result.user.is_active,
+        createdAt: result.user.created_at,
+      },
+      credentials: {
+        username: username,
+        password: password, // Return plain password only once
+      },
+    };
+  }
 }
 
 export const staffService = new StaffService();

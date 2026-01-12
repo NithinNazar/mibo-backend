@@ -374,6 +374,183 @@ class BookingService {
       throw error;
     }
   }
+
+  /**
+   * Book appointment for patient (Front Desk)
+   * Creates or finds patient by phone, then books appointment
+   */
+  async bookForPatient(
+    staffUserId: number,
+    bookingData: {
+      clinicianId: number;
+      centreId: number;
+      patientPhone: string;
+      patientName: string;
+      patientEmail?: string;
+      appointmentType: "ONLINE" | "IN_PERSON";
+      appointmentDate: string; // YYYY-MM-DD
+      appointmentTime: string; // HH:MM
+      notes?: string;
+    }
+  ): Promise<{
+    appointment: any;
+    patient: any;
+    clinician: any;
+    centre: any;
+    paymentRequired: boolean;
+    amount: number;
+  }> {
+    try {
+      // Validate clinician
+      const clinician = await bookingRepository.findClinicianById(
+        bookingData.clinicianId
+      );
+      if (!clinician) {
+        throw new Error("Clinician not found or inactive");
+      }
+
+      // Validate centre
+      const centre = await bookingRepository.findCentreById(
+        bookingData.centreId
+      );
+      if (!centre) {
+        throw new Error("Centre not found or inactive");
+      }
+
+      // Find or create patient by phone
+      let patient = await patientRepository.findUserByPhone(
+        bookingData.patientPhone
+      );
+
+      let patientProfile;
+
+      if (!patient) {
+        // Create new patient
+        logger.info(
+          `Creating new patient: ${bookingData.patientName} (${bookingData.patientPhone})`
+        );
+
+        // Create user first
+        patient = await patientRepository.createUser(
+          bookingData.patientPhone,
+          bookingData.patientName,
+          bookingData.patientEmail
+        );
+
+        // Create patient profile
+        patientProfile = await patientRepository.createPatientProfile(
+          patient.id
+        );
+
+        logger.info(`✅ New patient created: ID ${patientProfile.id}`);
+      } else {
+        // Get existing patient profile
+        patientProfile = await patientRepository.findPatientProfileByUserId(
+          patient.id
+        );
+
+        if (!patientProfile) {
+          // Create profile if it doesn't exist
+          patientProfile = await patientRepository.createPatientProfile(
+            patient.id
+          );
+        }
+      }
+
+      // Parse date and time
+      const appointmentDateTime = new Date(
+        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`
+      );
+
+      // Validate appointment is in the future
+      if (appointmentDateTime <= new Date()) {
+        throw new Error(
+          "Appointment must be scheduled for a future date and time"
+        );
+      }
+
+      // Calculate end time based on clinician's default duration
+      const durationMinutes =
+        clinician.default_consultation_duration_minutes || 30;
+      const endDateTime = new Date(
+        appointmentDateTime.getTime() + durationMinutes * 60000
+      );
+
+      // Check if time slot is available
+      const isAvailable = await bookingRepository.isTimeSlotAvailable(
+        bookingData.clinicianId,
+        bookingData.centreId,
+        appointmentDateTime,
+        endDateTime
+      );
+
+      if (!isAvailable) {
+        throw new Error(
+          "This time slot is not available. Please choose a different time."
+        );
+      }
+
+      // Create appointment
+      const appointment = await bookingRepository.createAppointment({
+        patientId: patientProfile.id,
+        clinicianId: bookingData.clinicianId,
+        centreId: bookingData.centreId,
+        appointmentType: bookingData.appointmentType,
+        scheduledStartAt: appointmentDateTime,
+        scheduledEndAt: endDateTime,
+        durationMinutes: durationMinutes,
+        bookedByUserId: staffUserId,
+        source: "ADMIN_FRONT_DESK", // Mark as booked by front desk
+        notes: bookingData.notes,
+      });
+
+      logger.info(
+        `✅ Appointment booked by front desk: ID ${appointment.id} for patient ${patientProfile.id}`
+      );
+
+      // Get full appointment details
+      const fullAppointment = await bookingRepository.findAppointmentById(
+        appointment.id
+      );
+
+      return {
+        appointment: {
+          id: fullAppointment.id,
+          appointmentType: fullAppointment.appointment_type,
+          scheduledStartAt: fullAppointment.scheduled_start_at,
+          scheduledEndAt: fullAppointment.scheduled_end_at,
+          durationMinutes: fullAppointment.duration_minutes,
+          status: fullAppointment.status,
+          notes: fullAppointment.notes,
+        },
+        patient: {
+          id: patientProfile.id,
+          name: bookingData.patientName,
+          phone: bookingData.patientPhone,
+          email: bookingData.patientEmail,
+        },
+        clinician: {
+          id: clinician.id,
+          name: fullAppointment.clinician_name,
+          specialization: clinician.specialization,
+          consultationFee: clinician.consultation_fee,
+        },
+        centre: {
+          id: centre.id,
+          name: centre.name,
+          address: `${centre.address_line1}${
+            centre.address_line2 ? ", " + centre.address_line2 : ""
+          }`,
+          city: centre.city,
+        },
+        paymentRequired: true,
+        amount: clinician.consultation_fee,
+      };
+    } catch (error: any) {
+      logger.error("Error booking appointment for patient:", error);
+      throw error;
+    }
+  }
 }
 
 export const bookingService = new BookingService();

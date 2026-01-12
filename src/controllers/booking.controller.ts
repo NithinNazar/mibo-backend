@@ -240,6 +240,87 @@ class BookingController {
       });
     }
   }
+
+  /**
+   * Book appointment for patient (Front Desk)
+   * POST /api/booking/front-desk
+   */
+  async bookForPatient(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
+      }
+
+      const {
+        clinicianId,
+        centreId,
+        patientPhone,
+        patientName,
+        patientEmail,
+        appointmentType,
+        appointmentDate,
+        appointmentTime,
+        notes,
+      } = req.body;
+
+      // Validate required fields
+      if (
+        !clinicianId ||
+        !centreId ||
+        !patientPhone ||
+        !patientName ||
+        !appointmentType ||
+        !appointmentDate ||
+        !appointmentTime
+      ) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Missing required fields: clinicianId, centreId, patientPhone, patientName, appointmentType, appointmentDate, appointmentTime",
+        });
+        return;
+      }
+
+      // Validate appointment type
+      if (appointmentType !== "ONLINE" && appointmentType !== "IN_PERSON") {
+        res.status(400).json({
+          success: false,
+          message: "Invalid appointment type. Must be ONLINE or IN_PERSON",
+        });
+        return;
+      }
+
+      // Book appointment for patient
+      const result = await bookingService.bookForPatient(req.user.userId, {
+        clinicianId: parseInt(clinicianId),
+        centreId: parseInt(centreId),
+        patientPhone,
+        patientName,
+        patientEmail,
+        appointmentType,
+        appointmentDate,
+        appointmentTime,
+        notes,
+      });
+
+      res.status(201).json({
+        success: true,
+        message:
+          "Appointment booked successfully. Send payment link to patient.",
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error("Error booking appointment for patient:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to book appointment",
+      });
+    }
+  }
 }
 
 export const bookingController = new BookingController();

@@ -120,4 +120,16 @@ router.put(
     staffController.updateClinicianAvailability(req, res, next)
 );
 
+/**
+ * POST /api/staff/front-desk
+ * Create front desk staff with auto-generated credentials
+ * Roles: ADMIN, MANAGER
+ */
+router.post(
+  "/front-desk",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER"),
+  (req, res, next) => staffController.createFrontDeskStaff(req, res, next)
+);
+
 export default router;
