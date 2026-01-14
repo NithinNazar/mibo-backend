@@ -1,0 +1,61 @@
+========================================
+AWS ENVIRONMENT VARIABLES - COPY & PASTE
+========================================
+
+INSTRUCTIONS:
+1. Copy everything below this line
+2. Paste into AWS Console > Configuration > Software > Environment properties
+3. Update CORS_ORIGIN with your frontend URL
+4. For production: Change JWT secrets and use Razorpay LIVE keys
+
+========================================
+
+NODE_ENV=production
+PORT=5000
+DATABASE_URL=postgresql://mibo_admin:mibo%23aws2026@mibo-postgres.cj00km2acx6s.eu-north-1.rds.amazonaws.com:5432/mibodb
+JWT_ACCESS_SECRET=mibo_access_secret_change_in_production_min_32_chars
+JWT_REFRESH_SECRET=mibo_refresh_secret_change_in_production_min_32_chars
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+OTP_EXPIRY_MINUTES=10
+GALLABOX_API_KEY=695652f2540814a19bebf8b5
+GALLABOX_API_SECRET=edd9fb89a68548d6a7fb080ea8255b1e
+GALLABOX_CHANNEL_ID=693a63bfeba0dac02ac3d624
+RAZORPAY_KEY_ID=rzp_test_Rv16VKPj91R00I
+RAZORPAY_KEY_SECRET=lVTIWgJw36ydSFnDeGmaKIBx
+CORS_ORIGIN=https://your-frontend-domain.com
+
+========================================
+OPTIONAL (Google Meet Integration)
+========================================
+
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_CONTENT_HERE\n-----END PRIVATE KEY-----\n"
+GOOGLE_CALENDAR_ID=primary
+
+NOTE: GOOGLE_PRIVATE_KEY should contain ONLY the private_key field from your Google service account JSON file.
+The value should be the complete private key string including the BEGIN/END markers.
+Use \n for line breaks (the code will convert them to actual newlines automatically).
+
+========================================
+IMPORTANT NOTES
+========================================
+
+⚠️ MUST CHANGE FOR PRODUCTION:
+
+1. JWT_ACCESS_SECRET - Generate new 32+ char secret
+2. JWT_REFRESH_SECRET - Generate new 32+ char secret
+3. RAZORPAY_KEY_ID - Use LIVE mode key (rzp_live_...)
+4. RAZORPAY_KEY_SECRET - Use LIVE mode secret
+5. CORS_ORIGIN - Replace with your actual frontend URL
+
+Generate new JWT secrets:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+✅ ALREADY CONFIGURED:
+
+- DATABASE_URL - Points to AWS RDS PostgreSQL
+- GALLABOX credentials - WhatsApp integration
+- OTP settings - 10 minute expiry
+
+========================================

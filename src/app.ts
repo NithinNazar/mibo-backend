@@ -131,6 +131,37 @@ app.use((req, res, next) => {
 });
 
 /**
+ * Health check endpoint for AWS Elastic Beanstalk / Load Balancer
+ * Returns 200 OK to indicate the application is running
+ */
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: ENV.NODE_ENV,
+  });
+});
+
+/**
+ * Root endpoint
+ * Returns basic API information
+ */
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Mibo Mental Health API",
+    version: "1.0.0",
+    status: "running",
+    endpoints: {
+      health: "/health",
+      api: "/api",
+    },
+  });
+});
+
+/**
  * API routes
  */
 app.use("/api", routes);

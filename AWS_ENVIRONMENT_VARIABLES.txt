@@ -1,0 +1,52 @@
+# AWS Elastic Beanstalk Environment Variables
+# Copy and paste these into AWS Console > Configuration > Software > Environment properties
+# Format: KEY=VALUE (one per line)
+
+# ============================================
+# SERVER CONFIGURATION
+# ============================================
+NODE_ENV=production
+PORT=5000
+
+# ============================================
+# DATABASE CONFIGURATION (AWS RDS PostgreSQL)
+# ============================================
+DATABASE_URL=postgresql://mibo_admin:mibo%23aws2026@mibo-postgres.cj00km2acx6s.eu-north-1.rds.amazonaws.com:5432/mibodb
+
+# ============================================
+# JWT CONFIGURATION
+# ============================================
+JWT_ACCESS_SECRET=mibo_access_secret_change_in_production_min_32_chars
+JWT_REFRESH_SECRET=mibo_refresh_secret_change_in_production_min_32_chars
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+# ============================================
+# OTP CONFIGURATION
+# ============================================
+OTP_EXPIRY_MINUTES=10
+
+# ============================================
+# GALLABOX (WhatsApp) CONFIGURATION
+# ============================================
+GALLABOX_API_KEY=695652f2540814a19bebf8b5
+GALLABOX_API_SECRET=edd9fb89a68548d6a7fb080ea8255b1e
+GALLABOX_CHANNEL_ID=693a63bfeba0dac02ac3d624
+
+# ============================================
+# RAZORPAY CONFIGURATION (Payment Gateway)
+# ============================================
+RAZORPAY_KEY_ID=rzp_test_Rv16VKPj91R00I
+RAZORPAY_KEY_SECRET=lVTIWgJw36ydSFnDeGmaKIBx
+
+# ============================================
+# CORS CONFIGURATION
+# ============================================
+CORS_ORIGIN=https://your-frontend-domain.com
+
+# ============================================
+# GOOGLE MEET CONFIGURATION (Optional)
+# ============================================
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+GOOGLE_CALENDAR_ID=primary
