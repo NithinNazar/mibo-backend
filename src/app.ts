@@ -28,10 +28,23 @@ app.use(helmet());
  * - Non-browser requests (Render health checks, Postman)
  */
 const allowedOrigins = [
+  // Production domains
+  "https://mibo.care",
+  "https://www.mibo.care",
+  // Vercel domains (if still using)
   "https://mibo-alt-v2.vercel.app",
   "https://mibo-alt-v2-git-main-nithin-nazars-projects.vercel.app",
-  "http://localhost:5173", // Local development
+  // Local development
+  "http://localhost:5173", // Local development - Frontend
+  "http://localhost:5174", // Local development - Admin Panel
+  "http://localhost:5175", // Local development - Admin Panel (alternate port)
 ];
+
+// Add CORS_ORIGIN from environment if provided
+if (ENV.CORS_ORIGIN) {
+  const envOrigins = ENV.CORS_ORIGIN.split(",").map((o) => o.trim());
+  allowedOrigins.push(...envOrigins);
+}
 
 app.use(
   cors({
@@ -45,10 +58,12 @@ app.use(
         return callback(null, true);
       }
 
+      console.warn(`⚠️ CORS blocked for origin: ${origin}`);
+      console.warn(`Allowed origins:`, allowedOrigins);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
-  })
+  }),
 );
 
 /**

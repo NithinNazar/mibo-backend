@@ -85,6 +85,29 @@ export class CentreController {
       next(err);
     }
   }
+
+  /**
+   * PATCH /api/centres/:id/toggle-active
+   * Toggle centre active status
+   */
+  async toggleCentreActive(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        throw ApiError.badRequest("Invalid centre ID");
+      }
+
+      const { isActive } = req.body;
+      const centre = await centreService.toggleCentreActive(id, isActive);
+      return ok(
+        res,
+        centre,
+        `Centre ${isActive ? "activated" : "deactivated"} successfully`,
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const centreController = new CentreController();

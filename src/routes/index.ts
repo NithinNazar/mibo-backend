@@ -19,7 +19,7 @@ const router = Router();
 
 // Health check endpoint
 router.get("/health", (req, res, next) =>
-  healthController.getHealth(req, res, next)
+  healthController.getHealth(req, res, next),
 );
 
 // Root endpoint
@@ -61,7 +61,7 @@ router.use("/users", staffRoutes); // Staff user management
 router.use("/clinicians", staffRoutes); // Clinician management (uses same routes file)
 router.use("/video", videoRoutes);
 router.use("/notifications", notificationRoutes);
-router.use("/payments", paymentRoutes);
+router.use("/payments", paymentRoutes); // Standardized to plural
 
 // TEST ONLY - Simple OTP endpoints without database (for testing with dummy data)
 if (ENV.NODE_ENV === "development") {

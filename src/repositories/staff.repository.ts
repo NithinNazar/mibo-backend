@@ -32,6 +32,9 @@ interface CreateClinicianData {
   consultation_modes?: string[];
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  qualification?: string;
+  expertise?: string[];
+  languages?: string[];
 }
 
 interface AvailabilityRule {
@@ -125,7 +128,7 @@ export class StaffRepository {
       JOIN roles r ON r.id = ur.role_id
       WHERE ur.user_id = $1 AND ur.is_active = TRUE
       `,
-      [userId]
+      [userId],
     );
 
     // Get centre assignments
@@ -138,7 +141,7 @@ export class StaffRepository {
         AND ur.centre_id IS NOT NULL
         AND ur.is_active = TRUE
       `,
-      [userId]
+      [userId],
     );
 
     return { ...user, roles, centres };
@@ -150,7 +153,7 @@ export class StaffRepository {
   async createStaffUser(
     data: CreateStaffData,
     roleIds: number[],
-    centreIds: number[]
+    centreIds: number[],
   ) {
     // Hash password
     const passwordHash = await hashPassword(data.password);
@@ -201,7 +204,7 @@ export class StaffRepository {
         INSERT INTO user_roles (user_id, role_id, is_active)
         VALUES ($1, $2, TRUE)
         `,
-        [user.id, roleId]
+        [user.id, roleId],
       );
     }
 
@@ -212,7 +215,7 @@ export class StaffRepository {
         INSERT INTO centre_staff_assignments (centre_id, user_id, is_active)
         VALUES ($1, $2, TRUE)
         `,
-        [centreId, user.id]
+        [centreId, user.id],
       );
     }
 
@@ -265,7 +268,7 @@ export class StaffRepository {
         SET designation = $1, updated_at = NOW()
         WHERE user_id = $2
         `,
-        [data.designation, userId]
+        [data.designation, userId],
       );
     }
 
@@ -279,11 +282,11 @@ export class StaffRepository {
     await db.none("UPDATE users SET is_active = FALSE WHERE id = $1", [userId]);
     await db.none(
       "UPDATE staff_profiles SET is_active = FALSE WHERE user_id = $1",
-      [userId]
+      [userId],
     );
     await db.none(
       "UPDATE user_roles SET is_active = FALSE WHERE user_id = $1",
-      [userId]
+      [userId],
     );
   }
 
@@ -291,7 +294,7 @@ export class StaffRepository {
     userId: number,
     roleId: number,
     centreId?: number | null,
-    isPrimary?: boolean
+    isPrimary?: boolean,
   ) {
     const result = await db.one(
       `
@@ -299,7 +302,7 @@ export class StaffRepository {
       VALUES ($1, $2, $3, $4, TRUE)
       RETURNING *;
       `,
-      [userId, roleId, centreId || null, isPrimary || false]
+      [userId, roleId, centreId || null, isPrimary || false],
     );
 
     return result;
@@ -319,13 +322,13 @@ export class StaffRepository {
   async getStaffById(userId: number) {
     const user = await db.oneOrNone(
       "SELECT * FROM users WHERE id = $1 AND user_type = 'STAFF'",
-      [userId]
+      [userId],
     );
     if (!user) return null;
 
     const profile = await db.one(
       "SELECT * FROM staff_profiles WHERE user_id = $1",
-      [userId]
+      [userId],
     );
 
     const roles = await db.any(
@@ -335,7 +338,7 @@ export class StaffRepository {
       JOIN roles r ON r.id = ur.role_id
       WHERE ur.user_id = $1 AND ur.is_active = TRUE
       `,
-      [userId]
+      [userId],
     );
 
     const centres = await db.any(
@@ -346,7 +349,7 @@ export class StaffRepository {
       JOIN roles r ON r.id = ur.role_id
       WHERE ur.user_id = $1 AND ur.centre_id IS NOT NULL
       `,
-      [userId]
+      [userId],
     );
 
     return { user, profile, roles: roles.map((r) => r.name), centres };
@@ -429,7 +432,7 @@ export class StaffRepository {
       WHERE clinician_id = $1 AND is_active = TRUE
       ORDER BY day_of_week, start_time
       `,
-      [clinicianId]
+      [clinicianId],
     );
 
     return { ...clinician, availabilityRules };
@@ -450,15 +453,24 @@ export class StaffRepository {
         bio,
         consultation_modes,
         default_consultation_duration_minutes,
+        qualification,
+        expertise,
+        languages,
         is_active
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE)
       RETURNING *;
     `;
 
     const consultationModes = data.consultation_modes
       ? JSON.stringify(data.consultation_modes)
       : null;
+
+    const expertise = data.expertise ? JSON.stringify(data.expertise) : "[]";
+
+    const languages = data.languages
+      ? JSON.stringify(data.languages)
+      : '["English"]';
 
     const clinician = await db.one(query, [
       data.user_id,
@@ -470,6 +482,9 @@ export class StaffRepository {
       data.bio || null,
       consultationModes,
       data.default_consultation_duration_minutes || 30,
+      data.qualification || null,
+      expertise,
+      languages,
     ]);
 
     // Update staff profile with profile picture if provided
@@ -478,7 +493,7 @@ export class StaffRepository {
         `UPDATE staff_profiles 
          SET profile_picture_url = $1, updated_at = NOW() 
          WHERE user_id = $2`,
-        [data.profile_picture_url, data.user_id]
+        [data.profile_picture_url, data.user_id],
       );
     }
 
@@ -490,7 +505,7 @@ export class StaffRepository {
    */
   async updateClinician(
     clinicianId: number,
-    data: Partial<CreateClinicianData>
+    data: Partial<CreateClinicianData>,
   ) {
     const fields: string[] = [];
     const values: any[] = [];
@@ -544,6 +559,24 @@ export class StaffRepository {
       paramIndex++;
     }
 
+    if (data.qualification !== undefined) {
+      fields.push(`qualification = $${paramIndex}`);
+      values.push(data.qualification);
+      paramIndex++;
+    }
+
+    if (data.expertise !== undefined) {
+      fields.push(`expertise = $${paramIndex}`);
+      values.push(JSON.stringify(data.expertise));
+      paramIndex++;
+    }
+
+    if (data.languages !== undefined) {
+      fields.push(`languages = $${paramIndex}`);
+      values.push(JSON.stringify(data.languages));
+      paramIndex++;
+    }
+
     if (fields.length === 0 && !data.profile_picture_url) {
       throw new Error("No fields to update");
     }
@@ -566,13 +599,13 @@ export class StaffRepository {
     if (data.profile_picture_url !== undefined) {
       const clinician = await db.one(
         "SELECT user_id FROM clinician_profiles WHERE id = $1",
-        [clinicianId]
+        [clinicianId],
       );
       await db.none(
         `UPDATE staff_profiles 
          SET profile_picture_url = $1, updated_at = NOW() 
          WHERE user_id = $2`,
-        [data.profile_picture_url, clinician.user_id]
+        [data.profile_picture_url, clinician.user_id],
       );
     }
 
@@ -593,19 +626,19 @@ export class StaffRepository {
         AND status NOT IN ('CANCELLED', 'NO_SHOW')
         AND is_active = TRUE
       `,
-      [clinicianId]
+      [clinicianId],
     );
 
     if (futureAppointments && parseInt(futureAppointments.count) > 0) {
       throw new Error(
-        "Cannot delete clinician with future appointments. Please cancel or reassign appointments first."
+        "Cannot delete clinician with future appointments. Please cancel or reassign appointments first.",
       );
     }
 
     // Soft delete
     await db.none(
       "UPDATE clinician_profiles SET is_active = FALSE WHERE id = $1",
-      [clinicianId]
+      [clinicianId],
     );
   }
 
@@ -614,12 +647,12 @@ export class StaffRepository {
    */
   async updateClinicianAvailability(
     clinicianId: number,
-    rules: AvailabilityRule[]
+    rules: AvailabilityRule[],
   ) {
     // Delete existing rules
     await db.none(
       "DELETE FROM clinician_availability_rules WHERE clinician_id = $1",
-      [clinicianId]
+      [clinicianId],
     );
 
     // Insert new rules
@@ -646,11 +679,46 @@ export class StaffRepository {
           rule.end_time,
           rule.slot_duration_minutes,
           rule.consultation_mode,
-        ]
+        ],
       );
     }
 
     return this.findClinicianById(clinicianId);
+  }
+
+  /**
+   * Toggle clinician active status
+   */
+  async toggleClinicianActive(clinicianId: number, isActive: boolean) {
+    await db.none(
+      `UPDATE clinician_profiles 
+       SET is_active = $1, updated_at = NOW() 
+       WHERE id = $2`,
+      [isActive, clinicianId],
+    );
+
+    return this.findClinicianById(clinicianId);
+  }
+
+  /**
+   * Toggle staff active status (for all staff types)
+   */
+  async toggleStaffActive(userId: number, isActive: boolean) {
+    await db.none(
+      `UPDATE users
+       SET is_active = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [isActive, userId],
+    );
+
+    await db.none(
+      `UPDATE staff_profiles
+       SET is_active = $1, updated_at = NOW()
+       WHERE user_id = $2`,
+      [isActive, userId],
+    );
+
+    return this.findStaffById(userId);
   }
 }
 

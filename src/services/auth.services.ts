@@ -270,13 +270,22 @@ export class AuthService {
    * Format user response (private helper)
    */
   private formatUserResponse(user: any): AuthResponse["user"] {
+    // Extract role name from roles array
+    let roleName = "staff"; // default
+    if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+      // roles might be array of objects {id, name} or array of strings
+      const firstRole = user.roles[0];
+      roleName =
+        typeof firstRole === "string" ? firstRole : firstRole.name || firstRole;
+    }
+
     return {
       id: user.id.toString(),
       name: user.full_name,
       email: user.email,
       phone: user.phone,
       username: user.username,
-      role: user.roles[0] || "staff", // Primary role
+      role: roleName, // Primary role as string
       avatar: null, // TODO: Add avatar support
       centreIds: (user.centreIds || []).map((id: number) => id.toString()),
       isActive: user.is_active,

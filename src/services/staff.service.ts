@@ -39,14 +39,14 @@ export class StaffService {
     const phoneExists = existingStaff.some((s: any) => s.phone === dto.phone);
     if (phoneExists) {
       throw ApiError.conflict(
-        "A staff user with this phone number already exists"
+        "A staff user with this phone number already exists",
       );
     }
 
     // Check if username already exists (if provided)
     if (dto.username) {
       const usernameExists = existingStaff.some(
-        (s: any) => s.username === dto.username
+        (s: any) => s.username === dto.username,
       );
       if (usernameExists) {
         throw ApiError.conflict("This username is already taken");
@@ -63,7 +63,7 @@ export class StaffService {
         designation: dto.designation,
       },
       dto.role_ids,
-      dto.centre_ids
+      dto.centre_ids,
     );
   }
 
@@ -116,39 +116,116 @@ export class StaffService {
 
   /**
    * Create clinician with user validation
+   * Supports two modes:
+   * 1. Link existing user: provide user_id
+   * 2. Create new user + clinician: provide full_name, phone, password, role_ids
    */
   async createClinician(body: any) {
-    const dto = validateCreateClinician(body);
+    let userId: number;
 
-    // Verify user exists and is a staff user
-    const staff = await staffRepository.findStaffById(dto.user_id);
-    if (!staff) {
+    // Check if this is a combined user+clinician creation
+    if (body.full_name && body.phone && body.password && body.role_ids) {
+      // Create user first
+      const userDto = validateCreateStaffUser({
+        full_name: body.full_name,
+        phone: body.phone,
+        email: body.email,
+        password: body.password,
+        designation: body.designation || body.specialization,
+        role_ids: body.role_ids,
+        centre_ids: body.primary_centre_id
+          ? [body.primary_centre_id]
+          : body.centre_ids || [],
+      });
+
+      // Check if phone already exists
+      const existingStaff = await staffRepository.findStaffUsers();
+      const phoneExists = existingStaff.some(
+        (s: any) => s.phone === userDto.phone,
+      );
+      if (phoneExists) {
+        throw ApiError.conflict(
+          "A staff user with this phone number already exists",
+        );
+      }
+
+      // Check if username already exists (if provided)
+      if (userDto.username) {
+        const usernameExists = existingStaff.some(
+          (s: any) => s.username === userDto.username,
+        );
+        if (usernameExists) {
+          throw ApiError.conflict("Username already exists");
+        }
+      }
+
+      // Create the user
+      const newUser = await staffRepository.createStaffUser(
+        userDto,
+        userDto.role_ids,
+        userDto.centre_ids || [],
+      );
+      userId = newUser.user.id;
+    } else if (body.user_id) {
+      // Use existing user
+      userId = body.user_id;
+
+      // Verify user exists and is a staff user
+      const staff = await staffRepository.findStaffById(userId);
+      if (!staff) {
+        throw ApiError.badRequest(
+          "User must be a staff member to become a clinician",
+        );
+      }
+    } else {
       throw ApiError.badRequest(
-        "User must be a staff member to become a clinician"
+        "Either provide user_id for existing user, or full_name, phone, password, and role_ids to create new user",
       );
     }
 
     // Check if user is already a clinician
     const existingClinicians = await staffRepository.findClinicians();
     const isAlreadyClinician = existingClinicians.some(
-      (c: any) => c.user_id === dto.user_id
+      (c: any) => c.user_id === userId,
     );
     if (isAlreadyClinician) {
       throw ApiError.conflict("This user is already registered as a clinician");
     }
 
-    return await staffRepository.createClinician({
-      user_id: dto.user_id,
-      primary_centre_id: dto.primary_centre_id,
-      specialization: dto.specialization,
-      registration_number: dto.registration_number,
-      experience_years: dto.experience_years,
-      consultation_fee: dto.consultation_fee,
-      bio: dto.bio,
-      consultation_modes: dto.consultation_modes,
+    // Validate clinician data
+    const clinicianDto = validateCreateClinician({
+      user_id: userId,
+      primary_centre_id: body.primary_centre_id,
+      specialization: body.specialization,
+      registration_number: body.registration_number,
+      experience_years: body.experience_years || body.years_of_experience,
+      consultation_fee: body.consultation_fee,
+      bio: body.bio,
+      consultation_modes: body.consultation_modes,
       default_consultation_duration_minutes:
-        dto.default_consultation_duration_minutes,
-      profile_picture_url: dto.profile_picture_url,
+        body.default_consultation_duration_minutes ||
+        body.default_duration_minutes,
+      profile_picture_url: body.profile_picture_url,
+      qualification: body.qualification,
+      expertise: body.expertise,
+      languages: body.languages,
+    });
+
+    return await staffRepository.createClinician({
+      user_id: clinicianDto.user_id,
+      primary_centre_id: clinicianDto.primary_centre_id,
+      specialization: clinicianDto.specialization,
+      registration_number: clinicianDto.registration_number,
+      experience_years: clinicianDto.experience_years,
+      consultation_fee: clinicianDto.consultation_fee,
+      bio: clinicianDto.bio,
+      consultation_modes: clinicianDto.consultation_modes,
+      default_consultation_duration_minutes:
+        clinicianDto.default_consultation_duration_minutes,
+      profile_picture_url: clinicianDto.profile_picture_url,
+      qualification: clinicianDto.qualification,
+      expertise: clinicianDto.expertise,
+      languages: clinicianDto.languages,
     });
   }
 
@@ -186,6 +263,31 @@ export class StaffService {
   }
 
   /**
+   * Toggle clinician active status (soft delete/activate)
+   */
+  async toggleClinicianActive(clinicianId: number, isActive: boolean) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    return await staffRepository.toggleClinicianActive(clinicianId, isActive);
+  }
+
+  /**
+   * Toggle staff active status (for all staff types)
+   */
+  async toggleStaffActive(userId: number, isActive: boolean) {
+    const staff = await staffRepository.findStaffById(userId);
+    if (!staff) {
+      throw ApiError.notFound("Staff user not found");
+    }
+
+    return await staffRepository.toggleStaffActive(userId, isActive);
+  }
+
+  /**
    * Update clinician availability
    */
   async updateClinicianAvailability(clinicianId: number, body: any) {
@@ -199,23 +301,37 @@ export class StaffService {
 
     return await staffRepository.updateClinicianAvailability(
       clinicianId,
-      dto.availability_rules
+      dto.availability_rules,
     );
   }
 
   /**
-   * Create front desk staff with auto-generated credentials
+   * Get clinician availability
    */
-  async createFrontDeskStaff(body: {
+  async getClinicianAvailability(clinicianId: number) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    return clinician.availabilityRules || [];
+  }
+
+  /**
+   * Create Manager staff
+   */
+  async createManager(body: {
     full_name: string;
     phone: string;
     email?: string;
-    centreId: number;
+    username: string;
+    password: string;
   }) {
     // Validate input
-    if (!body.full_name || !body.phone || !body.centreId) {
+    if (!body.full_name || !body.phone || !body.username || !body.password) {
       throw ApiError.badRequest(
-        "Missing required fields: full_name, phone, centreId"
+        "Missing required fields: full_name, phone, username, password",
       );
     }
 
@@ -224,46 +340,239 @@ export class StaffService {
     const phoneExists = existingStaff.some((s: any) => s.phone === body.phone);
     if (phoneExists) {
       throw ApiError.conflict(
-        "A staff user with this phone number already exists"
+        "A staff user with this phone number already exists",
       );
     }
 
-    // Generate username from name (e.g., "John Doe" -> "frontdesk_john_doe")
-    const nameParts = body.full_name.toLowerCase().trim().split(/\s+/);
-    const baseUsername = `frontdesk_${nameParts.join("_")}`;
-
-    // Check if username exists and add number if needed
-    let username = baseUsername;
-    let counter = 1;
-    while (existingStaff.some((s: any) => s.username === username)) {
-      username = `${baseUsername}${counter}`;
-      counter++;
+    // Check if username already exists
+    const usernameExists = existingStaff.some(
+      (s: any) => s.username === body.username,
+    );
+    if (usernameExists) {
+      throw ApiError.conflict("This username is already taken");
     }
 
-    // Generate random password (8 characters: letters + numbers)
-    const generatePassword = () => {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-      let password = "";
-      for (let i = 0; i < 8; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return password;
-    };
-
-    const password = generatePassword();
-
-    // Create staff user with FRONT_DESK role
+    // Create staff user with MANAGER role (role ID 2)
     const result = await staffRepository.createStaffUser(
       {
         full_name: body.full_name,
         phone: body.phone,
         email: body.email,
-        username: username,
-        password: password,
+        username: body.username,
+        password: body.password,
+        designation: "Manager",
+      },
+      [2], // MANAGER role ID
+      [], // No centre assignment for managers
+    );
+
+    return {
+      user: {
+        id: result.user.id,
+        full_name: result.user.full_name,
+        phone: result.user.phone,
+        email: result.user.email,
+        username: result.user.username,
+        role: "MANAGER",
+        isActive: result.user.is_active,
+        createdAt: result.user.created_at,
+      },
+    };
+  }
+
+  /**
+   * Create Centre Manager staff
+   */
+  async createCentreManager(body: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    username: string;
+    password: string;
+    centreId: number;
+  }) {
+    // Validate input
+    if (
+      !body.full_name ||
+      !body.phone ||
+      !body.username ||
+      !body.password ||
+      !body.centreId
+    ) {
+      throw ApiError.badRequest(
+        "Missing required fields: full_name, phone, username, password, centreId",
+      );
+    }
+
+    // Check if phone already exists
+    const existingStaff = await staffRepository.findStaffUsers();
+    const phoneExists = existingStaff.some((s: any) => s.phone === body.phone);
+    if (phoneExists) {
+      throw ApiError.conflict(
+        "A staff user with this phone number already exists",
+      );
+    }
+
+    // Check if username already exists
+    const usernameExists = existingStaff.some(
+      (s: any) => s.username === body.username,
+    );
+    if (usernameExists) {
+      throw ApiError.conflict("This username is already taken");
+    }
+
+    // Create staff user with CENTRE_MANAGER role (role ID 3)
+    const result = await staffRepository.createStaffUser(
+      {
+        full_name: body.full_name,
+        phone: body.phone,
+        email: body.email,
+        username: body.username,
+        password: body.password,
+        designation: "Centre Manager",
+      },
+      [3], // CENTRE_MANAGER role ID
+      [body.centreId],
+    );
+
+    return {
+      user: {
+        id: result.user.id,
+        full_name: result.user.full_name,
+        phone: result.user.phone,
+        email: result.user.email,
+        username: result.user.username,
+        role: "CENTRE_MANAGER",
+        centreId: body.centreId,
+        isActive: result.user.is_active,
+        createdAt: result.user.created_at,
+      },
+    };
+  }
+
+  /**
+   * Create Care Coordinator staff
+   */
+  async createCareCoordinator(body: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    username: string;
+    password: string;
+    centreId: number;
+  }) {
+    // Validate input
+    if (
+      !body.full_name ||
+      !body.phone ||
+      !body.username ||
+      !body.password ||
+      !body.centreId
+    ) {
+      throw ApiError.badRequest(
+        "Missing required fields: full_name, phone, username, password, centreId",
+      );
+    }
+
+    // Check if phone already exists
+    const existingStaff = await staffRepository.findStaffUsers();
+    const phoneExists = existingStaff.some((s: any) => s.phone === body.phone);
+    if (phoneExists) {
+      throw ApiError.conflict(
+        "A staff user with this phone number already exists",
+      );
+    }
+
+    // Check if username already exists
+    const usernameExists = existingStaff.some(
+      (s: any) => s.username === body.username,
+    );
+    if (usernameExists) {
+      throw ApiError.conflict("This username is already taken");
+    }
+
+    // Create staff user with CARE_COORDINATOR role (role ID 5)
+    const result = await staffRepository.createStaffUser(
+      {
+        full_name: body.full_name,
+        phone: body.phone,
+        email: body.email,
+        username: body.username,
+        password: body.password,
+        designation: "Care Coordinator",
+      },
+      [5], // CARE_COORDINATOR role ID
+      [body.centreId],
+    );
+
+    return {
+      user: {
+        id: result.user.id,
+        full_name: result.user.full_name,
+        phone: result.user.phone,
+        email: result.user.email,
+        username: result.user.username,
+        role: "CARE_COORDINATOR",
+        centreId: body.centreId,
+        isActive: result.user.is_active,
+        createdAt: result.user.created_at,
+      },
+    };
+  }
+
+  /**
+   * Create Front Desk staff
+   */
+  async createFrontDeskStaff(body: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    username: string;
+    password: string;
+    centreId: number;
+  }) {
+    // Validate input
+    if (
+      !body.full_name ||
+      !body.phone ||
+      !body.username ||
+      !body.password ||
+      !body.centreId
+    ) {
+      throw ApiError.badRequest(
+        "Missing required fields: full_name, phone, username, password, centreId",
+      );
+    }
+
+    // Check if phone already exists
+    const existingStaff = await staffRepository.findStaffUsers();
+    const phoneExists = existingStaff.some((s: any) => s.phone === body.phone);
+    if (phoneExists) {
+      throw ApiError.conflict(
+        "A staff user with this phone number already exists",
+      );
+    }
+
+    // Check if username already exists
+    const usernameExists = existingStaff.some(
+      (s: any) => s.username === body.username,
+    );
+    if (usernameExists) {
+      throw ApiError.conflict("This username is already taken");
+    }
+
+    // Create staff user with FRONT_DESK role (role ID 6)
+    const result = await staffRepository.createStaffUser(
+      {
+        full_name: body.full_name,
+        phone: body.phone,
+        email: body.email,
+        username: body.username,
+        password: body.password,
         designation: "Front Desk",
       },
-      [6], // FRONT_DESK role ID (assuming 6 based on typical role setup)
-      [body.centreId]
+      [6], // FRONT_DESK role ID
+      [body.centreId],
     );
 
     return {
@@ -277,10 +586,6 @@ export class StaffService {
         centreId: body.centreId,
         isActive: result.user.is_active,
         createdAt: result.user.created_at,
-      },
-      credentials: {
-        username: username,
-        password: password, // Return plain password only once
       },
     };
   }

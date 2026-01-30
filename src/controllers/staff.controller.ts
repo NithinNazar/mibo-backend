@@ -87,7 +87,7 @@ export class StaffController {
 
       const clinicians = await staffService.getClinicians(
         centreId,
-        specialization
+        specialization,
       );
       return ok(res, clinicians);
     } catch (err) {
@@ -147,18 +147,58 @@ export class StaffController {
   }
 
   /**
+   * Toggle clinician active status
+   */
+  async toggleClinicianActive(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const id = Number(req.params.id);
+      const { isActive } = req.body;
+      const clinician = await staffService.toggleClinicianActive(id, isActive);
+      return ok(
+        res,
+        clinician,
+        `Clinician ${isActive ? "activated" : "deactivated"} successfully`,
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Toggle staff active status (for all staff types)
+   */
+  async toggleStaffActive(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const { isActive } = req.body;
+      const staff = await staffService.toggleStaffActive(id, isActive);
+      return ok(
+        res,
+        staff,
+        `Staff ${isActive ? "activated" : "deactivated"} successfully`,
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * Update clinician availability
    */
   async updateClinicianAvailability(
     req: AuthRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     try {
       const id = Number(req.params.id);
       const clinician = await staffService.updateClinicianAvailability(
         id,
-        req.body
+        req.body,
       );
       return ok(res, clinician, "Clinician availability updated successfully");
     } catch (err) {
@@ -167,20 +207,77 @@ export class StaffController {
   }
 
   /**
-   * Create front desk staff with auto-generated credentials
+   * Get clinician availability
+   */
+  async getClinicianAvailability(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const id = Number(req.params.id);
+      const availability = await staffService.getClinicianAvailability(id);
+      return ok(res, availability);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create Manager staff
+   */
+  async createManager(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await staffService.createManager(req.body);
+      return created(res, result, "Manager created successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create Centre Manager staff
+   */
+  async createCentreManager(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const result = await staffService.createCentreManager(req.body);
+      return created(res, result, "Centre Manager created successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create Care Coordinator staff
+   */
+  async createCareCoordinator(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const result = await staffService.createCareCoordinator(req.body);
+      return created(res, result, "Care Coordinator created successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create front desk staff
    */
   async createFrontDeskStaff(
     req: AuthRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     try {
       const result = await staffService.createFrontDeskStaff(req.body);
-      return created(
-        res,
-        result,
-        "Front desk staff created successfully. Please save the credentials - they will not be shown again."
-      );
+      return created(res, result, "Front desk staff created successfully");
     } catch (err) {
       next(err);
     }

@@ -25,7 +25,7 @@ export class CentreService {
       !["bangalore", "kochi", "mumbai"].includes(city.toLowerCase())
     ) {
       throw ApiError.badRequest(
-        "Invalid city. Must be bangalore, kochi, or mumbai"
+        "Invalid city. Must be bangalore, kochi, or mumbai",
       );
     }
 
@@ -84,7 +84,7 @@ export class CentreService {
       addressLine2?: string;
       pincode?: string;
       contactPhone?: string;
-    }
+    },
   ): Promise<CentreResponse> {
     // Check if centre exists
     const existing = await centreRepository.findCentreById(id);
@@ -120,6 +120,23 @@ export class CentreService {
     // For now, just soft delete
 
     await centreRepository.deleteCentre(id);
+  }
+
+  /**
+   * Toggle centre active status
+   */
+  async toggleCentreActive(
+    centreId: number,
+    isActive: boolean,
+  ): Promise<CentreResponse> {
+    // First check if centre exists (without is_active filter)
+    const existingCentre = await centreRepository.findCentreById(centreId);
+    if (!existingCentre) {
+      throw ApiError.notFound("Centre not found");
+    }
+
+    const updated = await centreRepository.toggleActive(centreId, isActive);
+    return this.formatCentreResponse(updated);
   }
 
   /**

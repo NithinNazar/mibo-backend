@@ -30,6 +30,9 @@ export interface CreateClinicianDto {
   consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  qualification?: string;
+  expertise?: string[];
+  languages?: string[];
 }
 
 export interface UpdateClinicianDto {
@@ -75,7 +78,7 @@ export function validateCreateStaffUser(body: any): CreateStaffUserDto {
   const cleanPhone = body.phone.trim().replace(/\D/g, "");
   if (!phoneRegex.test(cleanPhone)) {
     throw ApiError.badRequest(
-      "Invalid phone number format. Must be 10 digits starting with 6-9"
+      "Invalid phone number format. Must be 10 digits starting with 6-9",
     );
   }
 
@@ -85,7 +88,7 @@ export function validateCreateStaffUser(body: any): CreateStaffUserDto {
     body.password.length < 8
   ) {
     throw ApiError.badRequest(
-      "Password is required and must be at least 8 characters"
+      "Password is required and must be at least 8 characters",
     );
   }
 
@@ -125,7 +128,7 @@ export function validateCreateStaffUser(body: any): CreateStaffUserDto {
     const usernameRegex = /^[a-zA-Z0-9_]{3,50}$/;
     if (!usernameRegex.test(body.username)) {
       throw ApiError.badRequest(
-        "Username must be 3-50 alphanumeric characters"
+        "Username must be 3-50 alphanumeric characters",
       );
     }
     dto.username = body.username.trim();
@@ -226,7 +229,7 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     for (const mode of body.consultation_modes) {
       if (!validModes.includes(mode)) {
         throw ApiError.badRequest(
-          "consultation_modes must contain only IN_PERSON or ONLINE"
+          "consultation_modes must contain only IN_PERSON or ONLINE",
         );
       }
     }
@@ -237,7 +240,7 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     const duration = Number(body.default_consultation_duration_minutes);
     if (isNaN(duration) || duration < 1) {
       throw ApiError.badRequest(
-        "default_consultation_duration_minutes must be at least 1"
+        "default_consultation_duration_minutes must be at least 1",
       );
     }
     dto.default_consultation_duration_minutes = duration;
@@ -245,6 +248,24 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
 
   if (body.profile_picture_url) {
     dto.profile_picture_url = String(body.profile_picture_url).trim();
+  }
+
+  if (body.qualification) {
+    dto.qualification = String(body.qualification).trim();
+  }
+
+  if (body.expertise) {
+    if (!Array.isArray(body.expertise)) {
+      throw ApiError.badRequest("expertise must be an array");
+    }
+    dto.expertise = body.expertise.map((e: any) => String(e).trim());
+  }
+
+  if (body.languages) {
+    if (!Array.isArray(body.languages)) {
+      throw ApiError.badRequest("languages must be an array");
+    }
+    dto.languages = body.languages.map((l: any) => String(l).trim());
   }
 
   return dto;
@@ -291,7 +312,7 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     for (const mode of body.consultation_modes) {
       if (!validModes.includes(mode)) {
         throw ApiError.badRequest(
-          "consultation_modes must contain only IN_PERSON or ONLINE"
+          "consultation_modes must contain only IN_PERSON or ONLINE",
         );
       }
     }
@@ -302,7 +323,7 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     const duration = Number(body.default_consultation_duration_minutes);
     if (isNaN(duration) || duration < 1) {
       throw ApiError.badRequest(
-        "default_consultation_duration_minutes must be at least 1"
+        "default_consultation_duration_minutes must be at least 1",
       );
     }
     dto.default_consultation_duration_minutes = duration;
@@ -320,7 +341,7 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
 }
 
 export function validateUpdateClinicianAvailability(
-  body: any
+  body: any,
 ): UpdateClinicianAvailabilityDto {
   if (!body.availability_rules || !Array.isArray(body.availability_rules)) {
     throw ApiError.badRequest("availability_rules array is required");
@@ -331,7 +352,7 @@ export function validateUpdateClinicianAvailability(
   for (const rule of body.availability_rules) {
     if (!rule.centre_id) {
       throw ApiError.badRequest(
-        "centre_id is required for each availability rule"
+        "centre_id is required for each availability rule",
       );
     }
 
@@ -341,7 +362,7 @@ export function validateUpdateClinicianAvailability(
       rule.day_of_week > 6
     ) {
       throw ApiError.badRequest(
-        "day_of_week must be between 0 (Sunday) and 6 (Saturday)"
+        "day_of_week must be between 0 (Sunday) and 6 (Saturday)",
       );
     }
 
@@ -362,7 +383,7 @@ export function validateUpdateClinicianAvailability(
       !["IN_PERSON", "ONLINE", "BOTH"].includes(rule.consultation_mode)
     ) {
       throw ApiError.badRequest(
-        "consultation_mode must be IN_PERSON, ONLINE, or BOTH"
+        "consultation_mode must be IN_PERSON, ONLINE, or BOTH",
       );
     }
 

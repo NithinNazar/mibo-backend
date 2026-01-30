@@ -16,7 +16,7 @@ const router = Router();
  * Query params: ?city=bangalore
  */
 router.get("/", authMiddleware, (req, res, next) =>
-  centreController.getCentres(req, res, next)
+  centreController.getCentres(req, res, next),
 );
 
 /**
@@ -24,7 +24,7 @@ router.get("/", authMiddleware, (req, res, next) =>
  * Get centre by ID (all authenticated users)
  */
 router.get("/:id", authMiddleware, (req, res, next) =>
-  centreController.getCentreById(req, res, next)
+  centreController.getCentreById(req, res, next),
 );
 
 /**
@@ -36,7 +36,7 @@ router.post(
   authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   validateCreateCentre,
-  (req, res, next) => centreController.createCentre(req, res, next)
+  (req, res, next) => centreController.createCentre(req, res, next),
 );
 
 /**
@@ -48,7 +48,7 @@ router.put(
   authMiddleware,
   requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
   validateUpdateCentre,
-  (req, res, next) => centreController.updateCentre(req, res, next)
+  (req, res, next) => centreController.updateCentre(req, res, next),
 );
 
 /**
@@ -56,7 +56,18 @@ router.put(
  * Delete centre (ADMIN only)
  */
 router.delete("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  centreController.deleteCentre(req, res, next)
+  centreController.deleteCentre(req, res, next),
+);
+
+/**
+ * PATCH /api/centres/:id/toggle-active
+ * Toggle centre active status (ADMIN, MANAGER)
+ */
+router.patch(
+  "/:id/toggle-active",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER"),
+  (req, res, next) => centreController.toggleCentreActive(req, res, next),
 );
 
 export default router;

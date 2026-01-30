@@ -86,7 +86,7 @@ export class CentreRepository {
       addressLine2?: string;
       pincode?: string;
       contactPhone?: string;
-    }
+    },
   ): Promise<Centre> {
     const updates: string[] = [];
     const values: any[] = [];
@@ -141,6 +141,20 @@ export class CentreRepository {
     `;
 
     await db.none(query, [id]);
+  }
+
+  /**
+   * Toggle centre active status
+   */
+  async toggleActive(centreId: number, isActive: boolean): Promise<Centre> {
+    const query = `
+      UPDATE centres
+      SET is_active = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+
+    return db.one<Centre>(query, [isActive, centreId]);
   }
 }
 
