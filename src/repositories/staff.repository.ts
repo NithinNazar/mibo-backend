@@ -26,7 +26,7 @@ interface CreateClinicianData {
   primary_centre_id: number;
   specialization: string;
   registration_number?: string;
-  experience_years?: number;
+  years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
   bio?: string;
   consultation_modes?: string[];
@@ -477,7 +477,7 @@ export class StaffRepository {
       data.primary_centre_id,
       data.specialization,
       data.registration_number || null,
-      data.experience_years || 0,
+      data.years_of_experience || 0,
       data.consultation_fee || 0,
       data.bio || null,
       consultationModes,
@@ -529,9 +529,9 @@ export class StaffRepository {
       paramIndex++;
     }
 
-    if (data.experience_years !== undefined) {
-      fields.push(`experience_years = $${paramIndex}`);
-      values.push(data.experience_years);
+    if (data.years_of_experience !== undefined) {
+      fields.push(`years_of_experience = $${paramIndex}`);
+      values.push(data.years_of_experience);
       paramIndex++;
     }
 

@@ -1,0 +1,36 @@
+SERVER CONFIG PACKAGE - READY FOR SENIOR DEV
+
+Location: backend/server-config/
+
+FILES INCLUDED (11 files):
+
+BACKEND CORE:
+✓ .env.example      - All environment variables
+✓ db.ts             - PostgreSQL connection (pg-promise + SSL)
+✓ env.ts            - Environment validation
+✓ app.ts            - Express setup (CORS, middleware, routes)
+✓ server.ts         - Server entry point
+✓ tsconfig.json     - TypeScript configuration
+✓ package.json      - Dependencies & scripts
+
+FRONTEND:
+✓ frontend.env.example - Patient portal env vars
+✓ admin.env.example    - Admin panel env vars
+
+DEPLOYMENT:
+✓ aws-info.txt      - AWS infrastructure details
+✓ README.txt        - Quick reference guide
+
+WHAT'S INCLUDED:
+- Database connection with SSL for AWS RDS
+- Express app with CORS, rate limiting, error handling
+- Environment variable validation
+- TypeScript build configuration
+- AWS Elastic Beanstalk deployment info
+- Frontend/Admin environment configs
+
+TELL THE SENIOR DEV:
+"All server config files are in backend/server-config/
+Start with README.txt for overview, then check .env.example and db.ts"
+
+NO BUSINESS LOGIC - JUST CORE SETUP FILES

@@ -37,7 +37,7 @@ const pgp = pgPromise(initOptions);
 
 // SSL configuration for AWS RDS
 // AWS RDS requires SSL but uses self-signed certificates
-const isAWSRDS = ENV.DATABASE_URL.includes("rds.amazonaws.com");
+const isAWSRDS = ENV.DATABASE_URL?.includes("rds.amazonaws.com") || false;
 const connectionConfig = isAWSRDS
   ? {
       connectionString: ENV.DATABASE_URL,

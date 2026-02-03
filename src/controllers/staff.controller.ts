@@ -3,6 +3,7 @@ import { Response, NextFunction } from "express";
 import { staffService } from "../services/staff.service";
 import { ok, created } from "../utils/response";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import { transformClinicianResponse } from "../utils/caseTransform";
 
 export class StaffController {
   /**
@@ -89,7 +90,10 @@ export class StaffController {
         centreId,
         specialization,
       );
-      return ok(res, clinicians);
+
+      // Transform to camelCase for frontend
+      const transformed = clinicians.map(transformClinicianResponse);
+      return ok(res, transformed);
     } catch (err) {
       next(err);
     }
@@ -102,7 +106,10 @@ export class StaffController {
     try {
       const id = Number(req.params.id);
       const clinician = await staffService.getClinicianById(id);
-      return ok(res, clinician);
+
+      // Transform to camelCase for frontend
+      const transformed = transformClinicianResponse(clinician);
+      return ok(res, transformed);
     } catch (err) {
       next(err);
     }
@@ -114,7 +121,10 @@ export class StaffController {
   async createClinician(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const clinician = await staffService.createClinician(req.body);
-      return created(res, clinician, "Clinician created successfully");
+
+      // Transform to camelCase for frontend
+      const transformed = transformClinicianResponse(clinician);
+      return created(res, transformed, "Clinician created successfully");
     } catch (err) {
       next(err);
     }
@@ -127,7 +137,10 @@ export class StaffController {
     try {
       const id = Number(req.params.id);
       const clinician = await staffService.updateClinician(id, req.body);
-      return ok(res, clinician, "Clinician updated successfully");
+
+      // Transform to camelCase for frontend
+      const transformed = transformClinicianResponse(clinician);
+      return ok(res, transformed, "Clinician updated successfully");
     } catch (err) {
       next(err);
     }

@@ -24,7 +24,7 @@ export interface CreateClinicianDto {
   primary_centre_id: number;
   specialization: string;
   registration_number?: string;
-  experience_years?: number;
+  years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
   bio?: string;
   consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
@@ -39,7 +39,7 @@ export interface UpdateClinicianDto {
   primary_centre_id?: number;
   specialization?: string;
   registration_number?: string;
-  experience_years?: number;
+  years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
   bio?: string;
   consultation_modes?: string[];
@@ -209,8 +209,8 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.registration_number = String(body.registration_number).trim();
   }
 
-  if (body.experience_years !== undefined) {
-    dto.experience_years = Number(body.experience_years);
+  if (body.years_of_experience !== undefined) {
+    dto.years_of_experience = Number(body.years_of_experience);
   }
 
   if (body.consultation_fee !== undefined) {
@@ -292,8 +292,8 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     dto.registration_number = String(body.registration_number).trim();
   }
 
-  if (body.experience_years !== undefined) {
-    dto.experience_years = Number(body.experience_years);
+  if (body.years_of_experience !== undefined) {
+    dto.years_of_experience = Number(body.years_of_experience);
   }
 
   if (body.consultation_fee !== undefined) {
