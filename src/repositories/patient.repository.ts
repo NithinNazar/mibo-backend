@@ -56,7 +56,7 @@ class PatientRepository {
   async findUserByPhone(phone: string): Promise<User | null> {
     return await db.oneOrNone(
       "SELECT * FROM users WHERE phone = $1 AND user_type = 'PATIENT'",
-      [phone]
+      [phone],
     );
   }
 
@@ -73,14 +73,45 @@ class PatientRepository {
   async createUser(
     phone: string,
     fullName: string,
-    email?: string
+    email?: string,
   ): Promise<User> {
     return await db.one(
       `INSERT INTO users (phone, full_name, email, user_type, is_active)
        VALUES ($1, $2, $3, 'PATIENT', true)
        RETURNING *`,
-      [phone, fullName, email || null]
+      [phone, fullName, email || null],
     );
+  }
+
+  /**
+   * Create new user with transaction safety
+   * Uses database transaction to prevent race conditions
+   */
+  async createUserWithTransaction(
+    phone: string,
+    fullName: string,
+    email?: string,
+  ): Promise<User> {
+    return await db.tx(async (t) => {
+      // Check if user exists with row lock to prevent race condition
+      const existingUser = await t.oneOrNone(
+        "SELECT * FROM users WHERE phone = $1 AND user_type = 'PATIENT' FOR UPDATE",
+        [phone],
+      );
+
+      if (existingUser) {
+        // User was created by another concurrent request
+        return existingUser;
+      }
+
+      // Create new user
+      return await t.one(
+        `INSERT INTO users (phone, full_name, email, user_type, is_active)
+         VALUES ($1, $2, $3, 'PATIENT', true)
+         RETURNING *`,
+        [phone, fullName, email || null],
+      );
+    });
   }
 
   /**
@@ -88,7 +119,7 @@ class PatientRepository {
    */
   async updateUser(
     userId: number,
-    data: { full_name?: string; email?: string }
+    data: { full_name?: string; email?: string },
   ): Promise<User> {
     const updates: string[] = [];
     const values: any[] = [];
@@ -109,9 +140,9 @@ class PatientRepository {
 
     return await db.one(
       `UPDATE users SET ${updates.join(
-        ", "
+        ", ",
       )} WHERE id = $${paramIndex} RETURNING *`,
-      values
+      values,
     );
   }
 
@@ -119,11 +150,11 @@ class PatientRepository {
    * Find patient profile by user ID
    */
   async findPatientProfileByUserId(
-    userId: number
+    userId: number,
   ): Promise<PatientProfile | null> {
     return await db.oneOrNone(
       "SELECT * FROM patient_profiles WHERE user_id = $1",
-      [userId]
+      [userId],
     );
   }
 
@@ -135,7 +166,7 @@ class PatientRepository {
       `INSERT INTO patient_profiles (user_id, is_active)
        VALUES ($1, true)
        RETURNING *`,
-      [userId]
+      [userId],
     );
   }
 
@@ -150,7 +181,7 @@ class PatientRepository {
       blood_group?: string;
       emergency_contact_name?: string;
       emergency_contact_phone?: string;
-    }
+    },
   ): Promise<PatientProfile> {
     const updates: string[] = [];
     const values: any[] = [];
@@ -186,9 +217,9 @@ class PatientRepository {
 
     return await db.one(
       `UPDATE patient_profiles SET ${updates.join(
-        ", "
+        ", ",
       )} WHERE user_id = $${paramIndex} RETURNING *`,
-      values
+      values,
     );
   }
 
@@ -198,7 +229,7 @@ class PatientRepository {
   async storeOTP(
     phone: string,
     otp: string,
-    purpose: string = "LOGIN"
+    purpose: string = "LOGIN",
   ): Promise<OTPRequest> {
     // Hash OTP before storing
     const otpHash = await bcrypt.hash(otp, 10);
@@ -206,7 +237,7 @@ class PatientRepository {
     // Delete any existing unused OTPs for this phone
     await db.none(
       "DELETE FROM otp_requests WHERE phone = $1 AND is_used = false",
-      [phone]
+      [phone],
     );
 
     // Store new OTP
@@ -214,8 +245,26 @@ class PatientRepository {
       `INSERT INTO otp_requests (phone, otp_hash, purpose, expires_at, is_used, attempts_count)
        VALUES ($1, $2, $3, NOW() + INTERVAL '10 minutes', false, 0)
        RETURNING *`,
-      [phone, otpHash, purpose]
+      [phone, otpHash, purpose],
     );
+  }
+
+  /**
+   * Count recent OTP requests for rate limiting
+   * Returns number of OTP requests made in the last N minutes
+   */
+  async countRecentOTPRequests(
+    phone: string,
+    minutes: number = 5,
+  ): Promise<number> {
+    const result = await db.one(
+      `SELECT COUNT(*) as count 
+       FROM otp_requests 
+       WHERE phone = $1 
+       AND created_at > NOW() - INTERVAL '${minutes} minutes'`,
+      [phone],
+    );
+    return parseInt(result.count);
   }
 
   /**
@@ -229,7 +278,7 @@ class PatientRepository {
        AND expires_at > NOW()
        ORDER BY created_at DESC
        LIMIT 1`,
-      [phone]
+      [phone],
     );
   }
 
@@ -246,7 +295,7 @@ class PatientRepository {
     // Increment attempts
     await db.none(
       "UPDATE otp_requests SET attempts_count = attempts_count + 1 WHERE id = $1",
-      [otpRequest.id]
+      [otpRequest.id],
     );
 
     // Check if too many attempts (max 5)
@@ -282,7 +331,7 @@ class PatientRepository {
     userId: number,
     refreshToken: string,
     userAgent?: string,
-    ipAddress?: string
+    ipAddress?: string,
   ): Promise<AuthSession> {
     // Hash refresh token before storing
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
@@ -291,7 +340,7 @@ class PatientRepository {
       `INSERT INTO auth_sessions (user_id, refresh_token_hash, user_agent, ip_address, expires_at)
        VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days')
        RETURNING *`,
-      [userId, refreshTokenHash, userAgent || null, ipAddress || null]
+      [userId, refreshTokenHash, userAgent || null, ipAddress || null],
     );
   }
 
@@ -300,7 +349,7 @@ class PatientRepository {
    */
   async findAuthSession(
     userId: number,
-    refreshToken: string
+    refreshToken: string,
   ): Promise<AuthSession | null> {
     const sessions = await db.any(
       `SELECT * FROM auth_sessions 
@@ -308,14 +357,14 @@ class PatientRepository {
        AND revoked_at IS NULL 
        AND expires_at > NOW()
        ORDER BY created_at DESC`,
-      [userId]
+      [userId],
     );
 
     // Check each session's refresh token hash
     for (const session of sessions) {
       const isValid = await bcrypt.compare(
         refreshToken,
-        session.refresh_token_hash
+        session.refresh_token_hash,
       );
       if (isValid) {
         return session;
@@ -340,7 +389,7 @@ class PatientRepository {
   async revokeAllUserSessions(userId: number): Promise<void> {
     await db.none(
       "UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL",
-      [userId]
+      [userId],
     );
   }
 
@@ -384,7 +433,7 @@ class PatientRepository {
       LEFT JOIN payments p ON a.id = p.appointment_id
       WHERE a.patient_id = $1
       ORDER BY a.scheduled_start_at DESC`,
-      [patientId]
+      [patientId],
     );
   }
 
@@ -406,7 +455,7 @@ class PatientRepository {
       JOIN centres c ON a.centre_id = c.id
       WHERE p.patient_id = $1
       ORDER BY p.created_at DESC`,
-      [patientId]
+      [patientId],
     );
   }
 
@@ -416,12 +465,12 @@ class PatientRepository {
   async cleanupExpiredData(): Promise<void> {
     // Delete expired OTPs older than 24 hours
     await db.none(
-      "DELETE FROM otp_requests WHERE expires_at < NOW() - INTERVAL '24 hours'"
+      "DELETE FROM otp_requests WHERE expires_at < NOW() - INTERVAL '24 hours'",
     );
 
     // Delete expired sessions older than 30 days
     await db.none(
-      "DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '30 days'"
+      "DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '30 days'",
     );
   }
 }

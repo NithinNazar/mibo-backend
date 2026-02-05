@@ -57,8 +57,24 @@ class PatientAuthService {
   /**
    * Send OTP to patient's phone via WhatsApp
    */
-  async sendOTP(phone: string): Promise<void> {
+  async sendOTP(phone: string): Promise<{ isNewUser: boolean }> {
     try {
+      // Rate limiting: Check if too many OTP requests in last 5 minutes
+      const recentRequests = await patientRepository.countRecentOTPRequests(
+        phone,
+        5,
+      );
+
+      if (recentRequests >= 3) {
+        throw new Error(
+          "Too many OTP requests. Please try again after 5 minutes.",
+        );
+      }
+
+      // Check if user exists
+      const existingUser = await patientRepository.findUserByPhone(phone);
+      const isNewUser = !existingUser;
+
       // Generate OTP
       const otp = this.generateOTP();
 
@@ -73,12 +89,12 @@ class PatientAuthService {
           logger.info(`✅ OTP sent to ${phone} via WhatsApp`);
         } else {
           logger.warn(
-            `⚠️ WhatsApp send failed for ${phone}, but OTP stored in database`
+            `⚠️ WhatsApp send failed for ${phone}, but OTP stored in database`,
           );
         }
       } else {
         logger.warn(
-          `⚠️ Gallabox not configured - OTP stored but not sent via WhatsApp`
+          `⚠️ Gallabox not configured - OTP stored but not sent via WhatsApp`,
         );
       }
 
@@ -86,9 +102,11 @@ class PatientAuthService {
       if (ENV.NODE_ENV === "development") {
         console.log(`\n🔐 OTP for ${phone}: ${otp}\n`);
       }
+
+      return { isNewUser };
     } catch (error: any) {
       logger.error("Error sending OTP:", error);
-      throw new Error("Failed to send OTP. Please try again.");
+      throw error;
     }
   }
 
@@ -99,7 +117,7 @@ class PatientAuthService {
     phone: string,
     otp: string,
     name?: string,
-    email?: string
+    email?: string,
   ): Promise<{
     user: any;
     patient: any;
@@ -120,12 +138,16 @@ class PatientAuthService {
       let isNewUser = false;
 
       if (!user) {
-        // New user - create account
+        // New user - create account with transaction safety
         if (!name) {
           throw new Error("Name is required for new users");
         }
 
-        user = await patientRepository.createUser(phone, name, email);
+        user = await patientRepository.createUserWithTransaction(
+          phone,
+          name,
+          email,
+        );
         isNewUser = true;
 
         logger.info(`✅ New patient account created: ${phone}`);
@@ -200,7 +222,7 @@ class PatientAuthService {
       // Check if session exists and is valid
       const session = await patientRepository.findAuthSession(
         payload.userId,
-        refreshToken
+        refreshToken,
       );
 
       if (!session) {
@@ -239,7 +261,7 @@ class PatientAuthService {
       const payload = this.verifyRefreshToken(refreshToken);
       const session = await patientRepository.findAuthSession(
         payload.userId,
-        refreshToken
+        refreshToken,
       );
 
       if (session) {
@@ -307,7 +329,7 @@ class PatientAuthService {
       bloodGroup?: string;
       emergencyContactName?: string;
       emergencyContactPhone?: string;
-    }
+    },
   ): Promise<{
     user: any;
     patient: any;

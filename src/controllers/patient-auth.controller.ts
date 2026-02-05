@@ -30,7 +30,7 @@ class PatientAuthController {
         return;
       }
 
-      await patientAuthService.sendOTP(phone);
+      const result = await patientAuthService.sendOTP(phone);
 
       res.json({
         success: true,
@@ -38,6 +38,7 @@ class PatientAuthController {
         data: {
           phone,
           expiresIn: "10 minutes",
+          isNewUser: result.isNewUser,
         },
       });
     } catch (error: any) {
@@ -69,7 +70,7 @@ class PatientAuthController {
         phone,
         otp,
         full_name,
-        email
+        email,
       );
 
       res.json({
@@ -168,7 +169,7 @@ class PatientAuthController {
       }
 
       const profile = await patientAuthService.getPatientProfile(
-        req.user.userId
+        req.user.userId,
       );
 
       res.json({
