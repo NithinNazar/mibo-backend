@@ -68,18 +68,18 @@ router.patch(
  * GET /api/clinicians
  * Get clinicians with filters
  * Query params: centreId, specialization
- * Roles: All authenticated users
+ * Roles: PUBLIC (no authentication required)
  */
-router.get("/clinicians", authMiddleware, (req, res, next) =>
+router.get("/clinicians", (req, res, next) =>
   staffController.getClinicians(req, res, next),
 );
 
 /**
  * GET /api/clinicians/:id
  * Get clinician by ID
- * Roles: All authenticated users
+ * Roles: PUBLIC (no authentication required)
  */
-router.get("/clinicians/:id", authMiddleware, (req, res, next) =>
+router.get("/clinicians/:id", (req, res, next) =>
   staffController.getClinicianById(req, res, next),
 );
 
@@ -147,9 +147,9 @@ router.put(
 /**
  * GET /api/clinicians/:id/availability
  * Get clinician availability rules
- * Roles: All authenticated users
+ * Roles: PUBLIC (no authentication required)
  */
-router.get("/clinicians/:id/availability", authMiddleware, (req, res, next) =>
+router.get("/clinicians/:id/availability", (req, res, next) =>
   staffController.getClinicianAvailability(req, res, next),
 );
 

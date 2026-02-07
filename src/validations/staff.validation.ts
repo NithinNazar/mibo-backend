@@ -22,7 +22,7 @@ export interface UpdateStaffUserDto {
 export interface CreateClinicianDto {
   user_id: number;
   primary_centre_id: number;
-  specialization: string;
+  specialization: string[]; // Changed to array
   registration_number?: string;
   years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
@@ -30,14 +30,14 @@ export interface CreateClinicianDto {
   consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
-  qualification?: string;
+  qualification?: string[]; // Changed to array
   expertise?: string[];
   languages?: string[];
 }
 
 export interface UpdateClinicianDto {
   primary_centre_id?: number;
-  specialization?: string;
+  specialization?: string[]; // Changed to array
   registration_number?: string;
   years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
@@ -45,6 +45,9 @@ export interface UpdateClinicianDto {
   consultation_modes?: string[];
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  qualification?: string[]; // Changed to array
+  expertise?: string[];
+  languages?: string[];
 }
 
 export interface AvailabilityRuleDto {
@@ -191,18 +194,21 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     throw ApiError.badRequest("primary_centre_id is required");
   }
 
+  // Validate specialization as array
   if (
     !body.specialization ||
-    typeof body.specialization !== "string" ||
-    body.specialization.trim().length === 0
+    !Array.isArray(body.specialization) ||
+    body.specialization.length === 0
   ) {
-    throw ApiError.badRequest("Specialization is required");
+    throw ApiError.badRequest(
+      "Specialization is required and must be a non-empty array",
+    );
   }
 
   const dto: CreateClinicianDto = {
     user_id: Number(body.user_id),
     primary_centre_id: Number(body.primary_centre_id),
-    specialization: body.specialization.trim(),
+    specialization: body.specialization.map((s: any) => String(s).trim()),
   };
 
   if (body.registration_number) {
@@ -250,8 +256,12 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.profile_picture_url = String(body.profile_picture_url).trim();
   }
 
+  // Validate qualification as array
   if (body.qualification) {
-    dto.qualification = String(body.qualification).trim();
+    if (!Array.isArray(body.qualification)) {
+      throw ApiError.badRequest("qualification must be an array");
+    }
+    dto.qualification = body.qualification.map((q: any) => String(q).trim());
   }
 
   if (body.expertise) {
@@ -278,14 +288,15 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     dto.primary_centre_id = Number(body.primary_centre_id);
   }
 
+  // Validate specialization as array
   if (body.specialization !== undefined) {
     if (
-      typeof body.specialization !== "string" ||
-      body.specialization.trim().length === 0
+      !Array.isArray(body.specialization) ||
+      body.specialization.length === 0
     ) {
-      throw ApiError.badRequest("Specialization cannot be empty");
+      throw ApiError.badRequest("Specialization must be a non-empty array");
     }
-    dto.specialization = body.specialization.trim();
+    dto.specialization = body.specialization.map((s: any) => String(s).trim());
   }
 
   if (body.registration_number !== undefined) {
@@ -331,6 +342,30 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
 
   if (body.profile_picture_url !== undefined) {
     dto.profile_picture_url = String(body.profile_picture_url).trim();
+  }
+
+  // Validate qualification as array
+  if (body.qualification !== undefined) {
+    if (!Array.isArray(body.qualification)) {
+      throw ApiError.badRequest("qualification must be an array");
+    }
+    dto.qualification = body.qualification.map((q: any) => String(q).trim());
+  }
+
+  // Validate expertise as array
+  if (body.expertise !== undefined) {
+    if (!Array.isArray(body.expertise)) {
+      throw ApiError.badRequest("expertise must be an array");
+    }
+    dto.expertise = body.expertise.map((e: any) => String(e).trim());
+  }
+
+  // Validate languages as array
+  if (body.languages !== undefined) {
+    if (!Array.isArray(body.languages)) {
+      throw ApiError.badRequest("languages must be an array");
+    }
+    dto.languages = body.languages.map((l: any) => String(l).trim());
   }
 
   if (Object.keys(dto).length === 0) {

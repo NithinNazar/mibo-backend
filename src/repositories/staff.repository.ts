@@ -24,7 +24,7 @@ interface CreateStaffData {
 interface CreateClinicianData {
   user_id: number;
   primary_centre_id: number;
-  specialization: string;
+  specialization: string[]; // Changed to array
   registration_number?: string;
   years_of_experience?: number; // Fixed: match database column name
   consultation_fee?: number;
@@ -32,7 +32,7 @@ interface CreateClinicianData {
   consultation_modes?: string[];
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
-  qualification?: string;
+  qualification?: string[]; // Changed to array
   expertise?: string[];
   languages?: string[];
 }
@@ -462,12 +462,15 @@ export class StaffRepository {
       RETURNING *;
     `;
 
+    // Convert arrays to JSONB
+    const specialization = JSON.stringify(data.specialization);
     const consultationModes = data.consultation_modes
       ? JSON.stringify(data.consultation_modes)
       : null;
-
+    const qualification = data.qualification
+      ? JSON.stringify(data.qualification)
+      : "[]";
     const expertise = data.expertise ? JSON.stringify(data.expertise) : "[]";
-
     const languages = data.languages
       ? JSON.stringify(data.languages)
       : '["English"]';
@@ -475,14 +478,14 @@ export class StaffRepository {
     const clinician = await db.one(query, [
       data.user_id,
       data.primary_centre_id,
-      data.specialization,
+      specialization,
       data.registration_number || null,
       data.years_of_experience || 0,
       data.consultation_fee || 0,
       data.bio || null,
       consultationModes,
       data.default_consultation_duration_minutes || 30,
-      data.qualification || null,
+      qualification,
       expertise,
       languages,
     ]);
@@ -519,7 +522,7 @@ export class StaffRepository {
 
     if (data.specialization !== undefined) {
       fields.push(`specialization = $${paramIndex}`);
-      values.push(data.specialization);
+      values.push(JSON.stringify(data.specialization));
       paramIndex++;
     }
 
@@ -561,7 +564,7 @@ export class StaffRepository {
 
     if (data.qualification !== undefined) {
       fields.push(`qualification = $${paramIndex}`);
-      values.push(data.qualification);
+      values.push(JSON.stringify(data.qualification));
       paramIndex++;
     }
 

@@ -12,6 +12,7 @@ import { JwtPayload } from "../utils/jwt";
 import { db } from "../config/db";
 import { videoService } from "./video.service";
 import { notificationService } from "./notification.service";
+import { paymentService } from "./payment.service";
 import { emailUtil } from "../utils/email";
 import { gallaboxUtil } from "../utils/gallabox";
 import logger from "../config/logger";
@@ -51,7 +52,7 @@ export class AppointmentService {
       ) {
         // Get clinician profile ID from user
         const clinicianProfile = await this.getClinicianProfileByUserId(
-          authUser.userId
+          authUser.userId,
         );
         if (clinicianProfile) {
           filters.clinicianId = clinicianProfile.id;
@@ -78,11 +79,11 @@ export class AppointmentService {
    * Get clinician profile by user ID (helper method)
    */
   private async getClinicianProfileByUserId(
-    userId: number
+    userId: number,
   ): Promise<{ id: number } | null> {
     const result = await db.oneOrNone<{ id: number }>(
       "SELECT id FROM clinician_profiles WHERE user_id = $1 AND is_active = TRUE",
-      [userId]
+      [userId],
     );
     return result;
   }
@@ -105,7 +106,7 @@ export class AppointmentService {
     } else {
       if (!dto.patient_id) {
         throw ApiError.badRequest(
-          "patient_id is required when staff creates an appointment"
+          "patient_id is required when staff creates an appointment",
         );
       }
       const patient = await patientRepository.findByUserId(dto.patient_id);
@@ -124,12 +125,12 @@ export class AppointmentService {
     const availabilityRules =
       await appointmentRepository.getClinicianAvailabilityRules(
         dto.clinician_id,
-        dateStr
+        dateStr,
       );
 
     if (availabilityRules.length === 0) {
       throw ApiError.badRequest(
-        "Clinician is not available on the selected day"
+        "Clinician is not available on the selected day",
       );
     }
 
@@ -141,7 +142,7 @@ export class AppointmentService {
 
     if (!isWithinAvailability) {
       throw ApiError.badRequest(
-        "Requested time is outside clinician's availability hours"
+        "Requested time is outside clinician's availability hours",
       );
     }
 
@@ -149,12 +150,12 @@ export class AppointmentService {
     const hasConflict = await appointmentRepository.checkSchedulingConflicts(
       dto.clinician_id,
       start.toISOString(),
-      end.toISOString()
+      end.toISOString(),
     );
 
     if (hasConflict) {
       throw ApiError.conflict(
-        "Scheduling conflict detected. The clinician has an overlapping appointment."
+        "Scheduling conflict detected. The clinician has an overlapping appointment.",
       );
     }
 
@@ -182,108 +183,113 @@ export class AppointmentService {
       notes: dto.notes || null,
     });
 
+    // Get patient and clinician details for notifications and payment
+    const patient = await patientRepository.findByUserId(patient_id);
+    const clinician = await db.oneOrNone(
+      `SELECT u.full_name FROM clinician_profiles cp 
+       JOIN users u ON cp.user_id = u.id 
+       WHERE cp.id = $1`,
+      [appointment.clinician_id],
+    );
+
+    if (!patient || !clinician) {
+      logger.error(
+        `Patient or clinician not found for appointment ${appointment.id}`,
+      );
+      return appointment;
+    }
+
+    const appointmentDate = new Date(
+      appointment.scheduled_start_at,
+    ).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const appointmentTime = new Date(
+      appointment.scheduled_start_at,
+    ).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const clinicianName = clinician.full_name;
+
     // If appointment type is ONLINE, generate Google Meet link and send notifications
     if (dto.appointment_type === "ONLINE") {
       try {
         // Generate Google Meet link
         const meetLink = await videoService.autoGenerateMeetLink(
-          appointment.id
+          appointment.id,
         );
 
         if (meetLink) {
           logger.info(
-            `Google Meet link generated for appointment ${appointment.id}`
+            `Google Meet link generated for appointment ${appointment.id}`,
           );
 
-          // Get patient and clinician details for notifications
-          const patient = await patientRepository.findByUserId(patient_id);
-          const clinician = await db.oneOrNone(
-            `SELECT u.full_name FROM clinician_profiles cp 
-             JOIN users u ON cp.user_id = u.id 
-             WHERE cp.id = $1`,
-            [appointment.clinician_id]
-          );
-
-          if (patient && clinician) {
-            const appointmentDate = new Date(
-              appointment.scheduled_start_at
-            ).toLocaleDateString("en-IN", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            });
-
-            const appointmentTime = new Date(
-              appointment.scheduled_start_at
-            ).toLocaleTimeString("en-IN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-
-            const clinicianName = clinician.full_name;
-
-            // Send notifications in parallel (don't wait for all to complete)
-            Promise.all([
-              // 1. Send WhatsApp to patient with Meet link
-              gallaboxUtil
-                .sendOnlineMeetingLink(
-                  patient.user.phone,
-                  patient.user.full_name,
-                  meetLink,
-                  appointmentDate,
-                  appointmentTime
-                )
-                .catch((err) =>
-                  logger.error("Failed to send WhatsApp to patient:", err)
-                ),
-
-              // 2. Send email to patient with Meet link (if email exists)
-              patient.user.email
-                ? emailUtil
-                    .sendOnlineConsultationLink(
-                      patient.user.email,
-                      patient.user.full_name,
-                      clinicianName,
-                      meetLink,
-                      appointmentDate,
-                      appointmentTime
-                    )
-                    .catch((err) =>
-                      logger.error("Failed to send email to patient:", err)
-                    )
-                : Promise.resolve(),
-
-              // 3. Send WhatsApp to doctor with appointment details
-              this.notifyDoctorAboutOnlineConsultation(
-                appointment.clinician_id,
+          // Send notifications in parallel (don't wait for all to complete)
+          Promise.all([
+            // 1. Send WhatsApp to patient with Meet link
+            gallaboxUtil
+              .sendOnlineMeetingLink(
+                patient.user.phone,
                 patient.user.full_name,
+                meetLink,
                 appointmentDate,
                 appointmentTime,
-                meetLink
-              ).catch((err) => logger.error("Failed to notify doctor:", err)),
+              )
+              .catch((err) =>
+                logger.error("Failed to send WhatsApp to patient:", err),
+              ),
 
-              // 4. Notify admins and managers
-              this.notifyAdminsAboutOnlineConsultation(
-                appointment.id,
-                patient.user.full_name,
-                clinicianName,
-                appointmentDate,
-                appointmentTime
-              ).catch((err) => logger.error("Failed to notify admins:", err)),
-            ]).catch((err) => {
-              logger.error("Error in notification promises:", err);
-            });
+            // 2. Send email to patient with Meet link (if email exists)
+            patient.user.email
+              ? emailUtil
+                  .sendOnlineConsultationLink(
+                    patient.user.email,
+                    patient.user.full_name,
+                    clinicianName,
+                    meetLink,
+                    appointmentDate,
+                    appointmentTime,
+                  )
+                  .catch((err) =>
+                    logger.error("Failed to send email to patient:", err),
+                  )
+              : Promise.resolve(),
 
-            logger.info(
-              `All notifications sent for online consultation ${appointment.id}`
-            );
-          }
+            // 3. Send WhatsApp to doctor with appointment details
+            this.notifyDoctorAboutOnlineConsultation(
+              appointment.clinician_id,
+              patient.user.full_name,
+              appointmentDate,
+              appointmentTime,
+              meetLink,
+            ).catch((err) => logger.error("Failed to notify doctor:", err)),
+
+            // 4. Notify admins and managers
+            this.notifyAdminsAboutOnlineConsultation(
+              appointment.id,
+              patient.user.full_name,
+              clinicianName,
+              appointmentDate,
+              appointmentTime,
+            ).catch((err) => logger.error("Failed to notify admins:", err)),
+          ]).catch((err) => {
+            logger.error("Error in notification promises:", err);
+          });
+
+          logger.info(
+            `All notifications sent for online consultation ${appointment.id}`,
+          );
         }
       } catch (error: any) {
         logger.error(
           `Failed to generate Meet link or send notifications for appointment ${appointment.id}:`,
-          error
+          error,
         );
         // Don't throw - appointment creation should succeed even if notifications fail
       }
@@ -294,9 +300,39 @@ export class AppointmentService {
       } catch (error: any) {
         logger.error(
           `Failed to send confirmation for appointment ${appointment.id}:`,
-          error
+          error,
         );
       }
+    }
+
+    // Generate and send payment link for all appointments (both ONLINE and IN_PERSON)
+    // This happens AFTER appointment creation and notifications
+    try {
+      logger.info(
+        `Generating payment link for appointment ${appointment.id}...`,
+      );
+
+      const paymentLinkResult = await paymentService.sendPaymentLink(
+        appointment.id,
+        patient.user.phone,
+        patient.user.full_name,
+      );
+
+      logger.info(
+        `✅ Payment link generated and sent for appointment ${appointment.id}: ${paymentLinkResult.paymentLink}`,
+      );
+
+      // Add payment link info to appointment response
+      (appointment as any).paymentLink = paymentLinkResult.paymentLink;
+      (appointment as any).paymentLinkSent = paymentLinkResult.whatsappSent;
+      (appointment as any).paymentAmount = paymentLinkResult.amount;
+    } catch (error: any) {
+      logger.error(
+        `Failed to generate payment link for appointment ${appointment.id}:`,
+        error,
+      );
+      // Don't throw - appointment creation should succeed even if payment link fails
+      (appointment as any).paymentLinkError = error.message;
     }
 
     return appointment;
@@ -333,7 +369,7 @@ export class AppointmentService {
   async listForCurrentPatient(authUser: JwtPayload) {
     if (authUser.userType !== "PATIENT") {
       throw ApiError.forbidden(
-        "Only patients can view their appointments here"
+        "Only patients can view their appointments here",
       );
     }
     const patient = await patientRepository.findByUserId(authUser.userId);
@@ -341,14 +377,14 @@ export class AppointmentService {
       throw ApiError.badRequest("Patient profile not found");
     }
     const appointments = await appointmentRepository.listAppointmentsForPatient(
-      patient.profile.id
+      patient.profile.id,
     );
     return appointments;
   }
 
   async listForClinician(clinicianId: number) {
     return await appointmentRepository.listAppointmentsForClinician(
-      clinicianId
+      clinicianId,
     );
   }
 
@@ -367,7 +403,7 @@ export class AppointmentService {
 
     // Get clinician profile
     const clinicianProfile = await this.getClinicianProfileByUserId(
-      authUser.userId
+      authUser.userId,
     );
 
     if (!clinicianProfile) {
@@ -397,7 +433,7 @@ export class AppointmentService {
         AND a.is_active = TRUE
       ORDER BY a.scheduled_start_at ASC
       `,
-      [clinicianProfile.id, todayStart, todayEnd]
+      [clinicianProfile.id, todayStart, todayEnd],
     );
 
     // Get upcoming appointments (future, not today)
@@ -419,7 +455,7 @@ export class AppointmentService {
       ORDER BY a.scheduled_start_at ASC
       LIMIT 50
       `,
-      [clinicianProfile.id, todayEnd]
+      [clinicianProfile.id, todayEnd],
     );
 
     // Get past appointments (completed or in the past)
@@ -443,7 +479,7 @@ export class AppointmentService {
       ORDER BY a.scheduled_start_at DESC
       LIMIT 50
       `,
-      [clinicianProfile.id, todayStart]
+      [clinicianProfile.id, todayStart],
     );
 
     return {
@@ -490,7 +526,7 @@ export class AppointmentService {
       dto.appointment_id,
       dto.new_status,
       authUser.userId,
-      dto.reason
+      dto.reason,
     );
 
     return updated;
@@ -502,11 +538,10 @@ export class AppointmentService {
   async cancelAppointment(
     appointmentId: number,
     reason: string,
-    authUser: JwtPayload
+    authUser: JwtPayload,
   ) {
-    const appointment = await appointmentRepository.getAppointmentById(
-      appointmentId
-    );
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
     if (!appointment) {
       throw ApiError.notFound("Appointment not found");
     }
@@ -523,7 +558,7 @@ export class AppointmentService {
       appointmentId,
       "CANCELLED",
       authUser.userId,
-      reason
+      reason,
     );
 
     // TODO: Send WhatsApp cancellation notification
@@ -537,13 +572,13 @@ export class AppointmentService {
   async checkClinicianAvailability(
     clinicianId: number,
     centreId: number,
-    date: string
+    date: string,
   ): Promise<TimeSlot[]> {
     // Get availability rules for the clinician on this day
     const availabilityRules =
       await appointmentRepository.getClinicianAvailabilityRules(
         clinicianId,
-        date
+        date,
       );
 
     if (availabilityRules.length === 0) {
@@ -573,7 +608,7 @@ export class AppointmentService {
           await appointmentRepository.checkSchedulingConflicts(
             clinicianId,
             slotStartDateTime,
-            slotEndDateTime
+            slotEndDateTime,
           );
 
         slots.push({
@@ -616,7 +651,7 @@ export class AppointmentService {
     patientName: string,
     appointmentDate: string,
     appointmentTime: string,
-    meetLink: string
+    meetLink: string,
   ): Promise<void> {
     try {
       // Get clinician's user details
@@ -627,7 +662,7 @@ export class AppointmentService {
         JOIN users u ON cp.user_id = u.id
         WHERE cp.id = $1 AND cp.is_active = TRUE
         `,
-        [clinicianId]
+        [clinicianId],
       );
 
       if (!clinician) {
@@ -663,7 +698,7 @@ Please join 5 minutes before the scheduled time.
           patientName,
           meetLink,
           appointmentDate,
-          appointmentTime
+          appointmentTime,
         );
         logger.info(`Email sent to doctor ${clinician.full_name}`);
       }
@@ -681,7 +716,7 @@ Please join 5 minutes before the scheduled time.
     patientName: string,
     clinicianName: string,
     appointmentDate: string,
-    appointmentTime: string
+    appointmentTime: string,
   ): Promise<void> {
     try {
       // Get all ADMIN and MANAGER users
@@ -695,7 +730,7 @@ Please join 5 minutes before the scheduled time.
           AND u.is_active = TRUE
           AND ur.is_active = TRUE
           AND u.phone IS NOT NULL
-        `
+        `,
       );
 
       if (admins.length === 0) {
@@ -720,13 +755,13 @@ Google Meet link has been sent to patient and doctor.
         gallaboxUtil
           .sendWhatsAppMessage(admin.phone, message)
           .catch((err) =>
-            logger.error(`Failed to notify admin ${admin.full_name}:`, err)
-          )
+            logger.error(`Failed to notify admin ${admin.full_name}:`, err),
+          ),
       );
 
       await Promise.all(notifications);
       logger.info(
-        `Notified ${admins.length} admins/managers about appointment ${appointmentId}`
+        `Notified ${admins.length} admins/managers about appointment ${appointmentId}`,
       );
     } catch (error: any) {
       logger.error("Failed to notify admins:", error);
