@@ -27,9 +27,8 @@ export class PatientService {
     }
 
     // Get appointments
-    const appointments = await patientRepository.getPatientAppointments(
-      patientId
-    );
+    const appointments =
+      await patientRepository.getPatientAppointments(patientId);
 
     // Get payments
     const payments = await patientRepository.getPatientPayments(patientId);
@@ -60,7 +59,7 @@ export class PatientService {
     const phoneExists = await patientRepository.checkPhoneExists(dto.phone);
     if (phoneExists) {
       throw ApiError.conflict(
-        "A patient with this phone number already exists"
+        "A patient with this phone number already exists",
       );
     }
 
@@ -69,7 +68,9 @@ export class PatientService {
       phone: dto.phone,
       full_name: dto.full_name,
       email: dto.email,
-      date_of_birth: dto.date_of_birth,
+      date_of_birth: dto.date_of_birth
+        ? new Date(dto.date_of_birth)
+        : undefined,
       gender: dto.gender,
       blood_group: dto.blood_group,
       emergency_contact_name: dto.emergency_contact_name,
@@ -130,7 +131,7 @@ export class PatientService {
     return await patientRepository.addMedicalNote(
       patientId,
       dto.note,
-      authorUserId
+      authorUserId,
     );
   }
 }

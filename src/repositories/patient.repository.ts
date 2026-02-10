@@ -460,6 +460,204 @@ class PatientRepository {
   }
 
   /**
+   * Find all patients with optional search filters
+   */
+  async findPatients(search?: string, phone?: string): Promise<any[]> {
+    const conditions: string[] = [
+      "u.user_type = 'PATIENT'",
+      "u.is_active = TRUE",
+    ];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (search) {
+      conditions.push(`u.full_name ILIKE $${paramIndex}`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (phone) {
+      conditions.push(`u.phone ILIKE $${paramIndex}`);
+      params.push(`%${phone}%`);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.full_name,
+        u.phone,
+        u.email,
+        u.username,
+        u.created_at,
+        pp.id as profile_id,
+        pp.date_of_birth,
+        pp.gender,
+        pp.blood_group,
+        pp.emergency_contact_name,
+        pp.emergency_contact_phone,
+        pp.notes,
+        (
+          SELECT COUNT(*) 
+          FROM appointments a 
+          WHERE a.patient_id = u.id 
+          AND a.scheduled_start_at > NOW()
+          AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
+        ) as upcoming_appointments_count,
+        (
+          SELECT COUNT(*) 
+          FROM appointments a 
+          WHERE a.patient_id = u.id 
+          AND a.scheduled_start_at <= NOW()
+        ) as past_appointments_count,
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', a.id,
+              'scheduled_start_at', a.scheduled_start_at,
+              'scheduled_end_at', a.scheduled_end_at,
+              'appointment_type', a.appointment_type,
+              'status', a.status,
+              'clinician_name', cu.full_name,
+              'centre_name', c.name
+            ) ORDER BY a.scheduled_start_at ASC
+          )
+          FROM appointments a
+          JOIN clinician_profiles cp ON a.clinician_id = cp.id
+          JOIN users cu ON cp.user_id = cu.id
+          JOIN centres c ON a.centre_id = c.id
+          WHERE a.patient_id = u.id 
+          AND a.scheduled_start_at > NOW()
+          AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
+          LIMIT 5
+        ) as upcoming_appointments
+      FROM users u
+      LEFT JOIN patient_profiles pp ON u.id = pp.user_id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY u.created_at DESC
+    `;
+
+    return await db.any(query, params);
+  }
+
+  /**
+   * Find patient by ID with complete details
+   */
+  async findPatientById(patientId: number): Promise<any | null> {
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.full_name,
+        u.phone,
+        u.email,
+        u.username,
+        u.created_at,
+        u.updated_at,
+        pp.id as profile_id,
+        pp.date_of_birth,
+        pp.gender,
+        pp.blood_group,
+        pp.emergency_contact_name,
+        pp.emergency_contact_phone,
+        pp.notes
+      FROM users u
+      LEFT JOIN patient_profiles pp ON u.id = pp.user_id
+      WHERE u.id = $1 AND u.user_type = 'PATIENT'
+    `;
+
+    return await db.oneOrNone(query, [patientId]);
+  }
+
+  /**
+   * Check if phone number already exists
+   */
+  async checkPhoneExists(phone: string): Promise<boolean> {
+    const result = await db.oneOrNone(
+      "SELECT id FROM users WHERE phone = $1 AND user_type = 'PATIENT'",
+      [phone],
+    );
+    return result !== null;
+  }
+
+  /**
+   * Create patient with user and profile
+   */
+  async createPatient(data: {
+    phone: string;
+    full_name: string;
+    email?: string;
+    date_of_birth?: Date;
+    gender?: string;
+    blood_group?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+  }): Promise<any> {
+    return await db.tx(async (t) => {
+      // Create user
+      const user = await t.one(
+        `INSERT INTO users (phone, full_name, email, user_type, is_active)
+         VALUES ($1, $2, $3, 'PATIENT', TRUE)
+         RETURNING *`,
+        [data.phone, data.full_name, data.email || null],
+      );
+
+      // Create patient profile
+      const profile = await t.one(
+        `INSERT INTO patient_profiles (
+          user_id, 
+          date_of_birth, 
+          gender, 
+          blood_group,
+          emergency_contact_name,
+          emergency_contact_phone,
+          is_active
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        RETURNING *`,
+        [
+          user.id,
+          data.date_of_birth || null,
+          data.gender || null,
+          data.blood_group || null,
+          data.emergency_contact_name || null,
+          data.emergency_contact_phone || null,
+        ],
+      );
+
+      return {
+        user_id: user.id,
+        full_name: user.full_name,
+        phone: user.phone,
+        email: user.email,
+        username: user.username,
+        created_at: user.created_at,
+        profile_id: profile.id,
+        date_of_birth: profile.date_of_birth,
+        gender: profile.gender,
+        blood_group: profile.blood_group,
+        emergency_contact_name: profile.emergency_contact_name,
+        emergency_contact_phone: profile.emergency_contact_phone,
+      };
+    });
+  }
+
+  /**
+   * Add medical note to patient
+   */
+  async addMedicalNote(
+    patientId: number,
+    note: string,
+    authorUserId: number,
+  ): Promise<any> {
+    return await db.one(
+      `INSERT INTO patient_medical_notes (patient_id, author_user_id, note_text, visibility)
+       VALUES ($1, $2, $3, 'INTERNAL')
+       RETURNING *`,
+      [patientId, authorUserId, note],
+    );
+  }
+
+  /**
    * Clean up expired OTPs and sessions (maintenance task)
    */
   async cleanupExpiredData(): Promise<void> {

@@ -158,68 +158,73 @@ export class StaffRepository {
     // Hash password
     const passwordHash = await hashPassword(data.password);
 
-    // Create user
-    const userQuery = `
-      INSERT INTO users (
-        full_name,
-        phone,
-        email,
-        username,
-        password_hash,
-        user_type,
-        is_active
-      )
-      VALUES ($1, $2, $3, $4, $5, 'STAFF', TRUE)
-      RETURNING *;
-    `;
+    // Use transaction to ensure data consistency
+    return await db.tx(async (t) => {
+      // Create user
+      const userQuery = `
+        INSERT INTO users (
+          full_name,
+          phone,
+          email,
+          username,
+          password_hash,
+          user_type,
+          is_active
+        )
+        VALUES ($1, $2, $3, $4, $5, 'STAFF', TRUE)
+        RETURNING *;
+      `;
 
-    const user = await db.one(userQuery, [
-      data.full_name,
-      data.phone,
-      data.email || null,
-      data.username || null,
-      passwordHash,
-    ]);
+      const user = await t.one(userQuery, [
+        data.full_name,
+        data.phone,
+        data.email || null,
+        data.username || null,
+        passwordHash,
+      ]);
 
-    // Create staff profile
-    const profileQuery = `
-      INSERT INTO staff_profiles (
-        user_id,
-        designation,
-        is_active
-      )
-      VALUES ($1, $2, TRUE)
-      RETURNING *;
-    `;
-
-    const profile = await db.one(profileQuery, [
-      user.id,
-      data.designation || null,
-    ]);
-
-    // Assign roles
-    for (const roleId of roleIds) {
-      await db.none(
-        `
-        INSERT INTO user_roles (user_id, role_id, is_active)
+      // Create staff profile
+      const profileQuery = `
+        INSERT INTO staff_profiles (
+          user_id,
+          designation,
+          is_active
+        )
         VALUES ($1, $2, TRUE)
-        `,
-        [user.id, roleId],
-      );
-    }
+        RETURNING *;
+      `;
 
-    // Assign centres
-    for (const centreId of centreIds) {
-      await db.none(
-        `
-        INSERT INTO centre_staff_assignments (centre_id, user_id, is_active)
-        VALUES ($1, $2, TRUE)
-        `,
-        [centreId, user.id],
-      );
-    }
+      const profile = await t.one(profileQuery, [
+        user.id,
+        data.designation || null,
+      ]);
 
-    return { user, profile };
+      // Assign roles
+      for (const roleId of roleIds) {
+        await t.none(
+          `
+          INSERT INTO user_roles (user_id, role_id, is_active)
+          VALUES ($1, $2, TRUE)
+          `,
+          [user.id, roleId],
+        );
+      }
+
+      // Assign centres with role_id
+      for (let i = 0; i < centreIds.length; i++) {
+        const centreId = centreIds[i];
+        const roleId = roleIds[i] || roleIds[0]; // Use corresponding role or first role
+        await t.none(
+          `
+          INSERT INTO centre_staff_assignments (centre_id, user_id, role_id, is_active)
+          VALUES ($1, $2, $3, TRUE)
+          `,
+          [centreId, user.id, roleId],
+        );
+      }
+
+      return { user, profile };
+    });
   }
 
   /**
@@ -279,15 +284,20 @@ export class StaffRepository {
    * Delete staff user (soft delete by setting is_active = false)
    */
   async deleteStaffUser(userId: number) {
-    await db.none("UPDATE users SET is_active = FALSE WHERE id = $1", [userId]);
-    await db.none(
-      "UPDATE staff_profiles SET is_active = FALSE WHERE user_id = $1",
-      [userId],
-    );
-    await db.none(
-      "UPDATE user_roles SET is_active = FALSE WHERE user_id = $1",
-      [userId],
-    );
+    // Use transaction to ensure data consistency
+    await db.tx(async (t) => {
+      await t.none("UPDATE users SET is_active = FALSE WHERE id = $1", [
+        userId,
+      ]);
+      await t.none(
+        "UPDATE staff_profiles SET is_active = FALSE WHERE user_id = $1",
+        [userId],
+      );
+      await t.none(
+        "UPDATE user_roles SET is_active = FALSE WHERE user_id = $1",
+        [userId],
+      );
+    });
   }
 
   async assignRole(
@@ -384,7 +394,7 @@ export class StaffRepository {
         u.email,
         cp.specialization,
         cp.registration_number,
-        cp.experience_years,
+        cp.years_of_experience,
         cp.consultation_fee,
         cp.primary_centre_id,
         c.name as centre_name,
@@ -442,65 +452,68 @@ export class StaffRepository {
    * Create clinician with clinician_profiles creation
    */
   async createClinician(data: CreateClinicianData) {
-    const query = `
-      INSERT INTO clinician_profiles (
-        user_id,
-        primary_centre_id,
+    // Use transaction to ensure data consistency
+    return await db.tx(async (t) => {
+      const query = `
+        INSERT INTO clinician_profiles (
+          user_id,
+          primary_centre_id,
+          specialization,
+          registration_number,
+          years_of_experience,
+          consultation_fee,
+          bio,
+          consultation_modes,
+          default_consultation_duration_minutes,
+          qualification,
+          expertise,
+          languages,
+          is_active
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE)
+        RETURNING *;
+      `;
+
+      // Convert arrays to JSONB
+      const specialization = JSON.stringify(data.specialization);
+      const consultationModes = data.consultation_modes
+        ? JSON.stringify(data.consultation_modes)
+        : null;
+      const qualification = data.qualification
+        ? JSON.stringify(data.qualification)
+        : "[]";
+      const expertise = data.expertise ? JSON.stringify(data.expertise) : "[]";
+      const languages = data.languages
+        ? JSON.stringify(data.languages)
+        : '["English"]';
+
+      const clinician = await t.one(query, [
+        data.user_id,
+        data.primary_centre_id,
         specialization,
-        registration_number,
-        years_of_experience,
-        consultation_fee,
-        bio,
-        consultation_modes,
-        default_consultation_duration_minutes,
+        data.registration_number || null,
+        data.years_of_experience || 0,
+        data.consultation_fee || 0,
+        data.bio || null,
+        consultationModes,
+        data.default_consultation_duration_minutes || 30,
         qualification,
         expertise,
         languages,
-        is_active
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE)
-      RETURNING *;
-    `;
+      ]);
 
-    // Convert arrays to JSONB
-    const specialization = JSON.stringify(data.specialization);
-    const consultationModes = data.consultation_modes
-      ? JSON.stringify(data.consultation_modes)
-      : null;
-    const qualification = data.qualification
-      ? JSON.stringify(data.qualification)
-      : "[]";
-    const expertise = data.expertise ? JSON.stringify(data.expertise) : "[]";
-    const languages = data.languages
-      ? JSON.stringify(data.languages)
-      : '["English"]';
+      // Update staff profile with profile picture if provided
+      if (data.profile_picture_url) {
+        await t.none(
+          `UPDATE staff_profiles 
+           SET profile_picture_url = $1, updated_at = NOW() 
+           WHERE user_id = $2`,
+          [data.profile_picture_url, data.user_id],
+        );
+      }
 
-    const clinician = await db.one(query, [
-      data.user_id,
-      data.primary_centre_id,
-      specialization,
-      data.registration_number || null,
-      data.years_of_experience || 0,
-      data.consultation_fee || 0,
-      data.bio || null,
-      consultationModes,
-      data.default_consultation_duration_minutes || 30,
-      qualification,
-      expertise,
-      languages,
-    ]);
-
-    // Update staff profile with profile picture if provided
-    if (data.profile_picture_url) {
-      await db.none(
-        `UPDATE staff_profiles 
-         SET profile_picture_url = $1, updated_at = NOW() 
-         WHERE user_id = $2`,
-        [data.profile_picture_url, data.user_id],
-      );
-    }
-
-    return clinician;
+      return clinician;
+    });
   }
 
   /**
@@ -652,41 +665,44 @@ export class StaffRepository {
     clinicianId: number,
     rules: AvailabilityRule[],
   ) {
-    // Delete existing rules
-    await db.none(
-      "DELETE FROM clinician_availability_rules WHERE clinician_id = $1",
-      [clinicianId],
-    );
-
-    // Insert new rules
-    for (const rule of rules) {
-      await db.none(
-        `
-        INSERT INTO clinician_availability_rules (
-          clinician_id,
-          centre_id,
-          day_of_week,
-          start_time,
-          end_time,
-          slot_duration_minutes,
-          mode,
-          is_active
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
-        `,
-        [
-          clinicianId,
-          rule.centre_id,
-          rule.day_of_week,
-          rule.start_time,
-          rule.end_time,
-          rule.slot_duration_minutes,
-          rule.consultation_mode,
-        ],
+    // Use transaction to ensure data consistency
+    return await db.tx(async (t) => {
+      // Delete existing rules
+      await t.none(
+        "DELETE FROM clinician_availability_rules WHERE clinician_id = $1",
+        [clinicianId],
       );
-    }
 
-    return this.findClinicianById(clinicianId);
+      // Insert new rules
+      for (const rule of rules) {
+        await t.none(
+          `
+          INSERT INTO clinician_availability_rules (
+            clinician_id,
+            centre_id,
+            day_of_week,
+            start_time,
+            end_time,
+            slot_duration_minutes,
+            mode,
+            is_active
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+          `,
+          [
+            clinicianId,
+            rule.centre_id,
+            rule.day_of_week,
+            rule.start_time,
+            rule.end_time,
+            rule.slot_duration_minutes,
+            rule.consultation_mode,
+          ],
+        );
+      }
+
+      return this.findClinicianById(clinicianId);
+    });
   }
 
   /**
