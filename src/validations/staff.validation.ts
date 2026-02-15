@@ -22,17 +22,17 @@ export interface UpdateStaffUserDto {
 export interface CreateClinicianDto {
   user_id: number;
   primary_centre_id: number;
-  specialization: string[]; // Changed to array
+  specialization: string[]; // Required array
+  qualification: string[]; // Required array
+  languages: string[]; // Required array
+  consultation_fee: number; // Required
   registration_number?: string;
-  years_of_experience?: number; // Fixed: match database column name
-  consultation_fee?: number;
+  years_of_experience?: number;
   bio?: string;
   consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
-  qualification?: string[]; // Changed to array
   expertise?: string[];
-  languages?: string[];
 }
 
 export interface UpdateClinicianDto {
@@ -194,21 +194,65 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     throw ApiError.badRequest("primary_centre_id is required");
   }
 
-  // Validate specialization as array
+  // Validate specialization as non-empty array
   if (
     !body.specialization ||
     !Array.isArray(body.specialization) ||
     body.specialization.length === 0
   ) {
     throw ApiError.badRequest(
-      "Specialization is required and must be a non-empty array",
+      "specialization is required and must be a non-empty array",
     );
+  }
+
+  // Validate qualification as non-empty array
+  if (
+    !body.qualification ||
+    !Array.isArray(body.qualification) ||
+    body.qualification.length === 0
+  ) {
+    throw ApiError.badRequest(
+      "qualification is required and must be a non-empty array",
+    );
+  }
+
+  // Validate languages as non-empty array
+  if (
+    !body.languages ||
+    !Array.isArray(body.languages) ||
+    body.languages.length === 0
+  ) {
+    throw ApiError.badRequest(
+      "languages is required and must be a non-empty array",
+    );
+  }
+
+  // Validate consultation_fee is positive
+  if (body.consultation_fee === undefined || body.consultation_fee === null) {
+    throw ApiError.badRequest("consultation_fee is required");
+  }
+  const consultationFee = Number(body.consultation_fee);
+  if (isNaN(consultationFee) || consultationFee <= 0) {
+    throw ApiError.badRequest("consultation_fee must be a positive number");
+  }
+
+  // Validate years_of_experience is non-negative
+  if (body.years_of_experience !== undefined) {
+    const yearsExp = Number(body.years_of_experience);
+    if (isNaN(yearsExp) || yearsExp < 0) {
+      throw ApiError.badRequest(
+        "years_of_experience must be a non-negative number",
+      );
+    }
   }
 
   const dto: CreateClinicianDto = {
     user_id: Number(body.user_id),
     primary_centre_id: Number(body.primary_centre_id),
     specialization: body.specialization.map((s: any) => String(s).trim()),
+    qualification: body.qualification.map((q: any) => String(q).trim()),
+    languages: body.languages.map((l: any) => String(l).trim()),
+    consultation_fee: consultationFee,
   };
 
   if (body.registration_number) {
@@ -219,25 +263,23 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.years_of_experience = Number(body.years_of_experience);
   }
 
-  if (body.consultation_fee !== undefined) {
-    dto.consultation_fee = Number(body.consultation_fee);
-  }
-
   if (body.bio) {
     dto.bio = String(body.bio).trim();
   }
 
+  // Validate consultation_modes contains only valid values
   if (body.consultation_modes) {
     if (!Array.isArray(body.consultation_modes)) {
       throw ApiError.badRequest("consultation_modes must be an array");
     }
     const validModes = ["IN_PERSON", "ONLINE"];
-    for (const mode of body.consultation_modes) {
-      if (!validModes.includes(mode)) {
-        throw ApiError.badRequest(
-          "consultation_modes must contain only IN_PERSON or ONLINE",
-        );
-      }
+    const invalidModes = body.consultation_modes.filter(
+      (mode: string) => !validModes.includes(mode),
+    );
+    if (invalidModes.length > 0) {
+      throw ApiError.badRequest(
+        `Invalid consultation modes: ${invalidModes.join(", ")}. Must be IN_PERSON or ONLINE`,
+      );
     }
     dto.consultation_modes = body.consultation_modes;
   }
@@ -256,26 +298,12 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.profile_picture_url = String(body.profile_picture_url).trim();
   }
 
-  // Validate qualification as array
-  if (body.qualification) {
-    if (!Array.isArray(body.qualification)) {
-      throw ApiError.badRequest("qualification must be an array");
-    }
-    dto.qualification = body.qualification.map((q: any) => String(q).trim());
-  }
-
+  // Validate expertise as array (optional)
   if (body.expertise) {
     if (!Array.isArray(body.expertise)) {
       throw ApiError.badRequest("expertise must be an array");
     }
     dto.expertise = body.expertise.map((e: any) => String(e).trim());
-  }
-
-  if (body.languages) {
-    if (!Array.isArray(body.languages)) {
-      throw ApiError.badRequest("languages must be an array");
-    }
-    dto.languages = body.languages.map((l: any) => String(l).trim());
   }
 
   return dto;

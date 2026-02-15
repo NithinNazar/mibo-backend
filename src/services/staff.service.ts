@@ -130,8 +130,13 @@ export class StaffService {
         full_name: body.full_name,
         phone: body.phone,
         email: body.email,
+        username: body.username,
         password: body.password,
-        designation: body.designation || body.specialization,
+        designation:
+          body.designation ||
+          (Array.isArray(body.specialization)
+            ? body.specialization[0]
+            : "Clinician"),
         role_ids: body.role_ids,
         centre_ids: body.primary_centre_id
           ? [body.primary_centre_id]
@@ -144,9 +149,7 @@ export class StaffService {
         (s: any) => s.phone === userDto.phone,
       );
       if (phoneExists) {
-        throw ApiError.conflict(
-          "A staff user with this phone number already exists",
-        );
+        throw ApiError.conflict("Phone number already registered");
       }
 
       // Check if username already exists (if provided)
@@ -155,7 +158,7 @@ export class StaffService {
           (s: any) => s.username === userDto.username,
         );
         if (usernameExists) {
-          throw ApiError.conflict("Username already exists");
+          throw ApiError.conflict("Username already taken");
         }
       }
 
@@ -189,7 +192,7 @@ export class StaffService {
       (c: any) => c.user_id === userId,
     );
     if (isAlreadyClinician) {
-      throw ApiError.conflict("This user is already registered as a clinician");
+      throw ApiError.conflict("User already registered as clinician");
     }
 
     // Validate clinician data
@@ -211,7 +214,8 @@ export class StaffService {
       languages: body.languages,
     });
 
-    return await staffRepository.createClinician({
+    // Create clinician
+    const clinician = await staffRepository.createClinician({
       user_id: clinicianDto.user_id,
       primary_centre_id: clinicianDto.primary_centre_id,
       specialization: clinicianDto.specialization,
@@ -227,6 +231,25 @@ export class StaffService {
       expertise: clinicianDto.expertise,
       languages: clinicianDto.languages,
     });
+
+    // If availability slots provided, create them
+    if (
+      body.availability_slots &&
+      Array.isArray(body.availability_slots) &&
+      body.availability_slots.length > 0
+    ) {
+      try {
+        await staffRepository.updateClinicianAvailability(
+          clinician.id,
+          body.availability_slots,
+        );
+      } catch (error: any) {
+        // Log error but don't fail clinician creation
+        console.error("Failed to create availability slots:", error.message);
+      }
+    }
+
+    return clinician;
   }
 
   /**

@@ -7,64 +7,6 @@ import { staffController } from "../controllers/staff.controller";
 const router = Router();
 
 /**
- * GET /api/users
- * Get staff users with filters
- * Query params: roleId, centreId
- * Roles: ADMIN only
- */
-router.get("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  staffController.getStaffUsers(req, res, next),
-);
-
-/**
- * GET /api/users/:id
- * Get staff user by ID
- * Roles: ADMIN only
- */
-router.get("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  staffController.getStaffById(req, res, next),
-);
-
-/**
- * POST /api/users
- * Create staff user
- * Roles: ADMIN only
- */
-router.post("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  staffController.createStaffUser(req, res, next),
-);
-
-/**
- * PUT /api/users/:id
- * Update staff user
- * Roles: ADMIN only
- */
-router.put("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  staffController.updateStaffUser(req, res, next),
-);
-
-/**
- * DELETE /api/users/:id
- * Delete staff user (soft delete)
- * Roles: ADMIN only
- */
-router.delete("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
-  staffController.deleteStaffUser(req, res, next),
-);
-
-/**
- * PATCH /api/users/:id/toggle-active
- * Toggle staff active status (for all staff types)
- * Roles: ADMIN, MANAGER
- */
-router.patch(
-  "/:id/toggle-active",
-  authMiddleware,
-  requireRole("ADMIN", "MANAGER"),
-  (req, res, next) => staffController.toggleStaffActive(req, res, next),
-);
-
-/**
  * GET /api/clinicians
  * Get clinicians with filters
  * Query params: centreId, specialization
@@ -199,6 +141,64 @@ router.post(
   authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) => staffController.createFrontDeskStaff(req, res, next),
+);
+
+/**
+ * GET /api/users
+ * Get staff users with filters
+ * Query params: roleId, centreId
+ * Roles: ADMIN only
+ */
+router.get("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
+  staffController.getStaffUsers(req, res, next),
+);
+
+/**
+ * POST /api/users
+ * Create staff user
+ * Roles: ADMIN only
+ */
+router.post("/", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
+  staffController.createStaffUser(req, res, next),
+);
+
+/**
+ * PATCH /api/users/:id/toggle-active
+ * Toggle staff active status (for all staff types)
+ * Roles: ADMIN, MANAGER
+ */
+router.patch(
+  "/:id/toggle-active",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER"),
+  (req, res, next) => staffController.toggleStaffActive(req, res, next),
+);
+
+/**
+ * GET /api/users/:id
+ * Get staff user by ID
+ * Roles: ADMIN only
+ */
+router.get("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
+  staffController.getStaffById(req, res, next),
+);
+
+/**
+ * PUT /api/users/:id
+ * Update staff user
+ * Roles: ADMIN only
+ */
+router.put("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
+  staffController.updateStaffUser(req, res, next),
+);
+
+/**
+ * DELETE /api/users/:id
+ * Delete staff user (soft delete)
+ * Roles: ADMIN only
+ */
+router.delete("/:id", authMiddleware, requireRole("ADMIN"), (req, res, next) =>
+  staffController.deleteStaffUser(req, res, next),
 );
 
 export default router;

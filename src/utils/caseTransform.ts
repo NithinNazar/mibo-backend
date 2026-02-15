@@ -69,6 +69,7 @@ export function transformToSnakeCase<T = any>(obj: any): T {
 /**
  * Transform specific clinician fields for API response
  * Handles both snake_case from DB and ensures camelCase output
+ * Ensures array fields remain as arrays
  */
 export function transformClinicianResponse(clinician: any): any {
   if (!clinician) return clinician;
@@ -100,6 +101,55 @@ export function transformClinicianResponse(clinician: any): any {
   }
   if (clinician.profile_picture_url !== undefined) {
     transformed.profilePictureUrl = clinician.profile_picture_url;
+  }
+
+  // Ensure array fields are properly handled
+  if (clinician.specialization !== undefined) {
+    transformed.specialization = Array.isArray(clinician.specialization)
+      ? clinician.specialization
+      : [];
+  }
+  if (clinician.qualification !== undefined) {
+    transformed.qualification = Array.isArray(clinician.qualification)
+      ? clinician.qualification
+      : [];
+  }
+  if (clinician.expertise !== undefined) {
+    transformed.expertise = Array.isArray(clinician.expertise)
+      ? clinician.expertise
+      : [];
+  }
+  if (clinician.languages !== undefined) {
+    transformed.languages = Array.isArray(clinician.languages)
+      ? clinician.languages
+      : [];
+  }
+
+  // Ensure user_id is mapped
+  if (clinician.user_id !== undefined) {
+    transformed.userId = clinician.user_id;
+  }
+
+  // Ensure is_active is mapped
+  if (clinician.is_active !== undefined) {
+    transformed.isActive = clinician.is_active;
+  }
+
+  // Ensure created_at and updated_at are mapped
+  if (clinician.created_at !== undefined) {
+    transformed.createdAt = clinician.created_at;
+  }
+  if (clinician.updated_at !== undefined) {
+    transformed.updatedAt = clinician.updated_at;
+  }
+
+  // Ensure availability_rules are mapped
+  if (clinician.availability_rules !== undefined) {
+    transformed.availabilityRules = Array.isArray(clinician.availability_rules)
+      ? clinician.availability_rules.map((rule: any) =>
+          transformToCamelCase(rule),
+        )
+      : [];
   }
 
   return transformed;
