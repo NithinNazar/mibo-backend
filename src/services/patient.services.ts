@@ -75,6 +75,7 @@ export class PatientService {
       blood_group: dto.blood_group,
       emergency_contact_name: dto.emergency_contact_name,
       emergency_contact_phone: dto.emergency_contact_phone,
+      notes: dto.notes,
     });
   }
 

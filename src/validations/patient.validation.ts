@@ -10,6 +10,7 @@ export interface CreatePatientDto {
   blood_group?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
+  notes?: string;
 }
 
 export interface UpdatePatientDto {
@@ -40,16 +41,16 @@ export function validateCreatePatient(body: any): CreatePatientDto {
   }
 
   if (
-    !body.full_name ||
-    typeof body.full_name !== "string" ||
-    body.full_name.trim().length === 0
+    !body.fullName ||
+    typeof body.fullName !== "string" ||
+    body.fullName.trim().length === 0
   ) {
     throw ApiError.badRequest("Full name is required");
   }
 
   const dto: CreatePatientDto = {
     phone: cleanPhone,
-    full_name: body.full_name.trim(),
+    full_name: body.fullName.trim(),
   };
 
   if (body.email) {
@@ -60,24 +61,28 @@ export function validateCreatePatient(body: any): CreatePatientDto {
     dto.email = body.email.trim();
   }
 
-  if (body.date_of_birth) {
-    dto.date_of_birth = String(body.date_of_birth);
+  if (body.dateOfBirth) {
+    dto.date_of_birth = String(body.dateOfBirth);
   }
 
   if (body.gender) {
     dto.gender = String(body.gender).trim();
   }
 
-  if (body.blood_group) {
-    dto.blood_group = String(body.blood_group).trim();
+  if (body.bloodGroup) {
+    dto.blood_group = String(body.bloodGroup).trim();
   }
 
-  if (body.emergency_contact_name) {
-    dto.emergency_contact_name = String(body.emergency_contact_name).trim();
+  if (body.emergencyContactName) {
+    dto.emergency_contact_name = String(body.emergencyContactName).trim();
   }
 
-  if (body.emergency_contact_phone) {
-    dto.emergency_contact_phone = String(body.emergency_contact_phone).trim();
+  if (body.emergencyContactPhone) {
+    dto.emergency_contact_phone = String(body.emergencyContactPhone).trim();
+  }
+
+  if (body.notes) {
+    dto.notes = String(body.notes).trim();
   }
 
   return dto;
@@ -86,24 +91,24 @@ export function validateCreatePatient(body: any): CreatePatientDto {
 export function validateUpdatePatient(body: any): UpdatePatientDto {
   const dto: UpdatePatientDto = {};
 
-  if (body.date_of_birth !== undefined) {
-    dto.date_of_birth = String(body.date_of_birth);
+  if (body.dateOfBirth !== undefined) {
+    dto.date_of_birth = String(body.dateOfBirth);
   }
 
   if (body.gender !== undefined) {
     dto.gender = String(body.gender).trim();
   }
 
-  if (body.blood_group !== undefined) {
-    dto.blood_group = String(body.blood_group).trim();
+  if (body.bloodGroup !== undefined) {
+    dto.blood_group = String(body.bloodGroup).trim();
   }
 
-  if (body.emergency_contact_name !== undefined) {
-    dto.emergency_contact_name = String(body.emergency_contact_name).trim();
+  if (body.emergencyContactName !== undefined) {
+    dto.emergency_contact_name = String(body.emergencyContactName).trim();
   }
 
-  if (body.emergency_contact_phone !== undefined) {
-    dto.emergency_contact_phone = String(body.emergency_contact_phone).trim();
+  if (body.emergencyContactPhone !== undefined) {
+    dto.emergency_contact_phone = String(body.emergencyContactPhone).trim();
   }
 
   if (body.notes !== undefined) {

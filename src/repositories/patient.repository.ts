@@ -182,7 +182,7 @@ class PatientRepository {
       emergency_contact_name?: string;
       emergency_contact_phone?: string;
     },
-  ): Promise<PatientProfile> {
+  ): Promise<any> {
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -215,12 +215,31 @@ class PatientRepository {
     updates.push(`updated_at = NOW()`);
     values.push(userId);
 
-    return await db.one(
+    const profile = await db.one(
       `UPDATE patient_profiles SET ${updates.join(
         ", ",
       )} WHERE user_id = $${paramIndex} RETURNING *`,
       values,
     );
+
+    const user = await this.findUserById(userId);
+    if (!user) throw new Error('User not found');
+
+    return {
+      userId: user.id,
+      fullName: user.full_name,
+      phone: user.phone,
+      email: user.email,
+      // username: user.username,
+      createdAt: user.created_at,
+      id: profile.id,
+      dateOfBirth: profile.date_of_birth,
+      gender: profile.gender,
+      bloodGroup: profile.blood_group,
+      emergencyContactName: profile.emergency_contact_name,
+      emergencyContactPhone: profile.emergency_contact_phone,
+      notes: profile.notes,
+    };
   }
 
   /**
@@ -537,7 +556,27 @@ class PatientRepository {
       ORDER BY u.created_at DESC
     `;
 
-    return await db.any(query, params);
+    const results = await db.any(query, params);
+    
+    return results.map(row => ({
+      userId: row.user_id,
+      fullName: row.full_name,
+      phone: row.phone,
+      email: row.email,
+      username: row.username,
+      createdAt: row.created_at,
+      id: row.id,
+      dateOfBirth: row.date_of_birth,
+      gender: row.gender,
+      bloodGroup: row.blood_group,
+      emergencyContactName: row.emergency_contact_name,
+      emergencyContactPhone: row.emergency_contact_phone,
+      notes: row.notes,
+      upcomingAppointmentsCount: row.upcoming_appointments_count,
+      pastAppointmentsCount: row.past_appointments_count,
+      upcomingAppointments: row.upcoming_appointments
+    }));
+
   }
 
   /**
@@ -591,6 +630,7 @@ class PatientRepository {
     blood_group?: string;
     emergency_contact_name?: string;
     emergency_contact_phone?: string;
+    notes?: string;
   }): Promise<any> {
     return await db.tx(async (t) => {
       // Create user
@@ -610,9 +650,10 @@ class PatientRepository {
           blood_group,
           emergency_contact_name,
           emergency_contact_phone,
+          notes,
           is_active
         )
-        VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
         RETURNING *`,
         [
           user.id,
@@ -621,22 +662,24 @@ class PatientRepository {
           data.blood_group || null,
           data.emergency_contact_name || null,
           data.emergency_contact_phone || null,
+          data.notes || null,
         ],
       );
 
       return {
-        user_id: user.id,
-        full_name: user.full_name,
+        userId: user.id,
+        fullName: user.full_name,
         phone: user.phone,
         email: user.email,
         username: user.username,
-        created_at: user.created_at,
-        profile_id: profile.id,
-        date_of_birth: profile.date_of_birth,
+        createdAt: user.created_at,
+        id: profile.id,
+        dateOfBirth: profile.date_of_birth,
         gender: profile.gender,
-        blood_group: profile.blood_group,
-        emergency_contact_name: profile.emergency_contact_name,
-        emergency_contact_phone: profile.emergency_contact_phone,
+        bloodGroup: profile.blood_group,
+        emergencyContactName: profile.emergency_contact_name,
+        emergencyContactPhone: profile.emergency_contact_phone,
+        notes: profile.notes,
       };
     });
   }
