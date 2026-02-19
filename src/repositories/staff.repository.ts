@@ -90,6 +90,7 @@ export class StaffRepository {
         u.username,
         sp.designation,
         sp.profile_picture_url,
+        sp.is_active AS "isActive",
         u.created_at
       FROM users u
       JOIN staff_profiles sp ON sp.user_id = u.id
