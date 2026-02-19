@@ -38,12 +38,13 @@ interface CreateClinicianData {
 }
 
 interface AvailabilityRule {
-  centre_id: number;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  slot_duration_minutes: number;
-  consultation_mode: string;
+  centre_id?: number; // Required: which centre this availability applies to
+  id?: string; // Optional ID for existing rules (used in updates)
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  consultationMode: string;
+  slotDurationMinutes?: number;
 }
 
 export class StaffRepository {
@@ -664,40 +665,31 @@ export class StaffRepository {
     clinicianId: number,
     rules: AvailabilityRule[],
     centreId: number,
-
   ) {
-    // Use transaction to ensure data consistency
     return await db.tx(async (t) => {
-      // Delete existing rules
       await t.none(
         "DELETE FROM clinician_availability_rules WHERE clinician_id = $1",
         [clinicianId],
       );
 
-      // Insert new rules
       for (const rule of rules) {
+        const [startHour, startMin] = rule.startTime.split(':').map(Number);
+        const [endHour, endMin] = rule.endTime.split(':').map(Number);
+        const slotDuration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+
         await t.none(
-          `
-          INSERT INTO clinician_availability_rules (
-            clinician_id,
-            centre_id,
-            day_of_week,
-            start_time,
-            end_time,
-            slot_duration_minutes,
-            mode,
-            is_active
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
-          `,
+          `INSERT INTO clinician_availability_rules (
+            clinician_id, centre_id, day_of_week, start_time, end_time,
+            slot_duration_minutes, mode, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
           [
             clinicianId,
             centreId,
-            rule.day_of_week,
-            rule.start_time,
-            rule.end_time,
-            rule.slot_duration_minutes,
-            rule.consultation_mode,
+            rule.dayOfWeek,
+            rule.startTime,
+            rule.endTime,
+            slotDuration,
+            rule.consultationMode,
           ],
         );
       }

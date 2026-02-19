@@ -51,12 +51,13 @@ export interface UpdateClinicianDto {
 }
 
 export interface AvailabilityRuleDto {
-  centre_id: number; // Required: which centre this availability applies to
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  slot_duration_minutes: number;
-  consultation_mode: string;
+  centre_id?: number; // Required: which centre this availability applies to
+  id?: string; // Optional ID for existing rules (used in updates)
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  slotDurationMinutes: number;
+  consultationMode: string;
 }
 
 export interface UpdateClinicianAvailabilityDto {
@@ -420,43 +421,43 @@ export function validateUpdateClinicianAvailability(
     }
 
     if (
-      rule.day_of_week === undefined ||
-      rule.day_of_week < 0 ||
-      rule.day_of_week > 6
+      rule.dayOfWeek === undefined ||
+      rule.dayOfWeek < 0 ||
+      rule.dayOfWeek > 6
     ) {
       throw ApiError.badRequest(
-        "day_of_week must be between 0 (Sunday) and 6 (Saturday)",
+        "dayOfWeek must be between 0 (Sunday) and 6 (Saturday)",
       );
     }
 
-    if (!rule.start_time || typeof rule.start_time !== "string") {
-      throw ApiError.badRequest("start_time is required (HH:MM format)");
+    if (!rule.startTime || typeof rule.startTime !== "string") {
+      throw ApiError.badRequest("startTime is required (HH:MM format)");
     }
 
-    if (!rule.end_time || typeof rule.end_time !== "string") {
-      throw ApiError.badRequest("end_time is required (HH:MM format)");
+    if (!rule.endTime || typeof rule.endTime !== "string") {
+      throw ApiError.badRequest("endTime is required (HH:MM format)");
     }
 
-    if (!rule.slot_duration_minutes || rule.slot_duration_minutes < 1) {
-      throw ApiError.badRequest("slot_duration_minutes must be at least 1");
+    if (!rule.slotDurationMinutes || rule.slotDurationMinutes < 1) {
+      throw ApiError.badRequest("slotDurationMinutes must be at least 1");
     }
 
     if (
-      !rule.consultation_mode ||
-      !["IN_PERSON", "ONLINE", "BOTH"].includes(rule.consultation_mode)
+      !rule.consultationMode ||
+      !["IN_PERSON", "ONLINE", "BOTH"].includes(rule.consultationMode)
     ) {
       throw ApiError.badRequest(
-        "consultation_mode must be IN_PERSON, ONLINE, or BOTH",
+        "consultationMode must be IN_PERSON, ONLINE, or BOTH",
       );
     }
 
     rules.push({
-      centre_id: Number(rule.centre_id),
-      day_of_week: Number(rule.day_of_week),
-      start_time: rule.start_time.trim(),
-      end_time: rule.end_time.trim(),
-      slot_duration_minutes: Number(rule.slot_duration_minutes),
-      consultation_mode: rule.consultation_mode,
+      // centre_id: Number(rule.centre_id),
+      dayOfWeek: Number(rule.dayOfWeek),
+      startTime: rule.startTime.trim(),
+      endTime: rule.endTime.trim(),
+      slotDurationMinutes: Number(rule.slotDurationMinutes),
+      consultationMode: rule.consultationMode,
     });
   }
 
