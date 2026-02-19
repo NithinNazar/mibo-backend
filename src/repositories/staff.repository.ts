@@ -370,7 +370,7 @@ export class StaffRepository {
    * Find clinicians with centre and specialization filters
    */
   async findClinicians(filters?: ClinicianFilters) {
-    const conditions: string[] = ["cp.is_active = TRUE", "u.is_active = TRUE"];
+    const conditions: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -386,25 +386,32 @@ export class StaffRepository {
       paramIndex++;
     }
 
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
     const query = `
       SELECT
-        cp.id,
-        cp.user_id,
+        cp.*,
         u.full_name,
         u.phone,
         u.email,
-        cp.specialization,
-        cp.registration_number,
-        cp.years_of_experience,
-        cp.consultation_fee,
-        cp.primary_centre_id,
-        c.name as centre_name,
-        sp.profile_picture_url
+        c.name as primary_centre_name,
+        sp.profile_picture_url,
+        sp.designation,
+        COALESCE(ar.availability_rules, '[]'::json) AS availability_rules
       FROM clinician_profiles cp
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
       LEFT JOIN staff_profiles sp ON u.id = sp.user_id
-      WHERE ${conditions.join(" AND ")}
+      LEFT JOIN (
+        SELECT clinician_id, json_agg(row_to_json(ar.*)) AS availability_rules
+        FROM (
+          SELECT *
+          FROM clinician_availability_rules
+          WHERE is_active = TRUE
+        ) ar
+        GROUP BY clinician_id
+      ) ar ON ar.clinician_id = cp.id
+      ${whereClause}
       ORDER BY u.full_name ASC
     `;
 
@@ -421,14 +428,14 @@ export class StaffRepository {
         u.full_name,
         u.phone,
         u.email,
-        c.name as centre_name,
+        c.name as primary_centre_name,
         c.city as centre_city,
         sp.profile_picture_url
       FROM clinician_profiles cp
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
       LEFT JOIN staff_profiles sp ON u.id = sp.user_id
-      WHERE cp.id = $1 AND cp.is_active = TRUE
+      WHERE cp.id = $1
     `;
 
     const clinician = await db.oneOrNone(query, [clinicianId]);
