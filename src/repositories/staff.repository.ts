@@ -108,8 +108,7 @@ export class StaffRepository {
       SELECT
         u.*,
         sp.designation,
-        sp.profile_picture_url,
-        sp.bio
+        sp.profile_picture_url
       FROM users u
       JOIN staff_profiles sp ON sp.user_id = u.id
       WHERE u.id = $1
@@ -422,8 +421,7 @@ export class StaffRepository {
         u.email,
         c.name as centre_name,
         c.city as centre_city,
-        sp.profile_picture_url,
-        sp.bio
+        sp.profile_picture_url
       FROM clinician_profiles cp
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
