@@ -242,6 +242,7 @@ export class StaffService {
         await staffRepository.updateClinicianAvailability(
           clinician.id,
           body.availability_slots,
+          clinician.primary_centre_id,
         );
       } catch (error: any) {
         // Log error but don't fail clinician creation
@@ -325,6 +326,7 @@ export class StaffService {
     return await staffRepository.updateClinicianAvailability(
       clinicianId,
       dto.availability_rules,
+      clinician.primary_centre_id,
     );
   }
 

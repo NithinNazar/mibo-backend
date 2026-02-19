@@ -663,6 +663,8 @@ export class StaffRepository {
   async updateClinicianAvailability(
     clinicianId: number,
     rules: AvailabilityRule[],
+    centreId: number,
+
   ) {
     // Use transaction to ensure data consistency
     return await db.tx(async (t) => {
@@ -690,7 +692,7 @@ export class StaffRepository {
           `,
           [
             clinicianId,
-            rule.centre_id,
+            centreId,
             rule.day_of_week,
             rule.start_time,
             rule.end_time,
