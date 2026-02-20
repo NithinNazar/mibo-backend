@@ -612,6 +612,114 @@ export class StaffService {
       },
     };
   }
+
+  /**
+   * Get available time slots for a clinician on a specific date
+   */
+  async getClinicianSlots(
+    clinicianId: number,
+    date: string,
+    centreId?: number,
+  ) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    // Get day of week from date (0 = Sunday, 6 = Saturday)
+    const dateObj = new Date(date + "T00:00:00Z");
+    const dayOfWeek = dateObj.getUTCDay();
+
+    // Get availability rules for this day
+    const availabilityRules = clinician.availabilityRules || [];
+    const rulesForDay = availabilityRules.filter(
+      (rule: any) =>
+        rule.day_of_week === dayOfWeek &&
+        rule.is_active &&
+        (!centreId || rule.centre_id === centreId),
+    );
+
+    if (rulesForDay.length === 0) {
+      return []; // No availability for this day
+    }
+
+    // Get booked appointments for this date
+    const bookedAppointments = await staffRepository.getBookedAppointments(
+      clinicianId,
+      date,
+      centreId,
+    );
+
+    // Generate time slots
+    const slots: any[] = [];
+
+    for (const rule of rulesForDay) {
+      const slotDuration = rule.slot_duration_minutes || 30;
+      const startTime = rule.start_time; // HH:mm format
+      const endTime = rule.end_time; // HH:mm format
+
+      // Parse start and end times
+      const [startHour, startMinute] = startTime.split(":").map(Number);
+      const [endHour, endMinute] = endTime.split(":").map(Number);
+
+      let currentHour = startHour;
+      let currentMinute = startMinute;
+
+      // Generate slots
+      while (
+        currentHour < endHour ||
+        (currentHour === endHour && currentMinute < endMinute)
+      ) {
+        const slotStartTime = `${String(currentHour).padStart(2, "0")}:${String(currentMinute).padStart(2, "0")}`;
+
+        // Calculate end time for this slot
+        let slotEndMinute = currentMinute + slotDuration;
+        let slotEndHour = currentHour;
+
+        if (slotEndMinute >= 60) {
+          slotEndHour += Math.floor(slotEndMinute / 60);
+          slotEndMinute = slotEndMinute % 60;
+        }
+
+        const slotEndTime = `${String(slotEndHour).padStart(2, "0")}:${String(slotEndMinute).padStart(2, "0")}`;
+
+        // Check if this slot is booked
+        const isBooked = bookedAppointments.some((apt: any) => {
+          const aptStart = new Date(apt.scheduled_start_at);
+          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+          return aptStartTime === slotStartTime;
+        });
+
+        // Find the appointment ID if booked
+        const bookedAppointment = bookedAppointments.find((apt: any) => {
+          const aptStart = new Date(apt.scheduled_start_at);
+          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+          return aptStartTime === slotStartTime;
+        });
+
+        slots.push({
+          clinicianId: clinicianId.toString(),
+          centreId: rule.centre_id.toString(),
+          date,
+          startTime: slotStartTime,
+          endTime: slotEndTime,
+          status: isBooked ? "booked" : "available",
+          appointmentId: bookedAppointment?.id?.toString(),
+          mode: rule.mode,
+        });
+
+        // Move to next slot
+        currentMinute += slotDuration;
+        if (currentMinute >= 60) {
+          currentHour += Math.floor(currentMinute / 60);
+          currentMinute = currentMinute % 60;
+        }
+      }
+    }
+
+    return slots;
+  }
 }
 
 export const staffService = new StaffService();

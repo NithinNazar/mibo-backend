@@ -295,6 +295,31 @@ export class StaffController {
       next(err);
     }
   }
+
+  /**
+   * Get clinician time slots for a specific date
+   */
+  async getClinicianSlots(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const date = req.query.date as string;
+      const centreId = req.query.centreId
+        ? Number(req.query.centreId)
+        : undefined;
+
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: "Date parameter is required (YYYY-MM-DD format)",
+        });
+      }
+
+      const slots = await staffService.getClinicianSlots(id, date, centreId);
+      return ok(res, slots);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const staffController = new StaffController();

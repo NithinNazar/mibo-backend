@@ -737,6 +737,42 @@ export class StaffRepository {
 
     return this.findStaffById(userId);
   }
+  /**
+   * Get booked appointments for a clinician on a specific date
+   */
+  async getBookedAppointments(
+    clinicianId: number,
+    date: string,
+    centreId?: number,
+  ) {
+    const conditions: string[] = [
+      "a.clinician_id = $1",
+      "DATE(a.scheduled_start_at) = $2",
+      "a.status NOT IN ('CANCELLED', 'NO_SHOW')",
+      "a.is_active = TRUE",
+    ];
+    const params: any[] = [clinicianId, date];
+    let paramIndex = 3;
+
+    if (centreId) {
+      conditions.push(`a.centre_id = ${paramIndex}`);
+      params.push(centreId);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT
+        a.id,
+        a.scheduled_start_at,
+        a.scheduled_end_at,
+        a.appointment_type as mode
+      FROM appointments a
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY a.scheduled_start_at ASC
+    `;
+
+    return db.any(query, params);
+  }
 }
 
 export const staffRepository = new StaffRepository();

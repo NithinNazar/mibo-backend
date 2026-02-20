@@ -96,6 +96,16 @@ router.get("/clinicians/:id/availability", (req, res, next) =>
 );
 
 /**
+ * GET /api/clinicians/:id/slots
+ * Get clinician time slots for a specific date
+ * Query params: date (YYYY-MM-DD), centreId (optional)
+ * Roles: PUBLIC (no authentication required)
+ */
+router.get("/clinicians/:id/slots", (req, res, next) =>
+  staffController.getClinicianSlots(req, res, next),
+);
+
+/**
  * POST /api/users/managers
  * Create manager staff
  * Roles: ADMIN only
