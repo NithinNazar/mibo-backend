@@ -99,15 +99,15 @@ export class StaffService {
   /**
    * Get clinicians with filtering
    */
-  async getClinicians(centreId?: number, specialization?: string) {
-    return await staffRepository.findClinicians({ centreId, specialization });
+  async getClinicians(centreId?: number, specialization?: string, isActive?: boolean) {
+    return await staffRepository.findClinicians({ centreId, specialization, isActive });
   }
 
   /**
    * Get clinician by ID with complete details
    */
-  async getClinicianById(clinicianId: number) {
-    const clinician = await staffRepository.findClinicianById(clinicianId);
+  async getClinicianById(clinicianId: number, isActive?: boolean) {
+    const clinician = await staffRepository.findClinicianById(clinicianId, isActive);
     if (!clinician) {
       throw ApiError.notFound("Clinician not found");
     }

@@ -85,11 +85,15 @@ export class StaffController {
       const specialization = req.query.specialization
         ? String(req.query.specialization)
         : undefined;
+      
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
 
       const clinicians = await staffService.getClinicians(
         centreId,
         specialization,
+        isActive,
       );
+      
 
       // Transform to camelCase for frontend
       const transformed = clinicians.map(transformClinicianResponse);
@@ -105,7 +109,8 @@ export class StaffController {
   async getClinicianById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const clinician = await staffService.getClinicianById(id);
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const clinician = await staffService.getClinicianById(id, isActive);
 
       // Transform to camelCase for frontend
       const transformed = transformClinicianResponse(clinician);

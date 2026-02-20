@@ -10,6 +10,7 @@ interface StaffFilters {
 interface ClinicianFilters {
   centreId?: number;
   specialization?: string;
+  isActive?: boolean;
 }
 
 interface CreateStaffData {
@@ -386,6 +387,12 @@ export class StaffRepository {
       paramIndex++;
     }
 
+    if (filters?.isActive !== undefined) {
+      conditions.push(`cp.is_active = $${paramIndex}`);
+      params.push(filters.isActive);
+      paramIndex++;
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const query = `
@@ -420,8 +427,16 @@ export class StaffRepository {
 
   /**
    * Find clinician by ID with availability rules
+   * @param clinicianId - Clinician ID
+   * @param isActive - Optional filter: undefined (all), true (active only), false (inactive only)
    */
-  async findClinicianById(clinicianId: number) {
+  async findClinicianById(clinicianId: number, isActive?: boolean) {
+    const conditions = ['cp.id = $1'];
+    
+    if (isActive !== undefined) {
+      conditions.push(`cp.is_active = ${isActive}`);
+    }
+
     const query = `
       SELECT
         cp.*,
@@ -435,7 +450,7 @@ export class StaffRepository {
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
       LEFT JOIN staff_profiles sp ON u.id = sp.user_id
-      WHERE cp.id = $1
+      WHERE ${conditions.join(' AND ')}
     `;
 
     const clinician = await db.oneOrNone(query, [clinicianId]);
