@@ -16,9 +16,9 @@ interface CentreResponse {
 
 export class CentreService {
   /**
-   * Get all centres with optional city filter
+   * Get all centres with optional city and isActive filters
    */
-  async getCentres(city?: string): Promise<CentreResponse[]> {
+  async getCentres(city?: string, isActive?: boolean): Promise<CentreResponse[]> {
     // Validate city if provided
     if (
       city &&
@@ -29,7 +29,7 @@ export class CentreService {
       );
     }
 
-    const centres = await centreRepository.findCentres(city?.toLowerCase());
+    const centres = await centreRepository.findCentres(city?.toLowerCase(), isActive);
 
     return centres.map((centre) => this.formatCentreResponse(centre));
   }
@@ -37,8 +37,8 @@ export class CentreService {
   /**
    * Get centre by ID
    */
-  async getCentreById(id: number): Promise<CentreResponse> {
-    const centre = await centreRepository.findCentreById(id);
+  async getCentreById(id: number, isActive?: boolean): Promise<CentreResponse> {
+    const centre = await centreRepository.findCentreById(id, isActive);
 
     if (!centre) {
       throw ApiError.notFound("Centre not found");

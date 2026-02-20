@@ -12,7 +12,8 @@ export class CentreController {
   async getCentres(req: Request, res: Response, next: NextFunction) {
     try {
       const city = req.query.city as string | undefined;
-      const centres = await centreService.getCentres(city);
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const centres = await centreService.getCentres(city, isActive);
       return ok(res, centres);
     } catch (err) {
       next(err);
@@ -29,8 +30,8 @@ export class CentreController {
       if (isNaN(id)) {
         throw ApiError.badRequest("Invalid centre ID");
       }
-
-      const centre = await centreService.getCentreById(id);
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const centre = await centreService.getCentreById(id, isActive);
       return ok(res, centre);
     } catch (err) {
       next(err);

@@ -18,16 +18,29 @@ export class CentreRepository {
   /**
    * Find all centres with optional city filter
    */
-  async findCentres(city?: string): Promise<Centre[]> {
-    const cityFilter = city
-      ? "WHERE city = $1 AND is_active = TRUE"
-      : "WHERE is_active = TRUE";
-    const params = city ? [city] : [];
+  async findCentres(city?: string, isActive?: boolean): Promise<Centre[]> {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (city) {
+      conditions.push(`city = $${paramIndex}`);
+      params.push(city);
+      paramIndex++;
+    }
+
+    if (isActive !== undefined) {
+      conditions.push(`is_active = $${paramIndex}`);
+      params.push(isActive);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const query = `
       SELECT *
       FROM centres
-      ${cityFilter}
+      ${whereClause}
       ORDER BY name ASC
     `;
 
@@ -37,14 +50,22 @@ export class CentreRepository {
   /**
    * Find centre by ID
    */
-  async findCentreById(id: number): Promise<Centre | null> {
+  async findCentreById(id: number, isActive?: boolean): Promise<Centre | null> {
+    const conditions = ['id = $1'];
+    const params: any[] = [id];
+
+    if (isActive !== undefined) {
+      conditions.push('is_active = $2');
+      params.push(isActive);
+    }
+
     const query = `
       SELECT *
       FROM centres
-      WHERE id = $1 AND is_active = TRUE
+      WHERE ${conditions.join(' AND ')}
     `;
 
-    return db.oneOrNone<Centre>(query, [id]);
+    return db.oneOrNone<Centre>(query, params);
   }
 
   /**
