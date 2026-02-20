@@ -637,7 +637,7 @@ export class StaffService {
       (rule: any) =>
         rule.day_of_week === dayOfWeek &&
         rule.is_active &&
-        (!centreId || rule.centre_id === centreId),
+        (!centreId || Number(rule.centre_id) === centreId),
     );
 
     if (rulesForDay.length === 0) {
