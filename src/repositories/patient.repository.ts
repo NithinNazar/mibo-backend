@@ -428,6 +428,27 @@ class PatientRepository {
     return { user, profile };
   }
 
+  async findByPatientId(patientId: number): Promise<{
+    user: User;
+    profile: PatientProfile;
+  } | null> {
+    const profile = await this.findPatientProfileByPatientId(patientId);
+    if (!profile) return null;
+    const user = await this.findUserById(profile.user_id);
+    if (!user) return null;
+
+    return { user, profile };
+  }
+
+   async findPatientProfileByPatientId(
+    patientId: number,
+  ): Promise<PatientProfile | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM patient_profiles WHERE id = $1",
+      [patientId],
+    );
+  }
+
   /**
    * Get patient appointments with details
    */
@@ -565,7 +586,7 @@ class PatientRepository {
       email: row.email,
       username: row.username,
       createdAt: row.created_at,
-      id: row.id,
+      id: row.profile_id,
       dateOfBirth: row.date_of_birth,
       gender: row.gender,
       bloodGroup: row.blood_group,

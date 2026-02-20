@@ -109,7 +109,7 @@ export class AppointmentService {
           "patient_id is required when staff creates an appointment",
         );
       }
-      const patient = await patientRepository.findByUserId(dto.patient_id);
+      const patient = await patientRepository.findByPatientId(dto.patient_id);
       if (!patient) {
         throw ApiError.badRequest("Target patient not found");
       }
@@ -121,7 +121,8 @@ export class AppointmentService {
     const end = new Date(start.getTime() + duration * 60000);
 
     // Check clinician availability rules
-    const dateStr = start.toISOString().split("T")[0];
+    // const dateStr = start.toISOString().split("T")[0];
+    const dateStr = start.toLocaleDateString("en-CA");
     const availabilityRules =
       await appointmentRepository.getClinicianAvailabilityRules(
         dto.clinician_id,
@@ -134,10 +135,22 @@ export class AppointmentService {
       );
     }
 
+    const toMinutes = (timeStr:string) => {
+  const [h, m] = timeStr.split(":").map(Number);
+  return h * 60 + m;
+};
     // Verify the requested time falls within availability rules
-    const requestedTime = start.toTimeString().substring(0, 5); // HH:MM format
+    // const requestedTime = start.toTimeString().substring(0, 5); // HH:MM format
+    const requestedTime = start.toLocaleTimeString("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+    const requestedMinutes = toMinutes(requestedTime);
     const isWithinAvailability = availabilityRules.some((rule) => {
-      return requestedTime >= rule.start_time && requestedTime < rule.end_time;
+      const startMinutes = toMinutes(rule.start_time);
+      const endMinutes = toMinutes(rule.end_time);
+      return requestedMinutes >= startMinutes && requestedMinutes < endMinutes;
     });
 
     if (!isWithinAvailability) {
