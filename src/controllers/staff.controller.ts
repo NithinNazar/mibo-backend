@@ -15,8 +15,9 @@ export class StaffController {
       const centreId = req.query.centreId
         ? Number(req.query.centreId)
         : undefined;
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
 
-      const staff = await staffService.getStaffUsers(roleId, centreId);
+      const staff = await staffService.getStaffUsers(roleId, centreId, isActive);
       return ok(res, staff);
     } catch (err) {
       next(err);
@@ -29,7 +30,8 @@ export class StaffController {
   async getStaffById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const staff = await staffService.getStaffById(id);
+      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const staff = await staffService.getStaffById(id, isActive);
       return ok(res, staff);
     } catch (err) {
       next(err);

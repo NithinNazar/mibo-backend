@@ -13,15 +13,15 @@ export class StaffService {
   /**
    * Get staff users with filtering
    */
-  async getStaffUsers(roleId?: number, centreId?: number) {
-    return await staffRepository.findStaffUsers({ roleId, centreId });
+  async getStaffUsers(roleId?: number, centreId?: number,isActive?: boolean) {
+    return await staffRepository.findStaffUsers({ roleId, centreId, isActive });
   }
 
   /**
    * Get staff by ID
    */
-  async getStaffById(userId: number) {
-    const staff = await staffRepository.findStaffById(userId);
+  async getStaffById(userId: number, isActive?: boolean) {
+    const staff = await staffRepository.findStaffById(userId, isActive);
     if (!staff) {
       throw ApiError.notFound("Staff user not found");
     }

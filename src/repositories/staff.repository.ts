@@ -5,6 +5,7 @@ import { hashPassword } from "../utils/password";
 interface StaffFilters {
   roleId?: number;
   centreId?: number;
+  isActive?: boolean;
 }
 
 interface ClinicianFilters {
@@ -53,13 +54,16 @@ export class StaffRepository {
    * Find staff users with role and centre filters
    */
   async findStaffUsers(filters?: StaffFilters) {
-    const conditions: string[] = [
-      "u.user_type = 'STAFF'",
-      "u.is_active = TRUE",
-      "sp.is_active = TRUE",
-    ];
+    const conditions: string[] = ["u.user_type = 'STAFF'"];
     const params: any[] = [];
     let paramIndex = 1;
+
+    if (filters?.isActive !== undefined) {
+      conditions.push(`u.is_active = $${paramIndex}`);
+      conditions.push(`sp.is_active = $${paramIndex}`);
+      params.push(filters.isActive);
+      paramIndex++;
+    }
 
     if (filters?.roleId) {
       conditions.push(`EXISTS (
@@ -106,7 +110,15 @@ export class StaffRepository {
   /**
    * Find staff by ID with roles and centre assignments
    */
-  async findStaffById(userId: number) {
+  async findStaffById(userId: number, isActive?: boolean) {
+    const conditions = ['u.id = $1', "u.user_type = 'STAFF'"];
+    const params: any[] = [userId];
+
+    if (isActive !== undefined) {
+      conditions.push('u.is_active = $2');
+      params.push(isActive);
+    }
+
     const query = `
       SELECT
         u.*,
@@ -114,18 +126,16 @@ export class StaffRepository {
         sp.profile_picture_url
       FROM users u
       JOIN staff_profiles sp ON sp.user_id = u.id
-      WHERE u.id = $1
-        AND u.user_type = 'STAFF'
-        AND u.is_active = TRUE
+      WHERE ${conditions.join(' AND ')}
     `;
 
-    const user = await db.oneOrNone(query, [userId]);
+    const user = await db.oneOrNone(query, params);
     if (!user) return null;
 
     // Get roles
     const roles = await db.any(
       `
-      SELECT r.id, r.name, ur.centre_id, ur.is_primary
+      SELECT r.id, r.name, ur.centre_id
       FROM user_roles ur
       JOIN roles r ON r.id = ur.role_id
       WHERE ur.user_id = $1 AND ur.is_active = TRUE
@@ -310,11 +320,11 @@ export class StaffRepository {
   ) {
     const result = await db.one(
       `
-      INSERT INTO user_roles (user_id, role_id, centre_id, is_primary, is_active)
-      VALUES ($1, $2, $3, $4, TRUE)
+      INSERT INTO user_roles (user_id, role_id, centre_id, is_active)
+      VALUES ($1, $2, $3, TRUE)
       RETURNING *;
       `,
-      [userId, roleId, centreId || null, isPrimary || false],
+      [userId, roleId, centreId || null],
     );
 
     return result;
