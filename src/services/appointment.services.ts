@@ -198,7 +198,7 @@ export class AppointmentService {
     });
 
     // Get patient and clinician details for notifications and payment
-    const patient = await patientRepository.findByUserId(patient_id);
+    const patient = await patientRepository.findByPatientId(patient_id);
     const clinician = await db.oneOrNone(
       `SELECT u.full_name FROM clinician_profiles cp 
        JOIN users u ON cp.user_id = u.id 

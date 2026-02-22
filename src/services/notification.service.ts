@@ -21,9 +21,7 @@ export class NotificationService {
       }
 
       // Get patient details
-      const patient = await patientRepository.findByUserId(
-        appointment.patient_id,
-      );
+      const patient = await patientRepository.findByPatientId(appointment.patient_id);
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
