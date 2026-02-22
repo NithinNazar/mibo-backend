@@ -122,7 +122,7 @@ export class AppointmentService {
 
     // Check clinician availability rules
     // const dateStr = start.toISOString().split("T")[0];
-    const dateStr = start.toLocaleDateString("en-CA");
+    const dateStr = start.toLocaleDateString("en-CA",{timeZone: "Asia/Kolkata"});
     const availabilityRules =
       await appointmentRepository.getClinicianAvailabilityRules(
         dto.clinician_id,
@@ -142,6 +142,7 @@ export class AppointmentService {
     // Verify the requested time falls within availability rules
     // const requestedTime = start.toTimeString().substring(0, 5); // HH:MM format
     const requestedTime = start.toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
