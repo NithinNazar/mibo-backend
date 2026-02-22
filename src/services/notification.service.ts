@@ -13,23 +13,24 @@ export class NotificationService {
   async sendAppointmentConfirmation(appointmentId: number) {
     try {
       // Get appointment details
-      const appointment = await appointmentRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await appointmentRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw ApiError.notFound("Appointment not found");
       }
 
       // Get patient details
-      const patient = await patientRepository.findByUserId(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
       // Format date and time
       const appointmentDate = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN", {
         weekday: "long",
         year: "numeric",
@@ -38,7 +39,7 @@ export class NotificationService {
       });
 
       const appointmentTime = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -51,23 +52,27 @@ export class NotificationService {
         appointment.clinician_name,
         appointmentDate,
         appointmentTime,
-        appointment.centre_name
+        appointment.centre_name,
       );
 
       // Log notification attempt
       await notificationRepository.createNotificationLog({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        notification_type: "APPOINTMENT_CONFIRMATION",
+        user_id: appointment.patient_id,
+        phone: patient.user.phone,
         channel: "WHATSAPP",
-        recipient_phone: patient.user.phone,
-        message_content: `Appointment confirmation for ${appointmentDate} at ${appointmentTime}`,
+        payload_data: {
+          appointment_id: appointmentId,
+          notification_type: "APPOINTMENT_CONFIRMATION",
+          message: `Appointment confirmation for ${appointmentDate} at ${appointmentTime}`,
+          clinician_name: appointment.clinician_name,
+          centre_name: appointment.centre_name,
+        },
         status: result.success ? "SENT" : "FAILED",
-        external_message_id: result.messageId,
+        error_message: result.success ? undefined : result.error,
       });
 
       logger.info(
-        `Appointment confirmation sent for appointment ${appointmentId}`
+        `Appointment confirmation sent for appointment ${appointmentId}`,
       );
 
       return result;
@@ -83,21 +88,22 @@ export class NotificationService {
    */
   async sendAppointmentRescheduled(appointmentId: number) {
     try {
-      const appointment = await appointmentRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await appointmentRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findByUserId(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
       const appointmentDate = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN", {
         weekday: "long",
         year: "numeric",
@@ -106,7 +112,7 @@ export class NotificationService {
       });
 
       const appointmentTime = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -127,18 +133,22 @@ Please arrive 10 minutes before your scheduled time.
 
       const result = await gallaboxUtil.sendWhatsAppMessage(
         patient.user.phone,
-        message
+        message,
       );
 
       await notificationRepository.createNotificationLog({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        notification_type: "APPOINTMENT_RESCHEDULED",
+        user_id: appointment.patient_id,
+        phone: patient.user.phone,
         channel: "WHATSAPP",
-        recipient_phone: patient.user.phone,
-        message_content: message,
+        payload_data: {
+          appointment_id: appointmentId,
+          notification_type: "APPOINTMENT_RESCHEDULED",
+          message: message,
+          clinician_name: appointment.clinician_name,
+          centre_name: appointment.centre_name,
+        },
         status: result.success ? "SENT" : "FAILED",
-        external_message_id: result.messageId,
+        error_message: result.success ? undefined : result.error,
       });
 
       return result;
@@ -153,25 +163,26 @@ Please arrive 10 minutes before your scheduled time.
    */
   async sendAppointmentCancelled(appointmentId: number, reason?: string) {
     try {
-      const appointment = await appointmentRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await appointmentRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findByUserId(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
       const appointmentDate = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN");
 
       const appointmentTime = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -182,18 +193,21 @@ Please arrive 10 minutes before your scheduled time.
         patient.user.full_name,
         appointmentDate,
         appointmentTime,
-        reason
+        reason,
       );
 
       await notificationRepository.createNotificationLog({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        notification_type: "APPOINTMENT_CANCELLED",
+        user_id: appointment.patient_id,
+        phone: patient.user.phone,
         channel: "WHATSAPP",
-        recipient_phone: patient.user.phone,
-        message_content: `Appointment cancelled for ${appointmentDate}`,
+        payload_data: {
+          appointment_id: appointmentId,
+          notification_type: "APPOINTMENT_CANCELLED",
+          message: `Appointment cancelled for ${appointmentDate}`,
+          reason: reason,
+        },
         status: result.success ? "SENT" : "FAILED",
-        external_message_id: result.messageId,
+        error_message: result.success ? undefined : result.error,
       });
 
       return result;
@@ -208,21 +222,22 @@ Please arrive 10 minutes before your scheduled time.
    */
   async sendAppointmentReminder(appointmentId: number) {
     try {
-      const appointment = await appointmentRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await appointmentRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findByUserId(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
       const appointmentDate = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN", {
         weekday: "long",
         year: "numeric",
@@ -231,7 +246,7 @@ Please arrive 10 minutes before your scheduled time.
       });
 
       const appointmentTime = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -243,18 +258,22 @@ Please arrive 10 minutes before your scheduled time.
         appointment.clinician_name,
         appointmentDate,
         appointmentTime,
-        appointment.centre_name
+        appointment.centre_name,
       );
 
       await notificationRepository.createNotificationLog({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        notification_type: "APPOINTMENT_REMINDER",
+        user_id: appointment.patient_id,
+        phone: patient.user.phone,
         channel: "WHATSAPP",
-        recipient_phone: patient.user.phone,
-        message_content: `Reminder for appointment on ${appointmentDate}`,
+        payload_data: {
+          appointment_id: appointmentId,
+          notification_type: "APPOINTMENT_REMINDER",
+          message: `Reminder for appointment on ${appointmentDate}`,
+          clinician_name: appointment.clinician_name,
+          centre_name: appointment.centre_name,
+        },
         status: result.success ? "SENT" : "FAILED",
-        external_message_id: result.messageId,
+        error_message: result.success ? undefined : result.error,
       });
 
       return result;
@@ -269,25 +288,26 @@ Please arrive 10 minutes before your scheduled time.
    */
   async sendOnlineMeetingLink(appointmentId: number, meetLink: string) {
     try {
-      const appointment = await appointmentRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await appointmentRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw ApiError.notFound("Appointment not found");
       }
 
-      const patient = await patientRepository.findByUserId(appointment.patient_id);
+      const patient = await patientRepository.findByUserId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
       const appointmentDate = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN");
 
       const appointmentTime = new Date(
-        appointment.scheduled_start_at
+        appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -298,18 +318,21 @@ Please arrive 10 minutes before your scheduled time.
         patient.user.full_name,
         meetLink,
         appointmentDate,
-        appointmentTime
+        appointmentTime,
       );
 
       await notificationRepository.createNotificationLog({
-        patient_id: appointment.patient_id,
-        appointment_id: appointmentId,
-        notification_type: "MEETING_LINK",
+        user_id: appointment.patient_id,
+        phone: patient.user.phone,
         channel: "WHATSAPP",
-        recipient_phone: patient.user.phone,
-        message_content: `Meeting link sent for ${appointmentDate}`,
+        payload_data: {
+          appointment_id: appointmentId,
+          notification_type: "MEETING_LINK",
+          message: `Meeting link sent for ${appointmentDate}`,
+          meet_link: meetLink,
+        },
         status: result.success ? "SENT" : "FAILED",
-        external_message_id: result.messageId,
+        error_message: result.success ? undefined : result.error,
       });
 
       return result;
@@ -323,9 +346,8 @@ Please arrive 10 minutes before your scheduled time.
    * Get notification history
    */
   async getNotificationHistory(filters?: {
-    patientId?: number;
-    appointmentId?: number;
-    notificationType?: string;
+    userId?: number;
+    channel?: string;
     status?: string;
     startDate?: string;
     endDate?: string;
@@ -338,9 +360,8 @@ Please arrive 10 minutes before your scheduled time.
    * Get notification by ID
    */
   async getNotificationById(notificationId: number) {
-    const notification = await notificationRepository.getNotificationById(
-      notificationId
-    );
+    const notification =
+      await notificationRepository.getNotificationById(notificationId);
 
     if (!notification) {
       throw ApiError.notFound("Notification not found");
@@ -355,7 +376,7 @@ Please arrive 10 minutes before your scheduled time.
   async getNotificationStats(startDate?: string, endDate?: string) {
     return await notificationRepository.getNotificationStats(
       startDate,
-      endDate
+      endDate,
     );
   }
 }

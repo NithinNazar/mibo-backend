@@ -2,20 +2,19 @@
 import { db } from "../config/db";
 
 interface CreateNotificationData {
-  patient_id: number;
-  appointment_id?: number;
-  notification_type: string;
+  user_id: number;
+  phone: string;
   channel: string;
-  recipient_phone: string;
-  message_content: string;
+  template_id?: number;
+  payload_data?: any;
   status: string;
-  external_message_id?: string;
+  error_message?: string;
 }
 
 interface UpdateNotificationStatusData {
   status: string;
-  delivered_at?: Date;
-  failure_reason?: string;
+  sent_at?: Date;
+  error_message?: string;
 }
 
 export class NotificationRepository {
@@ -24,30 +23,29 @@ export class NotificationRepository {
    */
   async createNotificationLog(data: CreateNotificationData) {
     const query = `
-      INSERT INTO notification_logs (
-        patient_id,
-        appointment_id,
-        notification_type,
+      INSERT INTO notifications (
+        user_id,
+        phone,
         channel,
-        recipient_phone,
-        message_content,
+        template_id,
+        payload_data,
         status,
-        external_message_id,
-        created_at
+        error_message,
+        created_at,
+        updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
       RETURNING *;
     `;
 
     return db.one(query, [
-      data.patient_id,
-      data.appointment_id || null,
-      data.notification_type,
+      data.user_id,
+      data.phone,
       data.channel,
-      data.recipient_phone,
-      data.message_content,
+      data.template_id || null,
+      data.payload_data ? JSON.stringify(data.payload_data) : null,
       data.status,
-      data.external_message_id || null,
+      data.error_message || null,
     ]);
   }
 
@@ -56,26 +54,26 @@ export class NotificationRepository {
    */
   async updateNotificationStatus(
     notificationId: number,
-    data: UpdateNotificationStatusData
+    data: UpdateNotificationStatusData,
   ) {
     const fields: string[] = ["status = $1", "updated_at = NOW()"];
     const values: any[] = [data.status];
     let paramIndex = 2;
 
-    if (data.delivered_at !== undefined) {
-      fields.push(`delivered_at = $${paramIndex}`);
-      values.push(data.delivered_at);
+    if (data.sent_at !== undefined) {
+      fields.push(`sent_at = $${paramIndex}`);
+      values.push(data.sent_at);
       paramIndex++;
     }
 
-    if (data.failure_reason !== undefined) {
-      fields.push(`failure_reason = $${paramIndex}`);
-      values.push(data.failure_reason);
+    if (data.error_message !== undefined) {
+      fields.push(`error_message = $${paramIndex}`);
+      values.push(data.error_message);
       paramIndex++;
     }
 
     const query = `
-      UPDATE notification_logs
+      UPDATE notifications
       SET ${fields.join(", ")}
       WHERE id = $${paramIndex}
       RETURNING *;
@@ -90,9 +88,8 @@ export class NotificationRepository {
    * Get notification history with filters
    */
   async getNotificationHistory(filters?: {
-    patientId?: number;
-    appointmentId?: number;
-    notificationType?: string;
+    userId?: number;
+    channel?: string;
     status?: string;
     startDate?: string;
     endDate?: string;
@@ -102,38 +99,32 @@ export class NotificationRepository {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (filters?.patientId) {
-      conditions.push(`nl.patient_id = $${paramIndex}`);
-      params.push(filters.patientId);
+    if (filters?.userId) {
+      conditions.push(`n.user_id = $${paramIndex}`);
+      params.push(filters.userId);
       paramIndex++;
     }
 
-    if (filters?.appointmentId) {
-      conditions.push(`nl.appointment_id = $${paramIndex}`);
-      params.push(filters.appointmentId);
-      paramIndex++;
-    }
-
-    if (filters?.notificationType) {
-      conditions.push(`nl.notification_type = $${paramIndex}`);
-      params.push(filters.notificationType);
+    if (filters?.channel) {
+      conditions.push(`n.channel = $${paramIndex}`);
+      params.push(filters.channel);
       paramIndex++;
     }
 
     if (filters?.status) {
-      conditions.push(`nl.status = $${paramIndex}`);
+      conditions.push(`n.status = $${paramIndex}`);
       params.push(filters.status);
       paramIndex++;
     }
 
     if (filters?.startDate) {
-      conditions.push(`nl.created_at >= $${paramIndex}`);
+      conditions.push(`n.created_at >= $${paramIndex}`);
       params.push(filters.startDate);
       paramIndex++;
     }
 
     if (filters?.endDate) {
-      conditions.push(`nl.created_at <= $${paramIndex}`);
+      conditions.push(`n.created_at <= $${paramIndex}`);
       params.push(filters.endDate);
       paramIndex++;
     }
@@ -142,13 +133,13 @@ export class NotificationRepository {
 
     const query = `
       SELECT
-        nl.*,
-        u.full_name as patient_name,
-        u.phone as patient_phone
-      FROM notification_logs nl
-      JOIN users u ON nl.patient_id = u.id
+        n.*,
+        u.full_name as user_name,
+        u.phone as user_phone
+      FROM notifications n
+      JOIN users u ON n.user_id = u.id
       WHERE ${conditions.join(" AND ")}
-      ORDER BY nl.created_at DESC
+      ORDER BY n.created_at DESC
       LIMIT ${limit}
     `;
 
@@ -161,44 +152,30 @@ export class NotificationRepository {
   async getNotificationById(notificationId: number) {
     const query = `
       SELECT
-        nl.*,
-        u.full_name as patient_name,
-        u.phone as patient_phone
-      FROM notification_logs nl
-      JOIN users u ON nl.patient_id = u.id
-      WHERE nl.id = $1
+        n.*,
+        u.full_name as user_name,
+        u.phone as user_phone
+      FROM notifications n
+      JOIN users u ON n.user_id = u.id
+      WHERE n.id = $1
     `;
 
     return db.oneOrNone(query, [notificationId]);
   }
 
   /**
-   * Get notifications by appointment
+   * Get notifications by user
    */
-  async getNotificationsByAppointment(appointmentId: number) {
+  async getNotificationsByUser(userId: number, limit: number = 50) {
     const query = `
       SELECT *
-      FROM notification_logs
-      WHERE appointment_id = $1
-      ORDER BY created_at DESC
-    `;
-
-    return db.any(query, [appointmentId]);
-  }
-
-  /**
-   * Get notifications by patient
-   */
-  async getNotificationsByPatient(patientId: number, limit: number = 50) {
-    const query = `
-      SELECT *
-      FROM notification_logs
-      WHERE patient_id = $1
+      FROM notifications
+      WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT $2
     `;
 
-    return db.any(query, [patientId, limit]);
+    return db.any(query, [userId, limit]);
   }
 
   /**
@@ -223,16 +200,50 @@ export class NotificationRepository {
 
     const query = `
       SELECT
-        notification_type,
+        channel,
         status,
         COUNT(*) as count
-      FROM notification_logs
+      FROM notifications
       WHERE ${conditions.join(" AND ")}
-      GROUP BY notification_type, status
-      ORDER BY notification_type, status
+      GROUP BY channel, status
+      ORDER BY channel, status
     `;
 
     return db.any(query, params);
+  }
+
+  /**
+   * Get notifications by phone number
+   */
+  async getNotificationsByPhone(phone: string, limit: number = 50) {
+    const query = `
+      SELECT *
+      FROM notifications
+      WHERE phone = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `;
+
+    return db.any(query, [phone, limit]);
+  }
+
+  /**
+   * Get notifications by template
+   */
+  async getNotificationsByTemplate(templateId: number, limit: number = 100) {
+    const query = `
+      SELECT
+        n.*,
+        u.full_name as user_name,
+        u.phone as user_phone
+      FROM notifications n
+      JOIN users u ON n.user_id = u.id
+      WHERE n.template_id = $1
+      ORDER BY n.created_at DESC
+      LIMIT $2
+    `;
+
+    return db.any(query, [templateId, limit]);
   }
 }
 

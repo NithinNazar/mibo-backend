@@ -3,9 +3,13 @@ import { db } from "../config/db";
 
 interface StoreMeetLinkData {
   appointment_id: number;
-  meet_link: string;
-  calendar_event_id?: string;
+  join_url: string;
+  host_url?: string;
+  meeting_id?: string;
   provider: string;
+  status?: string;
+  scheduled_start_at?: Date;
+  scheduled_end_at?: Date;
 }
 
 export class VideoRepository {
@@ -14,27 +18,38 @@ export class VideoRepository {
    */
   async storeMeetLink(data: StoreMeetLinkData) {
     const query = `
-      INSERT INTO appointment_video_links (
+      INSERT INTO video_sessions (
         appointment_id,
-        meet_link,
-        calendar_event_id,
         provider,
-        created_at
+        meeting_id,
+        join_url,
+        host_url,
+        status,
+        scheduled_start_at,
+        scheduled_end_at,
+        created_at,
+        updated_at
       )
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       ON CONFLICT (appointment_id)
       DO UPDATE SET
-        meet_link = EXCLUDED.meet_link,
-        calendar_event_id = EXCLUDED.calendar_event_id,
+        join_url = EXCLUDED.join_url,
+        host_url = EXCLUDED.host_url,
+        meeting_id = EXCLUDED.meeting_id,
+        status = EXCLUDED.status,
         updated_at = NOW()
       RETURNING *;
     `;
 
     return db.one(query, [
       data.appointment_id,
-      data.meet_link,
-      data.calendar_event_id || null,
       data.provider,
+      data.meeting_id || null,
+      data.join_url,
+      data.host_url || null,
+      data.status || "scheduled",
+      data.scheduled_start_at || null,
+      data.scheduled_end_at || null,
     ]);
   }
 
@@ -44,7 +59,7 @@ export class VideoRepository {
   async getMeetLinkByAppointment(appointmentId: number) {
     const query = `
       SELECT *
-      FROM appointment_video_links
+      FROM video_sessions
       WHERE appointment_id = $1
     `;
 
@@ -52,16 +67,16 @@ export class VideoRepository {
   }
 
   /**
-   * Get Meet link by calendar event ID
+   * Get Meet link by meeting ID
    */
-  async getMeetLinkByEventId(eventId: string) {
+  async getMeetLinkByMeetingId(meetingId: string) {
     const query = `
       SELECT *
-      FROM appointment_video_links
-      WHERE calendar_event_id = $1
+      FROM video_sessions
+      WHERE meeting_id = $1
     `;
 
-    return db.oneOrNone(query, [eventId]);
+    return db.oneOrNone(query, [meetingId]);
   }
 
   /**
@@ -69,19 +84,26 @@ export class VideoRepository {
    */
   async updateMeetLink(
     appointmentId: number,
-    meetLink: string,
-    eventId?: string
+    joinUrl: string,
+    hostUrl?: string,
+    meetingId?: string,
   ) {
     const query = `
-      UPDATE appointment_video_links
-      SET meet_link = $1,
-          calendar_event_id = $2,
+      UPDATE video_sessions
+      SET join_url = $1,
+          host_url = $2,
+          meeting_id = $3,
           updated_at = NOW()
-      WHERE appointment_id = $3
+      WHERE appointment_id = $4
       RETURNING *;
     `;
 
-    return db.one(query, [meetLink, eventId || null, appointmentId]);
+    return db.one(query, [
+      joinUrl,
+      hostUrl || null,
+      meetingId || null,
+      appointmentId,
+    ]);
   }
 
   /**
@@ -89,12 +111,27 @@ export class VideoRepository {
    */
   async deleteMeetLink(appointmentId: number) {
     const query = `
-      DELETE FROM appointment_video_links
+      DELETE FROM video_sessions
       WHERE appointment_id = $1
       RETURNING *;
     `;
 
     return db.oneOrNone(query, [appointmentId]);
+  }
+
+  /**
+   * Update video session status
+   */
+  async updateVideoSessionStatus(appointmentId: number, status: string) {
+    const query = `
+      UPDATE video_sessions
+      SET status = $1,
+          updated_at = NOW()
+      WHERE appointment_id = $2
+      RETURNING *;
+    `;
+
+    return db.one(query, [status, appointmentId]);
   }
 
   /**
@@ -104,44 +141,51 @@ export class VideoRepository {
     startDate?: string;
     endDate?: string;
     provider?: string;
+    status?: string;
   }) {
     const conditions: string[] = ["1=1"];
     const params: any[] = [];
     let paramIndex = 1;
 
     if (filters?.startDate) {
-      conditions.push(`avl.created_at >= $${paramIndex}`);
+      conditions.push(`vs.created_at >= $${paramIndex}`);
       params.push(filters.startDate);
       paramIndex++;
     }
 
     if (filters?.endDate) {
-      conditions.push(`avl.created_at <= $${paramIndex}`);
+      conditions.push(`vs.created_at <= $${paramIndex}`);
       params.push(filters.endDate);
       paramIndex++;
     }
 
     if (filters?.provider) {
-      conditions.push(`avl.provider = $${paramIndex}`);
+      conditions.push(`vs.provider = $${paramIndex}`);
       params.push(filters.provider);
+      paramIndex++;
+    }
+
+    if (filters?.status) {
+      conditions.push(`vs.status = $${paramIndex}`);
+      params.push(filters.status);
       paramIndex++;
     }
 
     const query = `
       SELECT
-        avl.*,
-        a.scheduled_start_at,
-        a.scheduled_end_at,
+        vs.*,
+        a.scheduled_start_at as appointment_start,
+        a.scheduled_end_at as appointment_end,
         a.status as appointment_status,
         u_patient.full_name as patient_name,
         u_clinician.full_name as clinician_name
-      FROM appointment_video_links avl
-      JOIN appointments a ON avl.appointment_id = a.id
+      FROM video_sessions vs
+      JOIN appointments a ON vs.appointment_id = a.id
       JOIN users u_patient ON a.patient_id = u_patient.id
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
       JOIN users u_clinician ON cp.user_id = u_clinician.id
       WHERE ${conditions.join(" AND ")}
-      ORDER BY a.scheduled_start_at DESC
+      ORDER BY vs.scheduled_start_at DESC
     `;
 
     return db.any(query, params);
