@@ -43,7 +43,7 @@ export class VideoService {
     }
 
     // Get patient details
-    const patient = await patientRepository.findByUserId(
+    const patient = await patientRepository.findByPatientId(
       appointment.patient_id,
     );
     if (!patient) {
