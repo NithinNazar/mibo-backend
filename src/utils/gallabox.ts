@@ -49,7 +49,7 @@ class GallaboxUtil {
       }
     } else {
       logger.warn(
-        "⚠ Gallabox not configured. Add GALLABOX_API_KEY and GALLABOX_API_SECRET to enable WhatsApp notifications."
+        "⚠ Gallabox not configured. Add GALLABOX_API_KEY and GALLABOX_API_SECRET to enable WhatsApp notifications.",
       );
     }
   }
@@ -59,6 +59,32 @@ class GallaboxUtil {
    */
   isReady(): boolean {
     return this.isConfigured && this.client !== null;
+  }
+
+  /**
+   * Format phone number for Gallabox
+   * Ensures phone number has country code (91 for India)
+   * @param phone Phone number (can be 10 digits or 12 digits with country code)
+   * @returns Formatted phone number with country code (e.g., 919876543210)
+   */
+  private formatPhoneNumber(phone: string): string {
+    // Remove all non-digit characters (+, spaces, dashes, etc.)
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    // If phone number is 10 digits, add country code 91
+    // If it's 12 digits and starts with 91, keep as is
+    // If it's 13 digits and starts with 91, remove leading digit (handles +91 case)
+    if (cleanPhone.length === 10) {
+      return `91${cleanPhone}`;
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+      return cleanPhone;
+    } else if (cleanPhone.length === 13 && cleanPhone.startsWith("91")) {
+      // Handle case where +91 was converted to 91 but kept an extra digit
+      return cleanPhone.substring(1);
+    }
+
+    // For any other case, return as is (shouldn't happen with valid Indian numbers)
+    return cleanPhone;
   }
 
   /**
@@ -73,7 +99,7 @@ class GallaboxUtil {
     }
 
     try {
-      const formattedPhone = phone.replace(/[+\s-]/g, "");
+      const formattedPhone = this.formatPhoneNumber(phone);
 
       // Correct format as per Gallabox support
       const payload = {
@@ -96,7 +122,7 @@ class GallaboxUtil {
 
       const response = await this.client!.post(
         "/devapi/messages/whatsapp",
-        payload
+        payload,
       );
 
       logger.info(`✅ WhatsApp OTP sent to ${formattedPhone}`);
@@ -132,8 +158,8 @@ class GallaboxUtil {
     }
 
     try {
-      // Format phone number (remove + and spaces)
-      const formattedPhone = to.replace(/[+\s-]/g, "");
+      // Format phone number (ensure country code is present)
+      const formattedPhone = this.formatPhoneNumber(to);
 
       // Try multiple payload formats for compatibility
       const payloads = [
@@ -176,11 +202,11 @@ class GallaboxUtil {
         try {
           const response = await this.client!.post(
             "/devapi/messages/whatsapp",
-            payloads[i]
+            payloads[i],
           );
 
           logger.info(
-            `WhatsApp message sent to ${formattedPhone} using format ${i + 1}`
+            `WhatsApp message sent to ${formattedPhone} using format ${i + 1}`,
           );
 
           return {
@@ -221,7 +247,7 @@ class GallaboxUtil {
   async sendTemplateMessage(
     to: string,
     templateName: string,
-    parameters: Record<string, string>
+    parameters: Record<string, string>,
   ): Promise<any> {
     if (!this.isReady()) {
       logger.warn("Gallabox not configured, skipping template message");
@@ -229,7 +255,7 @@ class GallaboxUtil {
     }
 
     try {
-      const formattedPhone = to.replace(/[+\s-]/g, "");
+      const formattedPhone = this.formatPhoneNumber(to);
 
       // Convert parameters to array format expected by WhatsApp
       const parameterArray = Object.values(parameters).map((value) => ({
@@ -263,11 +289,11 @@ class GallaboxUtil {
 
       const response = await this.client!.post(
         "/devapi/messages/whatsapp",
-        payload
+        payload,
       );
 
       logger.info(
-        `WhatsApp template message sent to ${formattedPhone}: ${templateName}`
+        `WhatsApp template message sent to ${formattedPhone}: ${templateName}`,
       );
 
       return {
@@ -297,7 +323,7 @@ class GallaboxUtil {
     clinicianName: string,
     appointmentDate: string,
     appointmentTime: string,
-    centreName: string
+    centreName: string,
   ): Promise<any> {
     if (!this.isReady()) {
       logger.warn("Gallabox not configured, skipping booking confirmation");
@@ -305,7 +331,7 @@ class GallaboxUtil {
     }
 
     try {
-      const formattedPhone = phone.replace(/[+\s-]/g, "");
+      const formattedPhone = this.formatPhoneNumber(phone);
 
       // Use the booking_conformation template
       const payload = {
@@ -333,11 +359,11 @@ class GallaboxUtil {
 
       const response = await this.client!.post(
         "/devapi/messages/whatsapp",
-        payload
+        payload,
       );
 
       logger.info(
-        `✅ WhatsApp booking confirmation sent to ${formattedPhone} using template`
+        `✅ WhatsApp booking confirmation sent to ${formattedPhone} using template`,
       );
 
       return {
@@ -380,17 +406,17 @@ The Mibo Care team`;
     clinicianName: string,
     appointmentDate: string,
     appointmentTime: string,
-    googleMeetLink: string
+    googleMeetLink: string,
   ): Promise<any> {
     if (!this.isReady()) {
       logger.warn(
-        "Gallabox not configured, skipping online consultation confirmation"
+        "Gallabox not configured, skipping online consultation confirmation",
       );
       return { success: false, message: "Gallabox not configured" };
     }
 
     try {
-      const formattedPhone = phone.replace(/[+\s-]/g, "");
+      const formattedPhone = this.formatPhoneNumber(phone);
 
       // Use the online_consultation_confirmation template
       const payload = {
@@ -417,11 +443,11 @@ The Mibo Care team`;
 
       const response = await this.client!.post(
         "/devapi/messages/whatsapp",
-        payload
+        payload,
       );
 
       logger.info(
-        `✅ WhatsApp online consultation confirmation sent to ${formattedPhone} with Google Meet link`
+        `✅ WhatsApp online consultation confirmation sent to ${formattedPhone} with Google Meet link`,
       );
 
       return {
@@ -436,7 +462,7 @@ The Mibo Care team`;
           error: error.message,
           response: error.response?.data,
           status: error.response?.status,
-        }
+        },
       );
 
       // Fallback to plain text message if template fails
@@ -469,7 +495,7 @@ The Mibo Care team`;
     clinicianName: string,
     appointmentDate: string,
     appointmentTime: string,
-    centreName: string
+    centreName: string,
   ): Promise<any> {
     const message = `Hi ${patientName},
 
@@ -495,7 +521,7 @@ Please arrive 10 minutes early.
     patientName: string,
     appointmentDate: string,
     appointmentTime: string,
-    reason?: string
+    reason?: string,
   ): Promise<any> {
     const message = `Hello ${patientName},
 
@@ -519,7 +545,7 @@ To reschedule, please contact us or book through our website.
     patientName: string,
     meetLink: string,
     appointmentDate: string,
-    appointmentTime: string
+    appointmentTime: string,
   ): Promise<any> {
     const message = `Hello ${patientName},
 
@@ -544,7 +570,7 @@ Please join 5 minutes before the scheduled time.
     patientName: string,
     amount: number,
     paymentId: string,
-    appointmentDate: string
+    appointmentDate: string,
   ): Promise<any> {
     const message = `Hello ${patientName},
 
@@ -569,7 +595,7 @@ Thank you for choosing Mibo Mental Hospital.`;
     paymentLink: string,
     clinicianName: string,
     appointmentDate: string,
-    appointmentTime: string
+    appointmentTime: string,
   ): Promise<any> {
     const message = `Hello ${patientName},
 
@@ -601,7 +627,7 @@ This link is valid for 24 hours.
     patientName: string,
     amount: number,
     paymentLink: string,
-    appointmentDate: string
+    appointmentDate: string,
   ): Promise<any> {
     const message = `Hi ${patientName},
 
