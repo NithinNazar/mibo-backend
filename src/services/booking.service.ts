@@ -18,7 +18,7 @@ class BookingService {
    */
   async createAppointment(
     userId: number,
-    bookingData: BookingData
+    bookingData: BookingData,
   ): Promise<{
     appointment: any;
     clinician: any;
@@ -27,16 +27,15 @@ class BookingService {
   }> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
 
       // Validate clinician
       const clinician = await bookingRepository.findClinicianById(
-        bookingData.clinicianId
+        bookingData.clinicianId,
       );
       if (!clinician) {
         throw new Error("Clinician not found or inactive");
@@ -44,7 +43,7 @@ class BookingService {
 
       // Validate centre
       const centre = await bookingRepository.findCentreById(
-        bookingData.centreId
+        bookingData.centreId,
       );
       if (!centre) {
         throw new Error("Centre not found or inactive");
@@ -60,13 +59,13 @@ class BookingService {
 
       // Parse date and time
       const appointmentDateTime = new Date(
-        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`
+        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`,
       );
 
       // Validate appointment is in the future
       if (appointmentDateTime <= new Date()) {
         throw new Error(
-          "Appointment must be scheduled for a future date and time"
+          "Appointment must be scheduled for a future date and time",
         );
       }
 
@@ -74,7 +73,7 @@ class BookingService {
       const durationMinutes =
         clinician.default_consultation_duration_minutes || 30;
       const endDateTime = new Date(
-        appointmentDateTime.getTime() + durationMinutes * 60000
+        appointmentDateTime.getTime() + durationMinutes * 60000,
       );
 
       // Check if time slot is available
@@ -82,12 +81,12 @@ class BookingService {
         bookingData.clinicianId,
         bookingData.centreId,
         appointmentDateTime,
-        endDateTime
+        endDateTime,
       );
 
       if (!isAvailable) {
         throw new Error(
-          "This time slot is not available. Please choose a different time."
+          "This time slot is not available. Please choose a different time.",
         );
       }
 
@@ -106,12 +105,12 @@ class BookingService {
       });
 
       logger.info(
-        `✅ Appointment created: ID ${appointment.id} for patient ${patient.id}`
+        `✅ Appointment created: ID ${appointment.id} for patient ${patient.id}`,
       );
 
       // Get full appointment details
       const fullAppointment = await bookingRepository.findAppointmentById(
-        appointment.id
+        appointment.id,
       );
 
       return {
@@ -158,13 +157,12 @@ class BookingService {
    */
   async getAppointmentDetails(
     appointmentId: number,
-    userId: number
+    userId: number,
   ): Promise<any> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -172,7 +170,7 @@ class BookingService {
       // Get appointment with patient verification
       const appointment = await bookingRepository.findAppointmentByIdAndPatient(
         appointmentId,
-        patient.id
+        patient.id,
       );
 
       if (!appointment) {
@@ -218,16 +216,15 @@ class BookingService {
       upcoming?: boolean;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<{
     appointments: any[];
     total: number;
   }> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -235,7 +232,7 @@ class BookingService {
       // Get appointments
       const appointments = await bookingRepository.getPatientAppointments(
         patient.id,
-        filters
+        filters,
       );
 
       // Format appointments
@@ -277,13 +274,12 @@ class BookingService {
   async cancelAppointment(
     appointmentId: number,
     userId: number,
-    reason?: string
+    reason?: string,
   ): Promise<void> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -291,7 +287,7 @@ class BookingService {
       // Verify appointment belongs to patient
       const appointment = await bookingRepository.findAppointmentByIdAndPatient(
         appointmentId,
-        patient.id
+        patient.id,
       );
 
       if (!appointment) {
@@ -315,7 +311,7 @@ class BookingService {
 
       if (hoursDifference < 24) {
         throw new Error(
-          "Cannot cancel appointment within 24 hours of scheduled time. Please contact support."
+          "Cannot cancel appointment within 24 hours of scheduled time. Please contact support.",
         );
       }
 
@@ -336,8 +332,8 @@ class BookingService {
   async getAvailableSlots(
     clinicianId: number,
     centreId: number,
-    date: string
-  ): Promise<string[]> {
+    date: string,
+  ): Promise<any[]> {
     try {
       // Validate clinician and centre
       const clinician = await bookingRepository.findClinicianById(clinicianId);
@@ -350,25 +346,20 @@ class BookingService {
         throw new Error("Centre not found");
       }
 
-      // Generate time slots (9 AM to 5 PM, every 30 minutes)
-      const slots: string[] = [];
-      const startHour = 9;
-      const endHour = 17;
-      const slotDuration = 30; // minutes
+      // Use appointment service to get real availability from database
+      const { appointmentService } = await import("./appointment.services");
+      const slots = await appointmentService.checkClinicianAvailability(
+        clinicianId,
+        centreId,
+        date,
+      );
 
-      for (let hour = startHour; hour < endHour; hour++) {
-        for (let minute = 0; minute < 60; minute += slotDuration) {
-          const timeString = `${hour.toString().padStart(2, "0")}:${minute
-            .toString()
-            .padStart(2, "0")}`;
-          slots.push(timeString);
-        }
-      }
-
-      // TODO: Filter out booked slots by checking appointments table
-      // For now, return all slots
-
-      return slots;
+      // Transform to match expected format
+      return slots.map((slot) => ({
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        available: slot.available,
+      }));
     } catch (error: any) {
       logger.error("Error getting available slots:", error);
       throw error;
@@ -391,7 +382,7 @@ class BookingService {
       appointmentDate: string; // YYYY-MM-DD
       appointmentTime: string; // HH:MM
       notes?: string;
-    }
+    },
   ): Promise<{
     appointment: any;
     patient: any;
@@ -403,7 +394,7 @@ class BookingService {
     try {
       // Validate clinician
       const clinician = await bookingRepository.findClinicianById(
-        bookingData.clinicianId
+        bookingData.clinicianId,
       );
       if (!clinician) {
         throw new Error("Clinician not found or inactive");
@@ -411,7 +402,7 @@ class BookingService {
 
       // Validate centre
       const centre = await bookingRepository.findCentreById(
-        bookingData.centreId
+        bookingData.centreId,
       );
       if (!centre) {
         throw new Error("Centre not found or inactive");
@@ -419,7 +410,7 @@ class BookingService {
 
       // Find or create patient by phone
       let patient = await patientRepository.findUserByPhone(
-        bookingData.patientPhone
+        bookingData.patientPhone,
       );
 
       let patientProfile;
@@ -427,45 +418,45 @@ class BookingService {
       if (!patient) {
         // Create new patient
         logger.info(
-          `Creating new patient: ${bookingData.patientName} (${bookingData.patientPhone})`
+          `Creating new patient: ${bookingData.patientName} (${bookingData.patientPhone})`,
         );
 
         // Create user first
         patient = await patientRepository.createUser(
           bookingData.patientPhone,
           bookingData.patientName,
-          bookingData.patientEmail
+          bookingData.patientEmail,
         );
 
         // Create patient profile
         patientProfile = await patientRepository.createPatientProfile(
-          patient.id
+          patient.id,
         );
 
         logger.info(`✅ New patient created: ID ${patientProfile.id}`);
       } else {
         // Get existing patient profile
         patientProfile = await patientRepository.findPatientProfileByUserId(
-          patient.id
+          patient.id,
         );
 
         if (!patientProfile) {
           // Create profile if it doesn't exist
           patientProfile = await patientRepository.createPatientProfile(
-            patient.id
+            patient.id,
           );
         }
       }
 
       // Parse date and time
       const appointmentDateTime = new Date(
-        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`
+        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`,
       );
 
       // Validate appointment is in the future
       if (appointmentDateTime <= new Date()) {
         throw new Error(
-          "Appointment must be scheduled for a future date and time"
+          "Appointment must be scheduled for a future date and time",
         );
       }
 
@@ -473,7 +464,7 @@ class BookingService {
       const durationMinutes =
         clinician.default_consultation_duration_minutes || 30;
       const endDateTime = new Date(
-        appointmentDateTime.getTime() + durationMinutes * 60000
+        appointmentDateTime.getTime() + durationMinutes * 60000,
       );
 
       // Check if time slot is available
@@ -481,12 +472,12 @@ class BookingService {
         bookingData.clinicianId,
         bookingData.centreId,
         appointmentDateTime,
-        endDateTime
+        endDateTime,
       );
 
       if (!isAvailable) {
         throw new Error(
-          "This time slot is not available. Please choose a different time."
+          "This time slot is not available. Please choose a different time.",
         );
       }
 
@@ -505,12 +496,12 @@ class BookingService {
       });
 
       logger.info(
-        `✅ Appointment booked by front desk: ID ${appointment.id} for patient ${patientProfile.id}`
+        `✅ Appointment booked by front desk: ID ${appointment.id} for patient ${patientProfile.id}`,
       );
 
       // Get full appointment details
       const fullAppointment = await bookingRepository.findAppointmentById(
-        appointment.id
+        appointment.id,
       );
 
       return {

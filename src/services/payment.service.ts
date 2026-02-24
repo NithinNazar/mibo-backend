@@ -13,7 +13,7 @@ class PaymentService {
    */
   async createPaymentOrder(
     userId: number,
-    appointmentId: number
+    appointmentId: number,
   ): Promise<{
     orderId: string;
     amount: number;
@@ -23,9 +23,8 @@ class PaymentService {
   }> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -33,7 +32,7 @@ class PaymentService {
       // Get appointment details
       const appointment = await bookingRepository.findAppointmentByIdAndPatient(
         appointmentId,
-        patient.id
+        patient.id,
       );
 
       if (!appointment) {
@@ -61,7 +60,7 @@ class PaymentService {
           appointmentId: appointmentId.toString(),
           patientId: patient.id.toString(),
           clinicianName: appointment.clinician_name,
-        }
+        },
       );
 
       // Store payment record in database
@@ -74,7 +73,7 @@ class PaymentService {
       });
 
       logger.info(
-        `✅ Payment order created: ${razorpayOrder.id} for appointment ${appointmentId}`
+        `✅ Payment order created: ${razorpayOrder.id} for appointment ${appointmentId}`,
       );
 
       return {
@@ -106,7 +105,7 @@ class PaymentService {
       razorpayOrderId: string;
       razorpayPaymentId: string;
       razorpaySignature: string;
-    }
+    },
   ): Promise<{
     success: boolean;
     appointment: any;
@@ -114,9 +113,8 @@ class PaymentService {
   }> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -124,7 +122,7 @@ class PaymentService {
       // Verify appointment belongs to patient
       const appointment = await bookingRepository.findAppointmentByIdAndPatient(
         data.appointmentId,
-        patient.id
+        patient.id,
       );
 
       if (!appointment) {
@@ -135,7 +133,7 @@ class PaymentService {
       const isValidSignature = razorpayUtil.verifyPaymentSignature(
         data.razorpayOrderId,
         data.razorpayPaymentId,
-        data.razorpaySignature
+        data.razorpaySignature,
       );
 
       if (!isValidSignature) {
@@ -143,7 +141,7 @@ class PaymentService {
         await paymentRepository.updatePaymentFailed(
           data.razorpayOrderId,
           "SIGNATURE_VERIFICATION_FAILED",
-          "Payment signature verification failed"
+          "Payment signature verification failed",
         );
 
         throw new Error("Payment verification failed. Invalid signature.");
@@ -151,7 +149,7 @@ class PaymentService {
 
       // Fetch payment details from Razorpay
       const razorpayPayment = await razorpayUtil.fetchPayment(
-        data.razorpayPaymentId
+        data.razorpayPaymentId,
       );
 
       // Update payment status to success
@@ -164,17 +162,17 @@ class PaymentService {
           bank: razorpayPayment.bank,
           wallet: razorpayPayment.wallet,
           vpa: razorpayPayment.vpa,
-        }
+        },
       );
 
       // Update appointment status to CONFIRMED
       await bookingRepository.updateAppointmentStatus(
         data.appointmentId,
-        "CONFIRMED"
+        "CONFIRMED",
       );
 
       logger.info(
-        `✅ Payment verified: ${data.razorpayPaymentId} for appointment ${data.appointmentId}`
+        `✅ Payment verified: ${data.razorpayPaymentId} for appointment ${data.appointmentId}`,
       );
 
       // Send WhatsApp confirmation
@@ -182,7 +180,7 @@ class PaymentService {
 
       // Get updated appointment details
       const updatedAppointment = await bookingRepository.findAppointmentById(
-        data.appointmentId
+        data.appointmentId,
       );
 
       return {
@@ -214,7 +212,7 @@ class PaymentService {
   private async sendPaymentConfirmation(
     appointment: any,
     payment: any,
-    patient: any
+    patient: any,
   ): Promise<void> {
     try {
       // Get user details
@@ -243,7 +241,7 @@ class PaymentService {
         // Create Google Meet link for online appointments
         try {
           logger.info(
-            `📹 Creating Google Meet link for online appointment ${appointment.id}`
+            `📹 Creating Google Meet link for online appointment ${appointment.id}`,
           );
 
           // Extract date and time for Google Meet
@@ -266,11 +264,11 @@ class PaymentService {
           await bookingRepository.updateAppointmentGoogleMeet(
             appointment.id,
             meetingDetails.meetLink,
-            meetingDetails.eventId
+            meetingDetails.eventId,
           );
 
           logger.info(
-            `✅ Google Meet link created: ${meetingDetails.meetLink}`
+            `✅ Google Meet link created: ${meetingDetails.meetLink}`,
           );
 
           // Send online consultation confirmation with Google Meet link
@@ -281,11 +279,11 @@ class PaymentService {
               appointment.clinician_name,
               dateStr,
               timeStr,
-              meetingDetails.meetLink
+              meetingDetails.meetLink,
             );
 
             logger.info(
-              `✅ WhatsApp online consultation confirmation sent to ${user.phone} with Google Meet link`
+              `✅ WhatsApp online consultation confirmation sent to ${user.phone} with Google Meet link`,
             );
           }
         } catch (meetError: any) {
@@ -298,7 +296,7 @@ class PaymentService {
               appointment.clinician_name,
               dateStr,
               timeStr,
-              appointment.centre_name
+              appointment.centre_name,
             );
           }
         }
@@ -311,11 +309,11 @@ class PaymentService {
             appointment.clinician_name,
             dateStr,
             timeStr,
-            appointment.centre_name
+            appointment.centre_name,
           );
 
           logger.info(
-            `✅ WhatsApp confirmation sent to ${user.phone} for appointment ${appointment.id}`
+            `✅ WhatsApp confirmation sent to ${user.phone} for appointment ${appointment.id}`,
           );
         }
       }
@@ -341,7 +339,7 @@ class PaymentService {
       // Verify webhook signature
       const isValid = razorpayUtil.verifyWebhookSignature(
         JSON.stringify(payload),
-        signature
+        signature,
       );
 
       if (!isValid) {
@@ -371,11 +369,11 @@ class PaymentService {
           // Update appointment status
           await bookingRepository.updateAppointmentStatus(
             payment.appointment_id,
-            "CONFIRMED"
+            "CONFIRMED",
           );
 
           logger.info(
-            `✅ Webhook processed: Payment ${paymentId} captured for appointment ${payment.appointment_id}`
+            `✅ Webhook processed: Payment ${paymentId} captured for appointment ${payment.appointment_id}`,
           );
         }
       } else if (event === "payment.failed" && paymentEntity) {
@@ -385,11 +383,11 @@ class PaymentService {
         await paymentRepository.updatePaymentFailed(
           orderId,
           paymentEntity.error_code,
-          paymentEntity.error_description
+          paymentEntity.error_description,
         );
 
         logger.info(
-          `⚠️ Webhook processed: Payment failed for order ${orderId}`
+          `⚠️ Webhook processed: Payment failed for order ${orderId}`,
         );
       }
 
@@ -407,17 +405,15 @@ class PaymentService {
   async getPaymentDetails(userId: number, appointmentId: number): Promise<any> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
 
       // Get payment
-      const payment = await paymentRepository.findPaymentByAppointmentId(
-        appointmentId
-      );
+      const payment =
+        await paymentRepository.findPaymentByAppointmentId(appointmentId);
 
       if (!payment) {
         throw new Error("Payment not found");
@@ -453,13 +449,12 @@ class PaymentService {
       status?: string;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<any[]> {
     try {
       // Get patient profile
-      const patient = await patientRepository.findPatientProfileByUserId(
-        userId
-      );
+      const patient =
+        await patientRepository.findPatientProfileByUserId(userId);
       if (!patient) {
         throw new Error("Patient profile not found");
       }
@@ -467,7 +462,7 @@ class PaymentService {
       // Get payments
       const payments = await paymentRepository.getPatientPayments(
         patient.id,
-        filters
+        filters,
       );
 
       return payments.map((payment: any) => ({
@@ -495,7 +490,7 @@ class PaymentService {
   async sendPaymentLink(
     appointmentId: number,
     patientPhone: string,
-    patientName: string
+    patientName: string,
   ): Promise<{
     paymentLink: string;
     whatsappSent: boolean;
@@ -504,9 +499,8 @@ class PaymentService {
   }> {
     try {
       // Get appointment details
-      const appointment = await bookingRepository.findAppointmentById(
-        appointmentId
-      );
+      const appointment =
+        await bookingRepository.findAppointmentById(appointmentId);
 
       if (!appointment) {
         throw new Error("Appointment not found");
@@ -530,11 +524,11 @@ class PaymentService {
         patientName,
         patientPhone,
         `Consultation with ${appointment.clinician_name}`,
-        `appointment_${appointmentId}`
+        `appointment_${appointmentId}`,
       );
 
       logger.info(
-        `✅ Payment link created: ${paymentLink.short_url} for appointment ${appointmentId}`
+        `✅ Payment link created: ${paymentLink.short_url} for appointment ${appointmentId}`,
       );
 
       // Store payment link in database
@@ -543,7 +537,7 @@ class PaymentService {
         await paymentRepository.updatePaymentLink(
           existingPayment.id,
           paymentLink.id,
-          paymentLink.short_url
+          paymentLink.short_url,
         );
       } else {
         // Create new payment record with payment link
@@ -570,33 +564,38 @@ class PaymentService {
         minute: "2-digit",
       });
 
-      // Send payment link via WhatsApp
+      // Send payment link via WhatsApp using template
       let whatsappSent = false;
       if (gallaboxUtil.isReady()) {
-        const result = await gallaboxUtil.sendPaymentLink(
+        // Calculate expiry in minutes from Razorpay payment link
+        const expiryMinutes = Math.floor(
+          (new Date(paymentLink.expire_by * 1000).getTime() - Date.now()) /
+            60000,
+        );
+
+        // Use template-based message with template ID: 699c48e93b39da99b4ff2047
+        const result = await gallaboxUtil.sendPaymentLinkTemplate(
           patientPhone,
           patientName,
-          consultationFee,
           paymentLink.short_url,
-          appointment.clinician_name,
-          dateStr,
-          timeStr
+          expiryMinutes,
+          appointmentId,
         );
 
         whatsappSent = result.success;
 
         if (whatsappSent) {
           logger.info(
-            `✅ Payment link sent via WhatsApp to ${patientPhone} for appointment ${appointmentId}`
+            `✅ Payment link template sent via WhatsApp to ${patientPhone} for appointment ${appointmentId}`,
           );
         } else {
           logger.warn(
-            `⚠️ Failed to send payment link via WhatsApp to ${patientPhone}`
+            `⚠️ Failed to send payment link template via WhatsApp to ${patientPhone}`,
           );
         }
       } else {
         logger.warn(
-          "Gallabox not configured, payment link not sent via WhatsApp"
+          "Gallabox not configured, payment link not sent via WhatsApp",
         );
       }
 

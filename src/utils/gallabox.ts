@@ -620,6 +620,84 @@ This link is valid for 24 hours.
   }
 
   /**
+   * Send payment link using Gallabox template
+   * Template ID: 699c48e93b39da99b4ff2047
+   * Template Body:
+   * Hello {{1}},
+   * Your appointment with Mibo Care has been successfully booked.
+   * To confirm your appointment, please complete the payment using the secure link below:
+   * {{2}}
+   * This payment link will expire in {{3}} minutes.
+   * Appointment ID: {{4}}
+   * If you have any questions, please contact our support team.
+   * Thank you,
+   * Mibo Care
+   */
+  async sendPaymentLinkTemplate(
+    phone: string,
+    patientName: string,
+    paymentLink: string,
+    expiryMinutes: number,
+    appointmentId: number,
+  ): Promise<any> {
+    if (!this.isReady()) {
+      logger.warn("Gallabox not configured, skipping payment link template");
+      return { success: false, message: "Gallabox not configured" };
+    }
+
+    try {
+      const formattedPhone = this.formatPhoneNumber(phone);
+
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: patientName,
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "699c48e93b39da99b4ff2047",
+            bodyValues: {
+              "1": patientName,
+              "2": paymentLink,
+              "3": expiryMinutes.toString(),
+              "4": appointmentId.toString(),
+            },
+          },
+        },
+      };
+
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload,
+      );
+
+      logger.info(
+        `✅ Payment link template sent to ${formattedPhone} for appointment ${appointmentId}`,
+      );
+
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error("Failed to send payment link template:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * Send payment reminder
    */
   async sendPaymentReminder(
