@@ -45,6 +45,7 @@ class GoogleMeetUtil {
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/calendar.events",
           ],
+          subject:"reach@mibocare.com"
         });
 
         // Initialize Calendar API
