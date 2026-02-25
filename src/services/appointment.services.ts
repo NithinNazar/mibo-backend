@@ -248,12 +248,14 @@ export class AppointmentService {
           Promise.all([
             // 1. Send WhatsApp to patient with Meet link
             gallaboxUtil
-              .sendOnlineMeetingLink(
+              .sendOnlineMeetingLinkTemplate(
                 patient.user.phone,
                 patient.user.full_name,
                 meetLink,
                 appointmentDate,
                 appointmentTime,
+                clinicianName,
+                appointment.id
               )
               .catch((err) =>
                 logger.error("Failed to send WhatsApp to patient:", err),
@@ -282,6 +284,7 @@ export class AppointmentService {
               appointmentDate,
               appointmentTime,
               meetLink,
+              appointment.id
             ).catch((err) => logger.error("Failed to notify doctor:", err)),
 
             // 4. Notify admins and managers
@@ -666,6 +669,7 @@ export class AppointmentService {
     appointmentDate: string,
     appointmentTime: string,
     meetLink: string,
+    appointmentId: number
   ): Promise<void> {
     try {
       // Get clinician's user details
@@ -686,21 +690,7 @@ export class AppointmentService {
 
       // Send WhatsApp to doctor
       if (clinician.phone) {
-        const message = `Hello Dr. ${clinician.full_name},
-
-You have a new online consultation scheduled:
-
-👤 Patient: ${patientName}
-📅 Date: ${appointmentDate}
-⏰ Time: ${appointmentTime}
-
-🔗 Meeting Link: ${meetLink}
-
-Please join 5 minutes before the scheduled time.
-
-- Mibo Mental Hospital`;
-
-        await gallaboxUtil.sendWhatsAppMessage(clinician.phone, message);
+        await gallaboxUtil.sendOnlineMeetingLinkTemplateToDoctor(clinician.phone, patientName, meetLink, appointmentDate, appointmentTime, clinician.full_name, appointmentId);
         logger.info(`WhatsApp sent to doctor ${clinician.full_name}`);
       }
 

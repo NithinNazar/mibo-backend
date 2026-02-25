@@ -562,6 +562,142 @@ Please join 5 minutes before the scheduled time.
     return await this.sendWhatsAppMessage(phone, message);
   }
 
+async sendOnlineMeetingLinkTemplate(
+    phone: string,
+    patientName: string,
+    meetLink: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    clinicianName: string,
+    appointmentId: number,
+  ): Promise<any> {
+    if (!this.isReady()) {
+      logger.warn("Gallabox not configured, skipping online meeting link template");
+      return { success: false, message: "Gallabox not configured" };
+    }
+
+    try {
+      const formattedPhone = this.formatPhoneNumber(phone);
+
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: patientName,
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "online_consultation_confirmation",
+            bodyValues: {
+              "1": patientName,
+              "2": clinicianName,
+              "3": appointmentDate,
+              "4": appointmentTime,
+              "5": meetLink,
+            },
+          },
+        },
+      };
+
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload,
+      );
+
+      logger.info(
+        `✅ Online Consulation Patient Confirmation link template sent to ${formattedPhone} for appointment ${appointmentId}`,
+      );
+
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error("Failed to send online meeting link template to patient:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+
+async sendOnlineMeetingLinkTemplateToDoctor(
+    phone: string,
+    patientName: string,
+    meetLink: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    clinicianName: string,
+    appointmentId: number,
+  ): Promise<any> {
+    if (!this.isReady()) {
+      logger.warn("Gallabox not configured, skipping online meeting link template");
+      return { success: false, message: "Gallabox not configured" };
+    }
+
+    try {
+      const formattedPhone = this.formatPhoneNumber(phone);
+
+      const payload = {
+        channelId: ENV.GALLABOX_CHANNEL_ID,
+        channelType: "whatsapp",
+        recipient: {
+          name: clinicianName,
+          phone: formattedPhone,
+        },
+        whatsapp: {
+          type: "template",
+          template: {
+            templateName: "session_assigned_therapist",
+            bodyValues: {
+              "1": clinicianName,
+              "2": patientName,
+              "3": appointmentDate,
+              "4": appointmentTime,
+              "5": meetLink,
+            },
+          },
+        },
+      };
+
+      const response = await this.client!.post(
+        "/devapi/messages/whatsapp",
+        payload,
+      );
+
+      logger.info(
+        `✅ Online Consulation Doctor Confirmation link template sent to ${formattedPhone} for appointment ${appointmentId}`,
+      );
+
+      return {
+        success: true,
+        messageId: response.data.messageId || response.data.id,
+        data: response.data,
+      };
+    } catch (error: any) {
+      logger.error("Failed to send online meeting link template to Doctor:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+
   /**
    * Send payment confirmation message
    */
@@ -658,7 +794,7 @@ This link is valid for 24 hours.
         whatsapp: {
           type: "template",
           template: {
-            templateName: "699c48e93b39da99b4ff2047",
+            templateName: "appointment_payment_request",
             bodyValues: {
               "1": patientName,
               "2": paymentLink,
