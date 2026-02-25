@@ -243,7 +243,7 @@ class RazorpayUtil {
         reminder_enable: false, // We'll handle reminders ourselves
         callback_url: `${ENV.CORS_ORIGIN}/payment-success`,
         callback_method: "get",
-        reference_id: referenceId,
+        reference_id: `${referenceId}_${Date.now()}`,
       };
 
       const paymentLink = await this.razorpay.paymentLink.create(options);

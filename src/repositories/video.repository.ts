@@ -47,7 +47,7 @@ export class VideoRepository {
       data.meeting_id || null,
       data.join_url,
       data.host_url || null,
-      data.status || "scheduled",
+      data.status || "SCHEDULED",
       data.scheduled_start_at || null,
       data.scheduled_end_at || null,
     ]);

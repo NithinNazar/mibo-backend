@@ -66,7 +66,7 @@ export class VideoService {
         join_url: meetLink,
         host_url: meetLink,
         provider: "GOOGLE_MEET",
-        status: "scheduled",
+        status: "SCHEDULED",
         scheduled_start_at: new Date(appointment.scheduled_start_at),
         scheduled_end_at: new Date(appointment.scheduled_end_at),
       });
