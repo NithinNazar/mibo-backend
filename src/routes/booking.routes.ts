@@ -13,18 +13,17 @@ const router = Router();
 router.post(
   "/create",
   authMiddleware,
-  bookingController.createAppointment.bind(bookingController)
+  bookingController.createAppointment.bind(bookingController),
 );
 
 /**
- * GET /api/booking/:id
- * Get appointment details
- * Protected endpoint - requires authentication
+ * GET /api/booking/available-slots
+ * Get available time slots for a clinician
+ * Public endpoint - MUST be before /:id route
  */
 router.get(
-  "/:id",
-  authMiddleware,
-  bookingController.getAppointment.bind(bookingController)
+  "/available-slots",
+  bookingController.getAvailableSlots.bind(bookingController),
 );
 
 /**
@@ -35,7 +34,18 @@ router.get(
 router.get(
   "/my-appointments",
   authMiddleware,
-  bookingController.getMyAppointments.bind(bookingController)
+  bookingController.getMyAppointments.bind(bookingController),
+);
+
+/**
+ * GET /api/booking/:id
+ * Get appointment details
+ * Protected endpoint - requires authentication
+ */
+router.get(
+  "/:id",
+  authMiddleware,
+  bookingController.getAppointment.bind(bookingController),
 );
 
 /**
@@ -46,17 +56,7 @@ router.get(
 router.post(
   "/:id/cancel",
   authMiddleware,
-  bookingController.cancelAppointment.bind(bookingController)
-);
-
-/**
- * GET /api/booking/available-slots
- * Get available time slots for a clinician
- * Public endpoint
- */
-router.get(
-  "/available-slots",
-  bookingController.getAvailableSlots.bind(bookingController)
+  bookingController.cancelAppointment.bind(bookingController),
 );
 
 /**
@@ -67,7 +67,7 @@ router.get(
 router.post(
   "/front-desk",
   authMiddleware,
-  bookingController.bookForPatient.bind(bookingController)
+  bookingController.bookForPatient.bind(bookingController),
 );
 
 export default router;
