@@ -193,7 +193,8 @@ export class AppointmentRepository {
         u_clinician.full_name as clinician_name,
         c.name as centre_name
       FROM appointments a
-      JOIN users u_patient ON a.patient_id = u_patient.id
+      JOIN patient_profiles pp ON a.patient_id = pp.id
+      JOIN users u_patient ON pp.user_id = u_patient.id
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
       JOIN users u_clinician ON cp.user_id = u_clinician.id
       JOIN centres c ON a.centre_id = c.id
