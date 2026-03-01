@@ -251,6 +251,34 @@ class GoogleMeetUtil {
 
     return result.meetLink;
   }
+
+  async createMeetLinkForAppointmentFromFrontend(
+    patientName: string,
+    clinicianName: string,
+    patientEmail: string,
+    startTime: string,
+    endTime: string
+  ): Promise<any> {
+    const summary = `Consultation: ${patientName} with Dr. ${clinicianName}`;
+    const description = `Online consultation session between ${patientName} and Dr. ${clinicianName}.\n\nPlease join the meeting 5 minutes before the scheduled time.`;
+
+    const result = await this.createCalendarEvent(
+      summary,
+      description,
+      startTime,
+      endTime,
+      patientEmail ? [patientEmail] : []
+    );
+
+    if (!result.meetLink) {
+      throw new Error("Failed to generate Meet link");
+    }
+
+    return { 
+    meetLink: result.meetLink,
+    eventId: result.eventId,
+  };
+  }
 }
 
 // Export singleton instance

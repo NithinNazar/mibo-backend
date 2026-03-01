@@ -4,7 +4,7 @@ import { bookingRepository } from "../repositories/booking.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { razorpayUtil } from "../utils/razorpay";
 import { gallaboxUtil } from "../utils/gallabox";
-import { googleMeetUtil } from "../utils/google-meet";
+import { googleMeetUtil } from "../utils/googleMeet";
 import logger from "../config/logger";
 
 class PaymentService {
@@ -252,13 +252,21 @@ class PaymentService {
             .toTimeString()
             .substring(0, 5); // HH:MM
 
-          const meetingDetails = await googleMeetUtil.createMeetingLink({
-            patientName: user.full_name,
-            clinicianName: appointment.clinician_name,
-            appointmentDate: appointmentDateOnly,
-            appointmentTime: appointmentTimeOnly,
-            durationMinutes: 50,
-          });
+          // const meetingDetails = await googleMeetUtil.createMeetingLink({
+          //   patientName: user.full_name,
+          //   clinicianName: appointment.clinician_name,
+          //   appointmentDate: appointmentDateOnly,
+          //   appointmentTime: appointmentTimeOnly,
+          //   durationMinutes: 50,
+          // });
+
+          const meetingDetails = await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
+                  user.full_name,
+                  appointment.clinician_name,
+                  user.email || "",
+                  new Date(appointment.scheduled_start_at).toISOString(),
+                  new Date(appointment.scheduled_end_at).toISOString(),
+                );
 
           // Store Google Meet link in database
           await bookingRepository.updateAppointmentGoogleMeet(
