@@ -35,7 +35,18 @@ class GoogleMeetUtil {
     ) {
       try {
         // Parse private key (handle escaped newlines)
-        const privateKey = ENV.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
+        // const privateKey = ENV.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
+        const privateKey = ENV.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n")
+          .replace(/\r/g, "")
+          .replace(/^"|"$/g, "")
+          .trim();
+
+        // Log private key info for debugging
+        logger.info("Private key loaded - Length:", privateKey?.length);
+        logger.info(
+          "Private key preview:",
+          privateKey?.substring(0, 50) + "...",
+        );
 
         // Create JWT client
         const auth = new google.auth.JWT({
@@ -45,7 +56,7 @@ class GoogleMeetUtil {
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/calendar.events",
           ],
-          subject:"reach@mibocare.com"
+          subject: "reach@mibocare.com",
         });
 
         // Initialize Calendar API
@@ -58,7 +69,7 @@ class GoogleMeetUtil {
       }
     } else {
       logger.warn(
-        "⚠ Google Meet not configured. Add GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, and GOOGLE_CALENDAR_ID to enable video consultations."
+        "⚠ Google Meet not configured. Add GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, and GOOGLE_CALENDAR_ID to enable video consultations.",
       );
     }
   }
@@ -83,11 +94,11 @@ class GoogleMeetUtil {
     description: string,
     startTime: string,
     endTime: string,
-    attendees: string[] = []
+    attendees: string[] = [],
   ): Promise<any> {
     if (!this.isReady()) {
       throw new Error(
-        "Google Meet is not configured. Please add credentials to environment variables."
+        "Google Meet is not configured. Please add credentials to environment variables.",
       );
     }
 
@@ -232,7 +243,7 @@ class GoogleMeetUtil {
     clinicianName: string,
     patientEmail: string,
     startTime: string,
-    endTime: string
+    endTime: string,
   ): Promise<string> {
     const summary = `Consultation: ${patientName} with Dr. ${clinicianName}`;
     const description = `Online consultation session between ${patientName} and Dr. ${clinicianName}.\n\nPlease join the meeting 5 minutes before the scheduled time.`;
@@ -242,7 +253,7 @@ class GoogleMeetUtil {
       description,
       startTime,
       endTime,
-      patientEmail ? [patientEmail] : []
+      patientEmail ? [patientEmail] : [],
     );
 
     if (!result.meetLink) {
@@ -257,7 +268,7 @@ class GoogleMeetUtil {
     clinicianName: string,
     patientEmail: string,
     startTime: string,
-    endTime: string
+    endTime: string,
   ): Promise<any> {
     const summary = `Consultation: ${patientName} with Dr. ${clinicianName}`;
     const description = `Online consultation session between ${patientName} and Dr. ${clinicianName}.\n\nPlease join the meeting 5 minutes before the scheduled time.`;
@@ -267,17 +278,17 @@ class GoogleMeetUtil {
       description,
       startTime,
       endTime,
-      patientEmail ? [patientEmail] : []
+      patientEmail ? [patientEmail] : [],
     );
 
     if (!result.meetLink) {
       throw new Error("Failed to generate Meet link");
     }
 
-    return { 
-    meetLink: result.meetLink,
-    eventId: result.eventId,
-  };
+    return {
+      meetLink: result.meetLink,
+      eventId: result.eventId,
+    };
   }
 }
 
