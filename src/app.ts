@@ -155,7 +155,7 @@ app.get("/health", (req, res) => {
     message: "Server is healthy",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: ENV.NODE_ENV,
+    environment: ENV,
   });
 });
 
