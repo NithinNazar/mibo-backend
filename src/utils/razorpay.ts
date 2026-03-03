@@ -30,7 +30,7 @@ class RazorpayUtil {
       }
     } else {
       logger.warn(
-        "⚠ Razorpay not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to enable payments."
+        "⚠ Razorpay not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to enable payments.",
       );
     }
   }
@@ -40,6 +40,34 @@ class RazorpayUtil {
    */
   isConfigured(): boolean {
     return this.razorpay !== null;
+  }
+
+  /**
+   * Format phone number for Razorpay
+   * Ensures phone number has country code (91 for India)
+   * @param phone Phone number (can be 10 digits or 12 digits with country code)
+   * @returns Formatted phone number with +91 prefix (e.g., +919876543210)
+   */
+  private formatPhoneNumber(phone: string): string {
+    // Remove all non-digit characters (+, spaces, dashes, etc.)
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    // If phone number is 10 digits, add country code 91
+    // If it's 12 digits and starts with 91, keep as is
+    // If it's 13 digits and starts with 91, remove leading digit (handles +91 case)
+    let formattedPhone = cleanPhone;
+
+    if (cleanPhone.length === 10) {
+      formattedPhone = `91${cleanPhone}`;
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+      formattedPhone = cleanPhone;
+    } else if (cleanPhone.length === 13 && cleanPhone.startsWith("91")) {
+      // Handle case where +91 was converted to 91 but kept an extra digit
+      formattedPhone = cleanPhone.substring(1);
+    }
+
+    // Return with + prefix for Razorpay
+    return `+${formattedPhone}`;
   }
 
   /**
@@ -53,11 +81,11 @@ class RazorpayUtil {
     amount: number,
     currency: string = "INR",
     receipt: string,
-    notes?: Record<string, string>
+    notes?: Record<string, string>,
   ): Promise<any> {
     if (!this.razorpay) {
       throw new Error(
-        "Razorpay is not configured. Please add API keys to environment variables."
+        "Razorpay is not configured. Please add API keys to environment variables.",
       );
     }
 
@@ -89,7 +117,7 @@ class RazorpayUtil {
   verifyPaymentSignature(
     orderId: string,
     paymentId: string,
-    signature: string
+    signature: string,
   ): boolean {
     if (!ENV.RAZORPAY_KEY_SECRET) {
       throw new Error("Razorpay key secret is not configured");
@@ -218,7 +246,7 @@ class RazorpayUtil {
     customerName: string,
     customerPhone: string,
     description: string,
-    referenceId: string
+    referenceId: string,
   ): Promise<any> {
     if (!this.razorpay) {
       throw new Error("Razorpay is not configured");
@@ -231,9 +259,7 @@ class RazorpayUtil {
         description: description,
         customer: {
           name: customerName,
-          contact: customerPhone.startsWith("+91")
-            ? customerPhone
-            : `+91${customerPhone}`,
+          contact: this.formatPhoneNumber(customerPhone),
         },
         notify: {
           sms: false, // We'll send via Gallabox
