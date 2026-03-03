@@ -43,13 +43,6 @@ class GoogleMeetUtil {
 
         // TODO: REMOVE AFTER TESTING
         // Log private key info for debugging
-        logger.info("Private key loaded - Length:", privateKey?.length);
-        logger.info(
-          "Private key preview:",
-          {privateKey: privateKey.split('\n')},
-        );
-
-        console.log(privateKey);
 
         // Create JWT client
         const auth = new google.auth.JWT({
