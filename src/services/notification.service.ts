@@ -26,10 +26,12 @@ export class NotificationService {
         throw ApiError.notFound("Patient not found");
       }
 
+      const userTimezone = "Asia/Kolkata"; 
       // Format date and time
       const appointmentDate = new Date(
         appointment.scheduled_start_at,
       ).toLocaleDateString("en-IN", {
+        timeZone: userTimezone,
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -39,6 +41,7 @@ export class NotificationService {
       const appointmentTime = new Date(
         appointment.scheduled_start_at,
       ).toLocaleTimeString("en-IN", {
+        timeZone: userTimezone,
         hour: "2-digit",
         minute: "2-digit",
       });

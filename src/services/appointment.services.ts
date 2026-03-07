@@ -212,10 +212,13 @@ export class AppointmentService {
       );
       return appointment;
     }
+   
+    const userTimezone = "Asia/Kolkata"; 
 
     const appointmentDate = new Date(
       appointment.scheduled_start_at,
     ).toLocaleDateString("en-IN", {
+      timeZone: userTimezone,
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -225,6 +228,7 @@ export class AppointmentService {
     const appointmentTime = new Date(
       appointment.scheduled_start_at,
     ).toLocaleTimeString("en-IN", {
+      timeZone: userTimezone,
       hour: "2-digit",
       minute: "2-digit",
     });
