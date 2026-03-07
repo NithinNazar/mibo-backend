@@ -313,8 +313,8 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
 export function validateUpdateClinician(body: any): UpdateClinicianDto {
   const dto: UpdateClinicianDto = {};
 
-  if (body.primary_centre_id !== undefined) {
-    dto.primary_centre_id = Number(body.primary_centre_id);
+  if (body.primaryCentreId !== undefined) {
+    dto.primary_centre_id = Number(body.primaryCentreId);
   }
 
   // Validate specialization as array
@@ -328,39 +328,39 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     dto.specialization = body.specialization.map((s: any) => String(s).trim());
   }
 
-  if (body.registration_number !== undefined) {
-    dto.registration_number = String(body.registration_number).trim();
+  if (body.registrationNumber !== undefined) {
+    dto.registration_number = String(body.registrationNumber).trim();
   }
 
-  if (body.years_of_experience !== undefined) {
-    dto.years_of_experience = Number(body.years_of_experience);
+  if (body.yearsOfExperience !== undefined) {
+    dto.years_of_experience = Number(body.yearsOfExperience);
   }
 
-  if (body.consultation_fee !== undefined) {
-    dto.consultation_fee = Number(body.consultation_fee);
+  if (body.consultationFee !== undefined) {
+    dto.consultation_fee = Number(body.consultationFee);
   }
 
   if (body.bio !== undefined) {
     dto.bio = String(body.bio).trim();
   }
 
-  if (body.consultation_modes !== undefined) {
-    if (!Array.isArray(body.consultation_modes)) {
+  if (body.consultationModes !== undefined) {
+    if (!Array.isArray(body.consultationModes)) {
       throw ApiError.badRequest("consultation_modes must be an array");
     }
     const validModes = ["IN_PERSON", "ONLINE"];
-    for (const mode of body.consultation_modes) {
+    for (const mode of body.consultationModes) {
       if (!validModes.includes(mode)) {
         throw ApiError.badRequest(
           "consultation_modes must contain only IN_PERSON or ONLINE",
         );
       }
     }
-    dto.consultation_modes = body.consultation_modes;
+    dto.consultation_modes = body.consultationModes;
   }
 
-  if (body.default_consultation_duration_minutes !== undefined) {
-    const duration = Number(body.default_consultation_duration_minutes);
+  if (body.defaultDurationMinutes !== undefined) {
+    const duration = Number(body.defaultDurationMinutes);
     if (isNaN(duration) || duration < 1) {
       throw ApiError.badRequest(
         "default_consultation_duration_minutes must be at least 1",
@@ -369,8 +369,8 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     dto.default_consultation_duration_minutes = duration;
   }
 
-  if (body.profile_picture_url !== undefined) {
-    dto.profile_picture_url = String(body.profile_picture_url).trim();
+  if (body.profilePictureUrl !== undefined) {
+    dto.profile_picture_url = String(body.profilePictureUrl).trim();
   }
 
   // Validate qualification as array
