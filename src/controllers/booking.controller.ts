@@ -23,6 +23,7 @@ class BookingController {
         centreId,
         appointmentDate,
         appointmentTime,
+        appointmentDateUTC,
         appointmentType,
         notes,
       } = req.body;
@@ -33,12 +34,13 @@ class BookingController {
         !centreId ||
         !appointmentDate ||
         !appointmentTime ||
-        !appointmentType
+        !appointmentType ||
+        !appointmentDateUTC
       ) {
         res.status(400).json({
           success: false,
           message:
-            "Missing required fields: clinicianId, centreId, appointmentDate, appointmentTime, appointmentType",
+            "Missing required fields: clinicianId, centreId, appointmentDate, appointmentTime, appointmentType, appointmentDateUtc",
         });
         return;
       }
@@ -58,6 +60,7 @@ class BookingController {
         centreId: parseInt(centreId),
         appointmentDate,
         appointmentTime,
+        appointmentDateUTC,
         appointmentType,
         notes,
       });

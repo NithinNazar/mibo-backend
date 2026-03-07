@@ -9,6 +9,7 @@ interface BookingData {
   appointmentDate: string; // YYYY-MM-DD
   appointmentTime: string; // HH:MM
   appointmentType: "ONLINE" | "IN_PERSON";
+  appointmentDateUTC: string;
   notes?: string;
 }
 
@@ -58,12 +59,10 @@ class BookingService {
       }
 
       // Parse date and time
-      const appointmentDateTime = new Date(
-        `${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`,
-      );
+      const appointmentDateTime = new Date(bookingData.appointmentDateUTC);
 
       // Validate appointment is in the future
-      if (appointmentDateTime <= new Date()) {
+      if (appointmentDateTime.getTime() <= new Date().getTime()) {
         throw new Error(
           "Appointment must be scheduled for a future date and time",
         );
