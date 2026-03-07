@@ -224,12 +224,15 @@ class PaymentService {
 
       // Format date and time
       const appointmentDate = new Date(appointment.scheduled_start_at);
+      const userTimezone = "Asia/Kolkata"; 
       const dateStr = appointmentDate.toLocaleDateString("en-IN", {
+        timeZone: userTimezone,
         day: "numeric",
         month: "long",
         year: "numeric",
       });
       const timeStr = appointmentDate.toLocaleTimeString("en-IN", {
+        timeZone: userTimezone,
         hour: "2-digit",
         minute: "2-digit",
       });
