@@ -224,6 +224,11 @@ class PaymentService {
 
       // Format date and time
       const appointmentDate = new Date(appointment.scheduled_start_at);
+      //TODO REMOVE IT LATER
+      console.log("DB value:", appointment.scheduled_start_at);
+      console.log("Parsed date:", new Date(appointment.scheduled_start_at));
+      console.log(new Date("2026-03-12T04:30:00.000Z").toString());
+      console.log(new Date("2026-03-12T04:30:00.000Z").toLocaleString("en-IN", {timeZone: "Asia/Kolkata"}));
       const userTimezone = "Asia/Kolkata"; 
       const dateStr = appointmentDate.toLocaleDateString("en-IN", {
         timeZone: userTimezone,
