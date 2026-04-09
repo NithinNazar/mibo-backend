@@ -12,6 +12,7 @@ import { verifyPassword } from "../utils/password";
 import { ENV } from "../config/env";
 import logger from "../config/logger";
 import { gallaboxUtil } from "../utils/gallabox";
+import { db } from "../config/db";
 
 interface AuthResponse {
   user: {
@@ -26,6 +27,7 @@ interface AuthResponse {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    clinicianId?: number;
   };
   accessToken: string;
   refreshToken: string;
@@ -42,7 +44,7 @@ export class AuthService {
     if (!user) {
       // Don't reveal if user exists or not for security
       logger.warn(
-        `OTP requested for non-existent or non-staff phone: ${phone}`
+        `OTP requested for non-existent or non-staff phone: ${phone}`,
       );
       return { message: "OTP sent if phone is valid" };
     }
@@ -70,19 +72,19 @@ export class AuthService {
           logger.info(`✅ OTP sent to ${phoneWithCountryCode} via WhatsApp`);
         } else {
           logger.warn(
-            `⚠️ WhatsApp send failed for ${phoneWithCountryCode}, but OTP stored in database`
+            `⚠️ WhatsApp send failed for ${phoneWithCountryCode}, but OTP stored in database`,
           );
         }
       } catch (error) {
         logger.error(
           `Error sending OTP via WhatsApp to ${phoneWithCountryCode}:`,
-          error
+          error,
         );
         // Continue - OTP is stored in database
       }
     } else {
       logger.warn(
-        `⚠️ Gallabox not configured - OTP stored but not sent via WhatsApp`
+        `⚠️ Gallabox not configured - OTP stored but not sent via WhatsApp`,
       );
     }
 
@@ -99,11 +101,22 @@ export class AuthService {
    * Login with phone + OTP (STAFF users only)
    */
   async loginWithPhoneOtp(phone: string, otp: string): Promise<AuthResponse> {
-    // Find staff user
-    const user = await userRepository.findByPhoneStaffOnly(phone);
+    // Check if user exists (including inactive users)
+    const inactiveUser = await db.oneOrNone<{
+      id: number;
+      is_active: boolean;
+    }>(
+      "SELECT id, is_active FROM users WHERE phone = $1 AND user_type = 'STAFF'",
+      [phone],
+    );
 
-    if (!user) {
+    if (!inactiveUser) {
       throw ApiError.forbidden("Access denied");
+    }
+
+    // Check if account is inactive
+    if (!inactiveUser.is_active) {
+      throw ApiError.forbidden("Account inactive");
     }
 
     // Verify OTP
@@ -123,7 +136,7 @@ export class AuthService {
     await userRepository.markOtpUsed(otpRecord.id);
 
     // Generate tokens and return response
-    return this.generateAuthResponse(user.id);
+    return this.generateAuthResponse(inactiveUser.id);
   }
 
   /**
@@ -131,24 +144,36 @@ export class AuthService {
    */
   async loginWithPhonePassword(
     phone: string,
-    password: string
+    password: string,
   ): Promise<AuthResponse> {
-    // Find staff user
-    const user = await userRepository.findByPhoneStaffOnly(phone);
+    // Check if user exists (including inactive users)
+    const inactiveUser = await db.oneOrNone(
+      "SELECT id, is_active, password_hash FROM users WHERE phone = $1 AND user_type = 'STAFF'",
+      [phone],
+    );
 
-    if (!user || !user.password_hash) {
+    if (!inactiveUser) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Check if account is inactive
+    if (!inactiveUser.is_active) {
+      throw ApiError.forbidden("Account inactive");
+    }
+
+    if (!inactiveUser.password_hash) {
       throw ApiError.unauthorized("Invalid credentials");
     }
 
     // Verify password
-    const isValid = await verifyPassword(password, user.password_hash);
+    const isValid = await verifyPassword(password, inactiveUser.password_hash);
 
     if (!isValid) {
       throw ApiError.unauthorized("Invalid credentials");
     }
 
     // Generate tokens and return response
-    return this.generateAuthResponse(user.id);
+    return this.generateAuthResponse(inactiveUser.id);
   }
 
   /**
@@ -156,40 +181,78 @@ export class AuthService {
    */
   async loginWithUsernamePassword(
     username: string,
-    password: string
+    password: string,
   ): Promise<AuthResponse> {
-    // Find staff user
-    const user = await userRepository.findByUsernameStaffOnly(username);
+    // Check if user exists (including inactive users)
+    const inactiveUser = await db.oneOrNone<{
+      id: number;
+      is_active: boolean;
+      password_hash: string | null;
+    }>(
+      "SELECT id, is_active, password_hash FROM users WHERE username = $1 AND user_type = 'STAFF'",
+      [username],
+    );
 
-    if (!user || !user.password_hash) {
+    if (!inactiveUser) {
+      throw ApiError.unauthorized("Invalid credentials");
+    }
+
+    // Check if account is inactive
+    if (!inactiveUser.is_active) {
+      throw ApiError.forbidden("Account inactive");
+    }
+
+    if (!inactiveUser.password_hash) {
       throw ApiError.unauthorized("Invalid credentials");
     }
 
     // Verify password
-    const isValid = await verifyPassword(password, user.password_hash);
+    const isValid = await verifyPassword(password, inactiveUser.password_hash);
 
     if (!isValid) {
       throw ApiError.unauthorized("Invalid credentials");
     }
 
+    // Query clinician profile
+    const clinicianProfile = await db.oneOrNone<{ id: number }>(
+      "SELECT id FROM clinician_profiles WHERE user_id = $1 AND is_active = TRUE",
+      [inactiveUser.id],
+    );
+
+    // Check if user has CLINICIAN role (need to query without is_active filter for role check)
+    const userRoles = await db.any<{ name: string }>(
+      `
+      SELECT DISTINCT r.name
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      WHERE ur.user_id = $1 AND ur.is_active = TRUE
+      `,
+      [inactiveUser.id],
+    );
+    const isClinician = userRoles.some((r) => r.name === "CLINICIAN");
+
+    // If user has CLINICIAN role but no clinician profile, deny access
+    if (isClinician && !clinicianProfile) {
+      throw ApiError.forbidden("Access denied");
+    }
+
     // Generate tokens and return response
-    return this.generateAuthResponse(user.id);
+    return this.generateAuthResponse(inactiveUser.id, clinicianProfile?.id);
   }
 
   /**
    * Refresh access token using refresh token
    */
   async refreshAccessToken(
-    refreshToken: string
+    refreshToken: string,
   ): Promise<{ accessToken: string }> {
     try {
       // Verify refresh token
       const payload = verifyRefreshToken(refreshToken);
 
       // Check if session is valid
-      const session = await authSessionRepository.findValidSession(
-        refreshToken
-      );
+      const session =
+        await authSessionRepository.findValidSession(refreshToken);
 
       if (!session) {
         throw ApiError.unauthorized("Invalid or expired refresh token");
@@ -221,9 +284,8 @@ export class AuthService {
    * Get current user details
    */
   async getCurrentUser(userId: number): Promise<AuthResponse["user"]> {
-    const userWithRoles = await userRepository.findByIdWithRolesAndCentres(
-      userId
-    );
+    const userWithRoles =
+      await userRepository.findByIdWithRolesAndCentres(userId);
 
     if (!userWithRoles) {
       throw ApiError.notFound("User not found");
@@ -235,10 +297,12 @@ export class AuthService {
   /**
    * Generate auth response with tokens (private helper)
    */
-  private async generateAuthResponse(userId: number): Promise<AuthResponse> {
-    const userWithRoles = await userRepository.findByIdWithRolesAndCentres(
-      userId
-    );
+  private async generateAuthResponse(
+    userId: number,
+    clinicianId?: number,
+  ): Promise<AuthResponse> {
+    const userWithRoles =
+      await userRepository.findByIdWithRolesAndCentres(userId);
 
     if (!userWithRoles) {
       throw ApiError.notFound("User not found");
@@ -250,6 +314,7 @@ export class AuthService {
       phone: userWithRoles.phone || "",
       userType: userWithRoles.user_type,
       roles: userWithRoles.roles,
+      ...(clinicianId && { clinicianId }),
     };
 
     const accessToken = signAccessToken(payload);
@@ -260,7 +325,7 @@ export class AuthService {
     await authSessionRepository.createSession(userId, refreshToken, expiresAt);
 
     return {
-      user: this.formatUserResponse(userWithRoles),
+      user: this.formatUserResponse(userWithRoles, clinicianId),
       accessToken,
       refreshToken,
     };
@@ -269,7 +334,10 @@ export class AuthService {
   /**
    * Format user response (private helper)
    */
-  private formatUserResponse(user: any): AuthResponse["user"] {
+  private formatUserResponse(
+    user: any,
+    clinicianId?: number,
+  ): AuthResponse["user"] {
     // Extract role name from roles array
     let roleName = "staff"; // default
     if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
@@ -291,6 +359,7 @@ export class AuthService {
       isActive: user.is_active,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
+      ...(clinicianId && { clinicianId }),
     };
   }
 }

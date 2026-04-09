@@ -1,0 +1,167 @@
+# Slot Blocking and Patient Notification API Tests
+# Use with VS Code REST Client extension or copy to Postman/Thunder Client
+
+### Variables
+@baseUrl = http://localhost:5000/api
+@adminToken = YOUR_ADMIN_TOKEN_HERE
+@patientToken = YOUR_PATIENT_TOKEN_HERE
+
+### ============================================
+### ADMIN ENDPOINTS - Slot Blocking
+### ============================================
+
+### 1. Block a Single Slot
+POST {{baseUrl}}/admin/slots/block
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "clinician_id": 1,
+  "centre_id": 1,
+  "date": "2024-12-25",
+  "start_time": "10:00:00",
+  "end_time": "10:30:00",
+  "reason": "Doctor on emergency leave"
+}
+
+### 2. Block Multiple Slots
+POST {{baseUrl}}/admin/slots/block-multiple
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "slots": [
+    {
+      "clinician_id": 1,
+      "centre_id": 1,
+      "date": "2024-12-25",
+      "start_time": "11:00:00",
+      "end_time": "11:30:00"
+    },
+    {
+      "clinician_id": 1,
+      "centre_id": 1,
+      "date": "2024-12-25",
+      "start_time": "11:30:00",
+      "end_time": "12:00:00"
+    }
+  ],
+  "reason": "Doctor unavailable for morning shift"
+}
+
+### 3. Block Entire Day for Clinician
+POST {{baseUrl}}/admin/slots/block-day
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "clinician_id": 1,
+  "centre_id": 1,
+  "date": "2024-12-26",
+  "reason": "Doctor on planned leave"
+}
+
+### 4. Get Affected Patients (Preview before blocking)
+POST {{baseUrl}}/admin/slots/affected-patients
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "slots": [
+    {
+      "clinician_id": 1,
+      "centre_id": 1,
+      "date": "2024-12-25",
+      "start_time": "14:00:00",
+      "end_time": "14:30:00"
+    }
+  ]
+}
+
+### 5. Get All Blocked Slots
+GET {{baseUrl}}/admin/slots/blocked
+Authorization: Bearer {{adminToken}}
+
+### 6. Get Blocked Slots with Filters
+GET {{baseUrl}}/admin/slots/blocked?clinician_id=1&date_from=2024-12-01&date_to=2024-12-31&is_blocked=true
+Authorization: Bearer {{adminToken}}
+
+### 7. Unblock a Slot (replace :slotId with actual ID)
+POST {{baseUrl}}/admin/slots/unblock/1
+Authorization: Bearer {{adminToken}}
+
+### ============================================
+### PATIENT ENDPOINTS - Notifications
+### ============================================
+
+### 8. Get Patient Notifications (All)
+GET {{baseUrl}}/patient/notifications?limit=20&offset=0
+Authorization: Bearer {{patientToken}}
+
+### 9. Get Unread Notifications Only
+GET {{baseUrl}}/patient/notifications?unread_only=true&limit=10
+Authorization: Bearer {{patientToken}}
+
+### 10. Get Notifications with Date Filter
+GET {{baseUrl}}/patient/notifications?date_from=2024-12-01&date_to=2024-12-31
+Authorization: Bearer {{patientToken}}
+
+### 11. Get Unread Notification Count
+GET {{baseUrl}}/patient/notifications/unread-count
+Authorization: Bearer {{patientToken}}
+
+### 12. Mark Notification as Read (replace :notificationId with actual ID)
+PUT {{baseUrl}}/patient/notifications/1/read
+Authorization: Bearer {{patientToken}}
+
+### ============================================
+### ERROR SCENARIOS - Testing Validation
+### ============================================
+
+### 13. Try to Block Past Slot (Should Fail)
+POST {{baseUrl}}/admin/slots/block
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "clinician_id": 1,
+  "centre_id": 1,
+  "date": "2023-01-01",
+  "start_time": "10:00:00",
+  "end_time": "10:30:00",
+  "reason": "Testing past date validation"
+}
+
+### 14. Try to Block with Invalid Time Range (Should Fail)
+POST {{baseUrl}}/admin/slots/block
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "clinician_id": 1,
+  "centre_id": 1,
+  "date": "2024-12-25",
+  "start_time": "10:30:00",
+  "end_time": "10:00:00",
+  "reason": "Testing invalid time range"
+}
+
+### 15. Try to Block Same Slot Twice (Should Fail on Second Attempt)
+POST {{baseUrl}}/admin/slots/block
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "clinician_id": 1,
+  "centre_id": 1,
+  "date": "2024-12-27",
+  "start_time": "15:00:00",
+  "end_time": "15:30:00",
+  "reason": "Testing duplicate blocking"
+}
+
+### 16. Try to Access Admin Endpoint without Token (Should Fail)
+GET {{baseUrl}}/admin/slots/blocked
+
+### 17. Try to Access Patient Endpoint without Token (Should Fail)
+GET {{baseUrl}}/patient/notifications

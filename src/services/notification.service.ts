@@ -2,9 +2,15 @@
 import { notificationRepository } from "../repositories/notification.repository";
 import { appointmentRepository } from "../repositories/appointment.repository";
 import { patientRepository } from "../repositories/patient.repository";
+import { patientNotificationRepository } from "../repositories/patient-notification.repository";
 import { gallaboxUtil } from "../utils/gallabox";
 import { ApiError } from "../utils/apiError";
 import logger from "../config/logger";
+import {
+  AffectedPatient,
+  BlockedSlot,
+  NotificationFilters,
+} from "../types/slot-blocking.types";
 
 export class NotificationService {
   /**
@@ -21,12 +27,14 @@ export class NotificationService {
       }
 
       // Get patient details
-      const patient = await patientRepository.findByPatientId(appointment.patient_id);
+      const patient = await patientRepository.findByPatientId(
+        appointment.patient_id,
+      );
       if (!patient) {
         throw ApiError.notFound("Patient not found");
       }
 
-      const userTimezone = "Asia/Kolkata"; 
+      const userTimezone = "Asia/Kolkata";
       // Format date and time
       const appointmentDate = new Date(
         appointment.scheduled_start_at,
@@ -379,6 +387,142 @@ Please arrive 10 minutes before your scheduled time.
       startDate,
       endDate,
     );
+  }
+
+  /**
+   * Create blocking notification for patient dashboard
+   * Called when a slot is blocked and appointment is cancelled
+   */
+  async createBlockingNotification(
+    patient: AffectedPatient,
+    blockedSlot: BlockedSlot,
+    reason: string,
+  ): Promise<void> {
+    try {
+      // Format appointment date and time
+      const appointmentDate = new Date(patient.appointment_time);
+      const formattedDate = appointmentDate.toLocaleDateString("en-IN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const formattedTime = appointmentDate.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      // Build notification message
+      let message = `Your appointment with ${patient.clinician_name} on ${formattedDate} at ${formattedTime} has been cancelled due to ${reason}.`;
+
+      // Add refund information if applicable
+      if (patient.refund_eligible) {
+        message += " Your payment will be refunded within 5-7 business days.";
+      }
+
+      message += " Please reschedule at your convenience.";
+
+      // Create patient dashboard notification
+      await patientNotificationRepository.createNotification({
+        patient_id: patient.patient_id,
+        notification_type: "APPOINTMENT_BLOCKED",
+        title: "Appointment Cancelled",
+        message,
+        appointment_id: patient.appointment_id,
+        blocked_slot_id: blockedSlot.id,
+        metadata: {
+          clinician_name: patient.clinician_name,
+          appointment_date: formattedDate,
+          appointment_time: formattedTime,
+          reason,
+          refund_eligible: patient.refund_eligible,
+        },
+      });
+
+      logger.info(
+        `✅ Dashboard notification created for patient ${patient.patient_id}`,
+      );
+
+      // Optionally send WhatsApp notification as well
+      try {
+        await gallaboxUtil.sendAppointmentCancelled(
+          patient.patient_phone,
+          patient.patient_name,
+          formattedDate,
+          formattedTime,
+          reason,
+        );
+      } catch (whatsappError) {
+        logger.error("Failed to send WhatsApp notification:", whatsappError);
+        // Don't throw - dashboard notification is primary
+      }
+    } catch (error: any) {
+      logger.error("Error creating blocking notification:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get patient notifications for dashboard
+   */
+  async getPatientNotifications(
+    patientId: number,
+    filters?: NotificationFilters,
+  ) {
+    try {
+      const notifications =
+        await patientNotificationRepository.getNotificationsByPatient(
+          patientId,
+          filters,
+        );
+
+      const total = await patientNotificationRepository.getNotificationCount(
+        patientId,
+        filters,
+      );
+
+      const unreadCount =
+        await patientNotificationRepository.getUnreadCount(patientId);
+
+      return {
+        notifications,
+        total,
+        unread_count: unreadCount,
+      };
+    } catch (error: any) {
+      logger.error("Error getting patient notifications:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark notification as read
+   */
+  async markNotificationAsRead(
+    notificationId: number,
+    patientId: number,
+  ): Promise<void> {
+    try {
+      await patientNotificationRepository.markAsRead(notificationId, patientId);
+      logger.info(
+        `✅ Notification ${notificationId} marked as read for patient ${patientId}`,
+      );
+    } catch (error: any) {
+      logger.error("Error marking notification as read:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get unread notification count for patient
+   */
+  async getUnreadNotificationCount(patientId: number): Promise<number> {
+    try {
+      return await patientNotificationRepository.getUnreadCount(patientId);
+    } catch (error: any) {
+      logger.error("Error getting unread notification count:", error);
+      throw error;
+    }
   }
 }
 

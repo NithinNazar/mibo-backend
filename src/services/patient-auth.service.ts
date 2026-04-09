@@ -59,6 +59,28 @@ class PatientAuthService {
    */
   async sendOTP(phone: string): Promise<{ isNewUser: boolean }> {
     try {
+      // TEST USER: Skip rate limiting and SMS for test phone number
+      const TEST_PHONE = process.env.TEST_PHONE_NUMBER;
+      const TEST_OTP = process.env.TEST_OTP;
+
+      if (TEST_PHONE && TEST_OTP && phone === TEST_PHONE) {
+        logger.info(`🧪 TEST USER: Using hardcoded OTP for ${phone}`);
+
+        // Check if user exists
+        const existingUser = await patientRepository.findUserByPhone(phone);
+        const isNewUser = !existingUser;
+
+        // Store test OTP in database
+        await patientRepository.storeOTP(phone, TEST_OTP, "LOGIN");
+
+        console.log(
+          `\n🧪 TEST USER LOGIN\n📱 Phone: ${phone}\n🔐 OTP: ${TEST_OTP}\n`,
+        );
+
+        return { isNewUser };
+      }
+
+      // REGULAR FLOW: Rate limiting and SMS
       // Rate limiting: Check if too many OTP requests in last 5 minutes
       const recentRequests = await patientRepository.countRecentOTPRequests(
         phone,
@@ -112,6 +134,7 @@ class PatientAuthService {
 
   /**
    * Verify OTP and login/signup patient
+   * Note: Test user (TEST_PHONE_NUMBER) will work with TEST_OTP from .env
    */
   async verifyOTPAndLogin(
     phone: string,
@@ -126,7 +149,7 @@ class PatientAuthService {
     isNewUser: boolean;
   }> {
     try {
-      // Verify OTP
+      // Verify OTP (works for both regular and test users)
       const isValidOTP = await patientRepository.verifyOTP(phone, otp);
 
       if (!isValidOTP) {
@@ -359,6 +382,98 @@ class PatientAuthService {
 
     // Return updated profile
     return await this.getPatientProfile(userId);
+  }
+
+  /**
+   * NEW: Login with username and password (for Razorpay verification)
+   */
+  async loginWithPassword(
+    username: string,
+    password: string,
+  ): Promise<{
+    user: any;
+    patient: any;
+    accessToken: string;
+    refreshToken: string;
+  }> {
+    try {
+      // Find user by username
+      const user = await patientRepository.findUserByUsername(username);
+
+      if (!user) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Check if user has a password set
+      const userWithPassword = await patientRepository.findUserById(user.id);
+      if (!userWithPassword) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Verify password
+      const passwordHash = (userWithPassword as any).password_hash;
+      if (!passwordHash) {
+        throw new Error("This account does not have password login enabled");
+      }
+
+      const isValidPassword = await patientRepository.verifyPassword(
+        passwordHash,
+        password,
+      );
+
+      if (!isValidPassword) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Check if user is active
+      if (!user.is_active) {
+        throw new Error("Account is inactive");
+      }
+
+      // Get or create patient profile
+      let patient = await patientRepository.findPatientProfileByUserId(user.id);
+
+      if (!patient) {
+        patient = await patientRepository.createPatientProfile(user.id);
+      }
+
+      // Generate tokens
+      const tokenPayload: JwtPayload = {
+        userId: user.id,
+        phone: user.phone,
+        userType: user.user_type as "PATIENT" | "STAFF",
+        roles: [],
+      };
+
+      const accessToken = this.generateAccessToken(tokenPayload);
+      const refreshToken = this.generateRefreshToken(tokenPayload);
+
+      // Store refresh token in database
+      await patientRepository.createAuthSession(user.id, refreshToken);
+
+      logger.info(`✅ Patient logged in with username: ${username}`);
+
+      return {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          email: user.email,
+          fullName: user.full_name,
+          userType: user.user_type,
+        },
+        patient: {
+          id: patient.id,
+          dateOfBirth: patient.date_of_birth,
+          gender: patient.gender,
+          bloodGroup: patient.blood_group,
+        },
+        accessToken,
+        refreshToken,
+      };
+    } catch (error: any) {
+      logger.error("Error logging in with password:", error);
+      throw error;
+    }
   }
 }
 

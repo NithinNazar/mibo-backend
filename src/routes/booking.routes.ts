@@ -27,6 +27,16 @@ router.get(
 );
 
 /**
+ * GET /api/booking/dates-with-slots
+ * Get dates with available slots within a date range
+ * Public endpoint - MUST be before /:id route
+ */
+router.get(
+  "/dates-with-slots",
+  bookingController.getDatesWithSlots.bind(bookingController),
+);
+
+/**
  * GET /api/booking/my-appointments
  * Get all appointments for logged-in patient
  * Protected endpoint - requires authentication

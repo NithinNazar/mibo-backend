@@ -34,10 +34,10 @@ GALLABOX_API_SECRET=edd9fb89a68548d6a7fb080ea8255b1e
 GALLABOX_CHANNEL_ID=693a63bfeba0dac02ac3d624
 
 # ============================================
-# RAZORPAY CONFIGURATION (Payment Gateway)
+# RAZORPAY CONFIGURATION (Payment Gateway - LIVE MODE)
 # ============================================
-RAZORPAY_KEY_ID=rzp_test_Rv16VKPj91R00I
-RAZORPAY_KEY_SECRET=lVTIWgJw36ydSFnDeGmaKIBx
+RAZORPAY_KEY_ID=rzp_live_SV2cgPgjbxBTKL
+RAZORPAY_KEY_SECRET=SVArdnuzXO2lwV1dHRQwGWLP
 
 # ============================================
 # CORS CONFIGURATION

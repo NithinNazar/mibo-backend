@@ -13,8 +13,10 @@ interface AppointmentFilters {
 interface AppointmentWithDetails extends Appointment {
   patient_name: string;
   patient_phone: string;
+  patient_email?: string;
   clinician_name: string;
   centre_name: string;
+  centre_city?: string;
 }
 
 interface AvailabilityRule {
@@ -120,10 +122,72 @@ export class AppointmentRepository {
   }
 
   /**
+   * Find appointments by clinician ID with optional filters
+   * Returns only upcoming appointments ordered by scheduled_start_at ascending
+   * Validates: Requirements 2.1, 2.2, 2.3, 2.5
+   */
+  async findAppointmentsByClinicianId(
+    clinicianId: number,
+    filters?: {
+      status?: AppointmentStatus[];
+      startDate?: string;
+      endDate?: string;
+    },
+  ): Promise<AppointmentWithDetails[]> {
+    const conditions: string[] = [
+      "a.clinician_id = $1",
+      "a.is_active = TRUE",
+      "a.scheduled_start_at >= NOW()", // Only upcoming appointments
+    ];
+
+    const params: any[] = [clinicianId];
+    let paramIndex = 2;
+
+    if (filters?.status && filters.status.length > 0) {
+      conditions.push(`a.status = ANY($${paramIndex}::text[])`);
+      params.push(filters.status);
+      paramIndex++;
+    }
+
+    if (filters?.startDate) {
+      conditions.push(`DATE(a.scheduled_start_at) >= $${paramIndex}`);
+      params.push(filters.startDate);
+      paramIndex++;
+    }
+
+    if (filters?.endDate) {
+      conditions.push(`DATE(a.scheduled_start_at) <= $${paramIndex}`);
+      params.push(filters.endDate);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT
+        a.*,
+        u_patient.full_name as patient_name,
+        u_patient.phone as patient_phone,
+        u_patient.email as patient_email,
+        u_clinician.full_name as clinician_name,
+        c.name as centre_name,
+        c.city as centre_city
+      FROM appointments a
+      JOIN patient_profiles pp ON a.patient_id = pp.id
+      JOIN users u_patient ON pp.user_id = u_patient.id
+      JOIN clinician_profiles cp ON a.clinician_id = cp.id
+      JOIN users u_clinician ON cp.user_id = u_clinician.id
+      JOIN centres c ON a.centre_id = c.id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY a.scheduled_start_at ASC
+    `;
+
+    return db.any<AppointmentWithDetails>(query, params);
+  }
+
+  /**
    * Find appointments with filters
    */
   async findAppointments(
-    filters: AppointmentFilters
+    filters: AppointmentFilters,
   ): Promise<AppointmentWithDetails[]> {
     const conditions: string[] = ["a.is_active = TRUE"];
     const params: any[] = [];
@@ -183,7 +247,7 @@ export class AppointmentRepository {
    * Find appointment by ID with joins for patient, clinician, centre names
    */
   async findAppointmentById(
-    id: number
+    id: number,
   ): Promise<AppointmentWithDetails | null> {
     const query = `
       SELECT
@@ -225,7 +289,7 @@ export class AppointmentRepository {
   }
 
   async listAppointmentsForClinician(
-    clinician_id: number
+    clinician_id: number,
   ): Promise<Appointment[]> {
     const query = `
       SELECT *
@@ -252,7 +316,7 @@ export class AppointmentRepository {
     appointment_id: number,
     new_status: AppointmentStatus,
     changed_by_user_id: number,
-    reason?: string
+    reason?: string,
   ): Promise<Appointment> {
     const current = await this.getAppointmentById(appointment_id);
     if (!current) {
@@ -330,7 +394,7 @@ export class AppointmentRepository {
     clinicianId: number,
     scheduledStartAt: string,
     scheduledEndAt: string,
-    excludeAppointmentId?: number
+    excludeAppointmentId?: number,
   ): Promise<boolean> {
     const conditions = [
       "clinician_id = $1",
@@ -361,7 +425,7 @@ export class AppointmentRepository {
    */
   async getClinicianAvailabilityRules(
     clinicianId: number,
-    date: string
+    date: string,
   ): Promise<AvailabilityRule[]> {
     // Get day of week from date (0 = Sunday, 6 = Saturday)
     const dayOfWeek = new Date(date).getDay();

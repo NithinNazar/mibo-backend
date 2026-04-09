@@ -1,6 +1,6 @@
 // src/repositories/patient.repository.ts
 import { db } from "../config/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export interface User {
   id: number;
@@ -223,7 +223,7 @@ class PatientRepository {
     );
 
     const user = await this.findUserById(userId);
-    if (!user) throw new Error('User not found');
+    if (!user) throw new Error("User not found");
 
     return {
       userId: user.id,
@@ -440,13 +440,12 @@ class PatientRepository {
     return { user, profile };
   }
 
-   async findPatientProfileByPatientId(
+  async findPatientProfileByPatientId(
     patientId: number,
   ): Promise<PatientProfile | null> {
-    return await db.oneOrNone(
-      "SELECT * FROM patient_profiles WHERE id = $1",
-      [patientId],
-    );
+    return await db.oneOrNone("SELECT * FROM patient_profiles WHERE id = $1", [
+      patientId,
+    ]);
   }
 
   /**
@@ -578,8 +577,8 @@ class PatientRepository {
     `;
 
     const results = await db.any(query, params);
-    
-    return results.map(row => ({
+
+    return results.map((row) => ({
       userId: row.user_id,
       fullName: row.full_name,
       phone: row.phone,
@@ -595,9 +594,8 @@ class PatientRepository {
       notes: row.notes,
       upcomingAppointmentsCount: row.upcoming_appointments_count,
       pastAppointmentsCount: row.past_appointments_count,
-      upcomingAppointments: row.upcoming_appointments
+      upcomingAppointments: row.upcoming_appointments,
     }));
-
   }
 
   /**
@@ -734,6 +732,26 @@ class PatientRepository {
     await db.none(
       "DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '30 days'",
     );
+  }
+
+  /**
+   * NEW: Find user by username (for username/password login)
+   */
+  async findUserByUsername(username: string): Promise<User | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM users WHERE username = $1 AND user_type = 'PATIENT'",
+      [username],
+    );
+  }
+
+  /**
+   * NEW: Verify password for username/password login
+   */
+  async verifyPassword(
+    passwordHash: string,
+    plainPassword: string,
+  ): Promise<boolean> {
+    return await bcrypt.compare(plainPassword, passwordHash);
   }
 }
 

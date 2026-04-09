@@ -12,7 +12,7 @@ const router = Router();
  */
 router.post(
   "/send-otp",
-  patientAuthController.sendOtp.bind(patientAuthController)
+  patientAuthController.sendOtp.bind(patientAuthController),
 );
 
 /**
@@ -22,7 +22,17 @@ router.post(
  */
 router.post(
   "/verify-otp",
-  patientAuthController.verifyOtp.bind(patientAuthController)
+  patientAuthController.verifyOtp.bind(patientAuthController),
+);
+
+/**
+ * NEW: POST /api/patient-auth/login-with-password
+ * Login with username and password (for Razorpay verification)
+ * Public endpoint
+ */
+router.post(
+  "/login-with-password",
+  patientAuthController.loginWithPassword.bind(patientAuthController),
 );
 
 /**
@@ -32,7 +42,7 @@ router.post(
  */
 router.post(
   "/refresh-token",
-  patientAuthController.refreshToken.bind(patientAuthController)
+  patientAuthController.refreshToken.bind(patientAuthController),
 );
 
 /**
@@ -42,7 +52,7 @@ router.post(
  */
 router.post(
   "/logout",
-  patientAuthController.logout.bind(patientAuthController)
+  patientAuthController.logout.bind(patientAuthController),
 );
 
 /**
@@ -53,7 +63,7 @@ router.post(
 router.get(
   "/me",
   authMiddleware,
-  patientAuthController.getCurrentPatient.bind(patientAuthController)
+  patientAuthController.getCurrentPatient.bind(patientAuthController),
 );
 
 export default router;

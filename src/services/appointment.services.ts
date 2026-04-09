@@ -50,13 +50,20 @@ export class AppointmentService {
         !authUser.roles.includes("ADMIN") &&
         !authUser.roles.includes("MANAGER")
       ) {
-        // Get clinician profile ID from user
-        const clinicianProfile = await this.getClinicianProfileByUserId(
-          authUser.userId,
-        );
-        if (clinicianProfile) {
-          filters.clinicianId = clinicianProfile.id;
+        // Check if clinician ID exists in token
+        if (!authUser.clinicianId) {
+          throw ApiError.forbidden("Clinician ID not found in token");
         }
+
+        // Call findAppointmentsByClinicianId for clinician users
+        return await appointmentRepository.findAppointmentsByClinicianId(
+          authUser.clinicianId,
+          {
+            status: filters.status ? [filters.status] : undefined,
+            startDate: filters.date,
+            endDate: filters.date,
+          },
+        );
       }
       // CENTRE_MANAGER, CARE_COORDINATOR, FRONT_DESK can only see their centre's appointments
       else if (
@@ -122,7 +129,9 @@ export class AppointmentService {
 
     // Check clinician availability rules
     // const dateStr = start.toISOString().split("T")[0];
-    const dateStr = start.toLocaleDateString("en-CA",{timeZone: "Asia/Kolkata"});
+    const dateStr = start.toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata",
+    });
     const availabilityRules =
       await appointmentRepository.getClinicianAvailabilityRules(
         dto.clinician_id,
@@ -135,18 +144,18 @@ export class AppointmentService {
       );
     }
 
-    const toMinutes = (timeStr:string) => {
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 60 + m;
-};
+    const toMinutes = (timeStr: string) => {
+      const [h, m] = timeStr.split(":").map(Number);
+      return h * 60 + m;
+    };
     // Verify the requested time falls within availability rules
     // const requestedTime = start.toTimeString().substring(0, 5); // HH:MM format
     const requestedTime = start.toLocaleTimeString("en-GB", {
       timeZone: "Asia/Kolkata",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
     const requestedMinutes = toMinutes(requestedTime);
     const isWithinAvailability = availabilityRules.some((rule) => {
       const startMinutes = toMinutes(rule.start_time);
@@ -212,8 +221,8 @@ export class AppointmentService {
       );
       return appointment;
     }
-   
-    const userTimezone = "Asia/Kolkata"; 
+
+    const userTimezone = "Asia/Kolkata";
 
     const appointmentDate = new Date(
       appointment.scheduled_start_at,
@@ -259,7 +268,7 @@ export class AppointmentService {
                 appointmentDate,
                 appointmentTime,
                 clinicianName,
-                appointment.id
+                appointment.id,
               )
               .catch((err) =>
                 logger.error("Failed to send WhatsApp to patient:", err),
@@ -288,7 +297,7 @@ export class AppointmentService {
               appointmentDate,
               appointmentTime,
               meetLink,
-              appointment.id
+              appointment.id,
             ).catch((err) => logger.error("Failed to notify doctor:", err)),
 
             // 4. Notify admins and managers
@@ -673,7 +682,7 @@ export class AppointmentService {
     appointmentDate: string,
     appointmentTime: string,
     meetLink: string,
-    appointmentId: number
+    appointmentId: number,
   ): Promise<void> {
     try {
       // Get clinician's user details
@@ -694,7 +703,15 @@ export class AppointmentService {
 
       // Send WhatsApp to doctor
       if (clinician.phone) {
-        await gallaboxUtil.sendOnlineMeetingLinkTemplateToDoctor(clinician.phone, patientName, meetLink, appointmentDate, appointmentTime, clinician.full_name, appointmentId);
+        await gallaboxUtil.sendOnlineMeetingLinkTemplateToDoctor(
+          clinician.phone,
+          patientName,
+          meetLink,
+          appointmentDate,
+          appointmentTime,
+          clinician.full_name,
+          appointmentId,
+        );
         logger.info(`WhatsApp sent to doctor ${clinician.full_name}`);
       }
 

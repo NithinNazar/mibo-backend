@@ -11,6 +11,8 @@ import staffRoutes from "./staff.routes";
 import videoRoutes from "./video.routes";
 import notificationRoutes from "./notification.routes";
 import paymentRoutes from "./payment.routes";
+import slotBlockingRoutes from "./slot-blocking.routes";
+import patientNotificationRoutes from "./patient-notification.routes";
 import testOtpRoutes from "./test-otp.routes"; // TEST ONLY - Simple OTP without database
 import { healthController } from "../controllers/health.controller";
 import { ENV } from "../config/env";
@@ -44,6 +46,8 @@ router.get("/", (req, res) => {
       video: "/api/video",
       notifications: "/api/notifications",
       payments: "/api/payments",
+      adminSlots: "/api/admin/slots",
+      patientNotifications: "/api/patient/notifications",
     },
   });
 });
@@ -53,6 +57,7 @@ router.use("/auth", authRoutes); // Staff authentication
 router.use("/patient-auth", patientAuthRoutes); // Patient authentication (OTP-based)
 router.use("/booking", bookingRoutes); // Patient booking flow
 router.use("/patient", patientDashboardRoutes); // Patient dashboard
+router.use("/patient/notifications", patientNotificationRoutes); // Patient notifications
 router.use("/analytics", analyticsRoutes);
 router.use("/appointments", appointmentRoutes);
 router.use("/centres", centreRoutes);
@@ -62,6 +67,7 @@ router.use("/clinicians", staffRoutes); // Clinician management (uses same route
 router.use("/video", videoRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes); // Standardized to plural
+router.use("/admin/slots", slotBlockingRoutes); // Admin slot blocking
 
 // TEST ONLY - Simple OTP endpoints without database (for testing with dummy data)
 if (ENV.NODE_ENV === "development") {

@@ -111,11 +111,11 @@ export class StaffRepository {
    * Find staff by ID with roles and centre assignments
    */
   async findStaffById(userId: number, isActive?: boolean) {
-    const conditions = ['u.id = $1', "u.user_type = 'STAFF'"];
+    const conditions = ["u.id = $1", "u.user_type = 'STAFF'"];
     const params: any[] = [userId];
 
     if (isActive !== undefined) {
-      conditions.push('u.is_active = $2');
+      conditions.push("u.is_active = $2");
       params.push(isActive);
     }
 
@@ -126,7 +126,7 @@ export class StaffRepository {
         sp.profile_picture_url
       FROM users u
       JOIN staff_profiles sp ON sp.user_id = u.id
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
     `;
 
     const user = await db.oneOrNone(query, params);
@@ -403,7 +403,8 @@ export class StaffRepository {
       paramIndex++;
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const query = `
       SELECT
@@ -441,8 +442,8 @@ export class StaffRepository {
    * @param isActive - Optional filter: undefined (all), true (active only), false (inactive only)
    */
   async findClinicianById(clinicianId: number, isActive?: boolean) {
-    const conditions = ['cp.id = $1'];
-    
+    const conditions = ["cp.id = $1"];
+
     if (isActive !== undefined) {
       conditions.push(`cp.is_active = ${isActive}`);
     }
@@ -460,7 +461,7 @@ export class StaffRepository {
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
       LEFT JOIN staff_profiles sp ON u.id = sp.user_id
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
     `;
 
     const clinician = await db.oneOrNone(query, [clinicianId]);
@@ -692,6 +693,7 @@ export class StaffRepository {
 
   /**
    * Update clinician availability rules
+   * Smart update: only modifies changed rules, preserves existing ones
    */
   async updateClinicianAvailability(
     clinicianId: number,
@@ -699,30 +701,71 @@ export class StaffRepository {
     centreId: number,
   ) {
     return await db.tx(async (t) => {
-      await t.none(
-        "DELETE FROM clinician_availability_rules WHERE clinician_id = $1",
+      // Get existing rules for this clinician
+      const existingRules = await t.any(
+        `SELECT id, centre_id, day_of_week, start_time, end_time, mode
+         FROM clinician_availability_rules 
+         WHERE clinician_id = $1 AND is_active = TRUE`,
         [clinicianId],
       );
 
-      for (const rule of rules) {
-        const [startHour, startMin] = rule.startTime.split(':').map(Number);
-        const [endHour, endMin] = rule.endTime.split(':').map(Number);
-        const slotDuration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+      // Create a map of existing rules for comparison
+      const existingRulesMap = new Map(
+        existingRules.map((r: any) => [
+          `${r.centre_id}-${r.day_of_week}-${r.start_time}-${r.end_time}-${r.mode}`,
+          r.id,
+        ]),
+      );
 
+      // Track which existing rules should be kept
+      const rulesToKeep = new Set<number>();
+
+      // Process incoming rules
+      for (const rule of rules) {
+        const [startHour, startMin] = rule.startTime.split(":").map(Number);
+        const [endHour, endMin] = rule.endTime.split(":").map(Number);
+        const slotDuration =
+          endHour * 60 + endMin - (startHour * 60 + startMin);
+
+        const ruleKey = `${rule.centre_id || centreId}-${rule.dayOfWeek}-${rule.startTime}-${rule.endTime}-${rule.consultationMode}`;
+
+        // Check if this rule already exists
+        const existingRuleId = existingRulesMap.get(ruleKey);
+
+        if (existingRuleId !== undefined) {
+          // Rule exists, mark it to keep
+          rulesToKeep.add(existingRuleId as number);
+        } else {
+          // New rule, insert it
+          await t.none(
+            `INSERT INTO clinician_availability_rules (
+              clinician_id, centre_id, day_of_week, start_time, end_time,
+              slot_duration_minutes, mode, is_active
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
+            [
+              clinicianId,
+              rule.centre_id || centreId,
+              rule.dayOfWeek,
+              rule.startTime,
+              rule.endTime,
+              rule.slotDurationMinutes || slotDuration,
+              rule.consultationMode,
+            ],
+          );
+        }
+      }
+
+      // Delete rules that are no longer present (soft delete by setting is_active = FALSE)
+      const ruleIdsToDelete = existingRules
+        .filter((r: any) => !rulesToKeep.has(r.id))
+        .map((r: any) => r.id);
+
+      if (ruleIdsToDelete.length > 0) {
         await t.none(
-          `INSERT INTO clinician_availability_rules (
-            clinician_id, centre_id, day_of_week, start_time, end_time,
-            slot_duration_minutes, mode, is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
-          [
-            clinicianId,
-            centreId,
-            rule.dayOfWeek,
-            rule.startTime,
-            rule.endTime,
-            slotDuration,
-            rule.consultationMode,
-          ],
+          `UPDATE clinician_availability_rules 
+           SET is_active = FALSE 
+           WHERE id = ANY($1::int[])`,
+          [ruleIdsToDelete],
         );
       }
 

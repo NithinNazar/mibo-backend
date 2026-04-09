@@ -22,15 +22,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^6.4.14",
-    "axios": "^1.13.2",
-    "bcrypt": "^6.0.0",
+    "axios": "1.13.2",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -48,6 +47,7 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^30.0.0",
     "fast-check": "^4.5.3",
     "jest": "^30.2.0",

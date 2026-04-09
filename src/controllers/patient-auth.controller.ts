@@ -184,6 +184,46 @@ class PatientAuthController {
       });
     }
   }
+
+  /**
+   * NEW: Login with username and password
+   * POST /api/patient-auth/login-with-password
+   */
+  async loginWithPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        res.status(400).json({
+          success: false,
+          message: "Username and password are required",
+        });
+        return;
+      }
+
+      const result = await patientAuthService.loginWithPassword(
+        username,
+        password,
+      );
+
+      res.json({
+        success: true,
+        message: "Login successful! Welcome back.",
+        data: {
+          user: result.user,
+          patient: result.patient,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error logging in with password:", error);
+      res.status(401).json({
+        success: false,
+        message: error.message || "Invalid credentials",
+      });
+    }
+  }
 }
 
 export const patientAuthController = new PatientAuthController();

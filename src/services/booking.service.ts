@@ -1,6 +1,7 @@
 // src/services/booking.service.ts
 import { bookingRepository } from "../repositories/booking.repository";
 import { patientRepository } from "../repositories/patient.repository";
+import { slotRepository } from "../repositories/slot.repository";
 import logger from "../config/logger";
 
 interface BookingData {
@@ -74,6 +75,25 @@ class BookingService {
       const endDateTime = new Date(
         appointmentDateTime.getTime() + durationMinutes * 60000,
       );
+
+      // Check if slot is blocked
+      const appointmentDate = bookingData.appointmentDateUTC.split("T")[0];
+      const appointmentTime = appointmentDateTime.toTimeString().split(" ")[0];
+      const endTime = endDateTime.toTimeString().split(" ")[0];
+
+      const isBlocked = await slotRepository.isSlotBlocked(
+        bookingData.clinicianId,
+        bookingData.centreId,
+        appointmentDate,
+        appointmentTime,
+        endTime,
+      );
+
+      if (isBlocked) {
+        throw new Error(
+          "This time slot has been blocked. Please choose a different time.",
+        );
+      }
 
       // Check if time slot is available
       const isAvailable = await bookingRepository.isTimeSlotAvailable(
@@ -366,6 +386,68 @@ class BookingService {
   }
 
   /**
+   * Get dates with available slots for a clinician within a date range
+   * Returns array of dates that have at least one available slot
+   */
+  async getDatesWithSlots(
+    clinicianId: number,
+    centreId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<{ date: string; slotCount: number }[]> {
+    try {
+      // Validate clinician and centre
+      const clinician = await bookingRepository.findClinicianById(clinicianId);
+      if (!clinician) {
+        throw new Error("Clinician not found");
+      }
+
+      const centre = await bookingRepository.findCentreById(centreId);
+      if (!centre) {
+        throw new Error("Centre not found");
+      }
+
+      // Use appointment service to get availability for date range
+      const { appointmentService } = await import("./appointment.services");
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const datesWithSlots: { date: string; slotCount: number }[] = [];
+
+      // Iterate through each date in the range
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        try {
+          const slots = await appointmentService.checkClinicianAvailability(
+            clinicianId,
+            centreId,
+            dateStr,
+          );
+
+          // Count available slots
+          const availableCount = slots.filter((slot) => slot.available).length;
+
+          if (availableCount > 0) {
+            datesWithSlots.push({
+              date: dateStr,
+              slotCount: availableCount,
+            });
+          }
+        } catch (error) {
+          // Skip dates with errors (e.g., no schedule defined)
+          logger.debug(`No slots for date ${dateStr}:`, error);
+        }
+      }
+
+      return datesWithSlots;
+    } catch (error: any) {
+      logger.error("Error getting dates with slots:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Book appointment for patient (Front Desk)
    * Creates or finds patient by phone, then books appointment
    */
@@ -465,6 +547,24 @@ class BookingService {
       const endDateTime = new Date(
         appointmentDateTime.getTime() + durationMinutes * 60000,
       );
+
+      // Check if slot is blocked
+      const appointmentTime = appointmentDateTime.toTimeString().split(" ")[0];
+      const endTime = endDateTime.toTimeString().split(" ")[0];
+
+      const isBlocked = await slotRepository.isSlotBlocked(
+        bookingData.clinicianId,
+        bookingData.centreId,
+        bookingData.appointmentDate,
+        appointmentTime,
+        endTime,
+      );
+
+      if (isBlocked) {
+        throw new Error(
+          "This time slot has been blocked. Please choose a different time.",
+        );
+      }
 
       // Check if time slot is available
       const isAvailable = await bookingRepository.isTimeSlotAvailable(

@@ -7,6 +7,7 @@ export interface JwtPayload {
   phone: string;
   userType: "PATIENT" | "STAFF";
   roles: string[];
+  clinicianId?: number;
 }
 
 export function signAccessToken(payload: JwtPayload): string {

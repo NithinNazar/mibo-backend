@@ -105,7 +105,7 @@ class BookingController {
 
       const appointment = await bookingService.getAppointmentDetails(
         appointmentId,
-        req.user.userId
+        req.user.userId,
       );
 
       res.json({
@@ -145,7 +145,7 @@ class BookingController {
 
       const result = await bookingService.getPatientAppointments(
         req.user.userId,
-        filters
+        filters,
       );
 
       res.json({
@@ -190,7 +190,7 @@ class BookingController {
       await bookingService.cancelAppointment(
         appointmentId,
         req.user.userId,
-        reason
+        reason,
       );
 
       res.json({
@@ -225,7 +225,7 @@ class BookingController {
       const slots = await bookingService.getAvailableSlots(
         parseInt(clinicianId as string),
         parseInt(centreId as string),
-        date as string
+        date as string,
       );
 
       res.json({
@@ -240,6 +240,43 @@ class BookingController {
       res.status(500).json({
         success: false,
         message: error.message || "Failed to get available slots",
+      });
+    }
+  }
+
+  /**
+   * Get dates with available slots within a date range
+   * GET /api/booking/dates-with-slots
+   */
+  async getDatesWithSlots(req: Request, res: Response): Promise<void> {
+    try {
+      const { clinicianId, centreId, startDate, endDate } = req.query;
+
+      if (!clinicianId || !centreId || !startDate || !endDate) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Missing required parameters: clinicianId, centreId, startDate, endDate",
+        });
+        return;
+      }
+
+      const dates = await bookingService.getDatesWithSlots(
+        parseInt(clinicianId as string),
+        parseInt(centreId as string),
+        startDate as string,
+        endDate as string,
+      );
+
+      res.json({
+        success: true,
+        data: dates,
+      });
+    } catch (error: any) {
+      logger.error("Error getting dates with slots:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to get dates with slots",
       });
     }
   }

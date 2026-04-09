@@ -12,6 +12,7 @@ export type AppointmentStatus =
   | "RESCHEDULED"
   | "COMPLETED"
   | "CANCELLED"
+  | "CANCELLED_BY_ADMIN"
   | "NO_SHOW";
 
 export type AppointmentSource =

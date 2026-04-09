@@ -21,7 +21,9 @@ export function requireRole(...allowedRoles: string[]) {
 
     if (!hasPermission) {
       return next(
-        ApiError.forbidden("You do not have permission to access this resource")
+        ApiError.forbidden(
+          "You do not have permission to access this resource",
+        ),
       );
     }
 
@@ -68,12 +70,12 @@ export function requireCentreAccess(centreIdParam: string = "centreId") {
           AND is_active = TRUE
         LIMIT 1
       `,
-        [req.user.userId, centreId]
+        [req.user.userId, centreId],
       );
 
       if (!result) {
         return next(
-          ApiError.forbidden("You do not have access to this centre")
+          ApiError.forbidden("You do not have access to this centre"),
         );
       }
 
@@ -91,7 +93,7 @@ export function requireCentreAccess(centreIdParam: string = "centreId") {
  * @param clinicianIdParam - Name of the route parameter containing clinician ID
  */
 export function requireClinicianAccess(
-  clinicianIdParam: string = "clinicianId"
+  clinicianIdParam: string = "clinicianId",
 ) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
@@ -126,7 +128,7 @@ export function requireClinicianAccess(
           WHERE id = $1 AND user_id = $2 AND is_active = TRUE
           LIMIT 1
         `,
-          [clinicianId, req.user.userId]
+          [clinicianId, req.user.userId],
         );
 
         if (!result) {
@@ -138,11 +140,56 @@ export function requireClinicianAccess(
 
       // Other roles don't have access to clinician data
       return next(
-        ApiError.forbidden("You do not have permission to access this resource")
+        ApiError.forbidden(
+          "You do not have permission to access this resource",
+        ),
       );
     } catch (error) {
       next(error);
     }
+  };
+}
+
+/**
+ * Middleware to ensure clinician can only access their own data
+ * This middleware enforces that CLINICIAN role users can only access
+ * resources that belong to them based on clinicianId in the JWT token
+ */
+export function enforceClinicianScope() {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(ApiError.unauthorized("Authentication required"));
+    }
+
+    // Only enforce for clinician role
+    if (req.user.roles.includes("CLINICIAN")) {
+      // Ensure clinicianId exists in token
+      if (!req.user.clinicianId) {
+        return next(ApiError.forbidden("Clinician ID not found"));
+      }
+
+      // If request includes clinician_id parameter, verify it matches
+      const requestedClinicianId =
+        req.params.clinicianId ||
+        req.query.clinicianId ||
+        req.body.clinician_id;
+
+      if (requestedClinicianId) {
+        const requestedId = parseInt(requestedClinicianId as string);
+
+        if (isNaN(requestedId)) {
+          return next(ApiError.badRequest("Invalid clinician ID format"));
+        }
+
+        if (requestedId !== req.user.clinicianId) {
+          return next(
+            ApiError.forbidden("Access denied to other clinician's data"),
+          );
+        }
+      }
+    }
+
+    next();
   };
 }
 

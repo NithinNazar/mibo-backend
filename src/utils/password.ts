@@ -1,5 +1,5 @@
 // src/utils/password.ts
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const SALT_ROUNDS = 10;
 
@@ -21,7 +21,7 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(
   password: string,
-  hash: string
+  hash: string,
 ): Promise<boolean> {
   const isMatch = await bcrypt.compare(password, hash);
   return isMatch;
