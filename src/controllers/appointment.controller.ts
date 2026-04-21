@@ -37,7 +37,7 @@ export class AppointmentController {
 
       const appointments = await appointmentService.getAppointments(
         filters,
-        req.user
+        req.user,
       );
       return ok(res, appointments);
     } catch (err) {
@@ -51,7 +51,7 @@ export class AppointmentController {
   async getAppointmentById(
     req: AuthRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     try {
       if (!req.user) return;
@@ -71,7 +71,7 @@ export class AppointmentController {
       if (!req.user) return;
       const appt = await appointmentService.createAppointment(
         req.body,
-        req.user
+        req.user,
       );
       return created(res, appt, "Appointment created successfully");
     } catch (err) {
@@ -91,7 +91,7 @@ export class AppointmentController {
         const appt = await appointmentService.updateStatus(
           req.body,
           req.params,
-          req.user
+          req.user,
         );
         return ok(res, appt, "Appointment status updated");
       }
@@ -100,7 +100,7 @@ export class AppointmentController {
       const appt = await appointmentService.rescheduleAppointment(
         req.body,
         req.params,
-        req.user
+        req.user,
       );
       return ok(res, appt, "Appointment rescheduled successfully");
     } catch (err) {
@@ -118,7 +118,7 @@ export class AppointmentController {
       await appointmentService.cancelAppointment(
         dto.appointment_id,
         dto.reason,
-        req.user
+        req.user,
       );
       return ok(res, null, "Appointment cancelled successfully");
     } catch (err) {
@@ -132,14 +132,14 @@ export class AppointmentController {
   async getClinicianAvailability(
     req: AuthRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     try {
       const dto = validateAvailabilityQuery(req.query);
       const slots = await appointmentService.checkClinicianAvailability(
         dto.clinician_id,
         dto.centre_id,
-        dto.date
+        dto.date,
       );
       return ok(res, slots);
     } catch (err) {
@@ -151,7 +151,7 @@ export class AppointmentController {
       if (!req.user) return;
       const appt = await appointmentService.createAppointment(
         req.body,
-        req.user
+        req.user,
       );
       return created(res, appt, "Appointment created");
     } catch (err) {
@@ -170,8 +170,104 @@ export class AppointmentController {
       return ok(
         res,
         appointments,
-        "Clinician appointments retrieved successfully"
+        "Clinician appointments retrieved successfully",
       );
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Update appointment notes
+   * Validates: Requirements 5.5
+   */
+  async updateAppointmentNotes(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      if (notes === undefined && notes !== "") {
+        return res.status(400).json({
+          success: false,
+          message: "Notes field is required",
+        });
+      }
+
+      // Verify appointment belongs to clinician (if clinician role)
+      if (req.user?.roles.includes("CLINICIAN")) {
+        const appointment = await appointmentService.getAppointmentById(
+          appointmentId,
+          req.user,
+        );
+        if (!appointment) {
+          return res.status(404).json({
+            success: false,
+            message: "Appointment not found",
+          });
+        }
+        if (appointment.clinician_id !== req.user.clinicianId) {
+          return res.status(403).json({
+            success: false,
+            message: "Cannot update notes for other clinician's appointments",
+          });
+        }
+      }
+
+      const updatedAppointment = await appointmentService.updateNotes(
+        appointmentId,
+        notes,
+      );
+
+      return ok(res, updatedAppointment, "Notes updated successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get appointment by ID with full details
+   * Validates: Requirements 5.6
+   */
+  async getAppointmentByIdWithDetails(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+
+      const appointment =
+        await appointmentService.getAppointmentByIdWithDetails(
+          appointmentId,
+          req.user,
+        );
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found",
+        });
+      }
+
+      // Verify access for clinicians
+      if (req.user?.roles.includes("CLINICIAN")) {
+        if (appointment.clinician_id !== req.user.clinicianId) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied",
+          });
+        }
+      }
+
+      return ok(res, appointment);
     } catch (err) {
       next(err);
     }

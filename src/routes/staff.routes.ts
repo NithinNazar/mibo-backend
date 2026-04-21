@@ -106,6 +106,20 @@ router.get("/clinicians/:id/slots", (req, res, next) =>
 );
 
 /**
+ * PATCH /api/clinicians/:id/credentials
+ * Update clinician username and password
+ * Roles: ADMIN, MANAGER
+ * Validates: Requirements 7.1, 7.2, 7.6
+ */
+router.patch(
+  "/:id/credentials",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER"),
+  (req, res, next) =>
+    staffController.updateClinicianCredentials(req, res, next),
+);
+
+/**
  * POST /api/users/managers
  * Create manager staff
  * Roles: ADMIN only

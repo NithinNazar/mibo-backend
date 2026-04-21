@@ -2,6 +2,7 @@
 import { bookingRepository } from "../repositories/booking.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { slotRepository } from "../repositories/slot.repository";
+import { googleMeetUtil } from "../utils/googleMeet";
 import logger from "../config/logger";
 
 interface BookingData {
@@ -28,12 +29,18 @@ class BookingService {
     patient: any;
   }> {
     try {
-      // Get patient profile
-      const patient =
-        await patientRepository.findPatientProfileByUserId(userId);
-      if (!patient) {
+      // Get patient profile with user data
+      const patientData = await patientRepository.findByUserId(userId);
+      if (!patientData) {
         throw new Error("Patient profile not found");
       }
+
+      const patient = {
+        ...patientData.profile,
+        full_name: patientData.user.full_name,
+        email: patientData.user.email,
+        phone: patientData.user.phone,
+      };
 
       // Validate clinician
       const clinician = await bookingRepository.findClinicianById(
@@ -122,6 +129,43 @@ class BookingService {
         source: "WEB_PATIENT",
         notes: bookingData.notes,
       });
+
+      // Generate Google Meet link for online appointments
+      let googleMeetLink = null;
+      let googleCalendarEventId = null;
+
+      if (bookingData.appointmentType === "ONLINE") {
+        try {
+          const meetResult =
+            await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
+              patient.full_name || "Patient",
+              clinician.clinician_name || "Clinician",
+              patient.email || "",
+              appointmentDateTime.toISOString(),
+              endDateTime.toISOString(),
+            );
+
+          googleMeetLink = meetResult.meetLink;
+          googleCalendarEventId = meetResult.eventId;
+
+          // Update appointment with Google Meet details
+          await bookingRepository.updateAppointmentGoogleMeet(
+            appointment.id,
+            googleMeetLink,
+            googleCalendarEventId,
+          );
+
+          logger.info(
+            `✅ Google Meet link generated for appointment ${appointment.id}: ${googleMeetLink}`,
+          );
+        } catch (error: any) {
+          logger.error(
+            `Failed to generate Google Meet link for appointment ${appointment.id}:`,
+            error,
+          );
+          // Don't fail the appointment creation if Google Meet fails
+        }
+      }
 
       logger.info(
         `✅ Appointment created: ID ${appointment.id} for patient ${patient.id}`,
@@ -593,6 +637,43 @@ class BookingService {
         source: "ADMIN_FRONT_DESK", // Mark as booked by front desk
         notes: bookingData.notes,
       });
+
+      // Generate Google Meet link for online appointments
+      let googleMeetLink = null;
+      let googleCalendarEventId = null;
+
+      if (bookingData.appointmentType === "ONLINE") {
+        try {
+          const meetResult =
+            await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
+              bookingData.patientName,
+              clinician.clinician_name || "Clinician",
+              bookingData.patientEmail || "",
+              appointmentDateTime.toISOString(),
+              endDateTime.toISOString(),
+            );
+
+          googleMeetLink = meetResult.meetLink;
+          googleCalendarEventId = meetResult.eventId;
+
+          // Update appointment with Google Meet details
+          await bookingRepository.updateAppointmentGoogleMeet(
+            appointment.id,
+            googleMeetLink,
+            googleCalendarEventId,
+          );
+
+          logger.info(
+            `✅ Google Meet link generated for front desk appointment ${appointment.id}: ${googleMeetLink}`,
+          );
+        } catch (error: any) {
+          logger.error(
+            `Failed to generate Google Meet link for front desk appointment ${appointment.id}:`,
+            error,
+          );
+          // Don't fail the appointment creation if Google Meet fails
+        }
+      }
 
       logger.info(
         `✅ Appointment booked by front desk: ID ${appointment.id} for patient ${patientProfile.id}`,

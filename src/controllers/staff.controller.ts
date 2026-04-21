@@ -15,9 +15,18 @@ export class StaffController {
       const centreId = req.query.centreId
         ? Number(req.query.centreId)
         : undefined;
-      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const isActive =
+        req.query.isActive === "true"
+          ? true
+          : req.query.isActive === "false"
+            ? false
+            : undefined;
 
-      const staff = await staffService.getStaffUsers(roleId, centreId, isActive);
+      const staff = await staffService.getStaffUsers(
+        roleId,
+        centreId,
+        isActive,
+      );
       return ok(res, staff);
     } catch (err) {
       next(err);
@@ -30,7 +39,12 @@ export class StaffController {
   async getStaffById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const isActive =
+        req.query.isActive === "true"
+          ? true
+          : req.query.isActive === "false"
+            ? false
+            : undefined;
       const staff = await staffService.getStaffById(id, isActive);
       return ok(res, staff);
     } catch (err) {
@@ -87,15 +101,19 @@ export class StaffController {
       const specialization = req.query.specialization
         ? String(req.query.specialization)
         : undefined;
-      
-      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+
+      const isActive =
+        req.query.isActive === "true"
+          ? true
+          : req.query.isActive === "false"
+            ? false
+            : undefined;
 
       const clinicians = await staffService.getClinicians(
         centreId,
         specialization,
         isActive,
       );
-      
 
       // Transform to camelCase for frontend
       const transformed = clinicians.map(transformClinicianResponse);
@@ -111,7 +129,12 @@ export class StaffController {
   async getClinicianById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+      const isActive =
+        req.query.isActive === "true"
+          ? true
+          : req.query.isActive === "false"
+            ? false
+            : undefined;
       const clinician = await staffService.getClinicianById(id, isActive);
 
       // Transform to camelCase for frontend
@@ -323,6 +346,41 @@ export class StaffController {
 
       const slots = await staffService.getClinicianSlots(id, date, centreId);
       return ok(res, slots);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Update clinician username and password (admin only)
+   * Validates: Requirements 7.4, 7.5, 7.6
+   */
+  async updateClinicianCredentials(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = parseInt(req.params.id);
+      const { username, password } = req.body;
+
+      if (!username && !password) {
+        return res.status(400).json({
+          success: false,
+          message: "At least one of username or password must be provided",
+        });
+      }
+
+      const updatedClinician = await staffService.updateClinicianCredentials(
+        clinicianId,
+        { username, password },
+      );
+
+      return ok(
+        res,
+        updatedClinician,
+        "Clinician credentials updated successfully",
+      );
     } catch (err) {
       next(err);
     }

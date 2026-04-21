@@ -31,6 +31,7 @@ export interface ClinicianProfile {
   default_consultation_duration_minutes: number;
   consultation_fee: number;
   is_active: boolean;
+  clinician_name?: string; // Added from JOIN with users table
 }
 
 export interface Centre {
@@ -50,14 +51,14 @@ class BookingRepository {
    * Find clinician by ID
    */
   async findClinicianById(
-    clinicianId: number
+    clinicianId: number,
   ): Promise<ClinicianProfile | null> {
     return await db.oneOrNone(
       `SELECT cp.*, u.full_name as clinician_name
        FROM clinician_profiles cp
        JOIN users u ON cp.user_id = u.id
        WHERE cp.id = $1 AND cp.is_active = true`,
-      [clinicianId]
+      [clinicianId],
     );
   }
 
@@ -67,7 +68,7 @@ class BookingRepository {
   async findCentreById(centreId: number): Promise<Centre | null> {
     return await db.oneOrNone(
       "SELECT * FROM centres WHERE id = $1 AND is_active = true",
-      [centreId]
+      [centreId],
     );
   }
 
@@ -78,7 +79,7 @@ class BookingRepository {
     clinicianId: number,
     centreId: number,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<boolean> {
     const conflictingAppointments = await db.oneOrNone(
       `SELECT COUNT(*) as count
@@ -91,7 +92,7 @@ class BookingRepository {
          OR (scheduled_start_at < $4 AND scheduled_end_at >= $4)
          OR (scheduled_start_at >= $3 AND scheduled_end_at <= $4)
        )`,
-      [clinicianId, centreId, startTime, endTime]
+      [clinicianId, centreId, startTime, endTime],
     );
 
     return parseInt(conflictingAppointments.count) === 0;
@@ -130,7 +131,7 @@ class BookingRepository {
         data.bookedByUserId,
         data.source,
         data.notes || null,
-      ]
+      ],
     );
   }
 
@@ -160,7 +161,7 @@ class BookingRepository {
       JOIN patient_profiles pp ON a.patient_id = pp.id
       JOIN users pu ON pp.user_id = pu.id
       WHERE a.id = $1`,
-      [appointmentId]
+      [appointmentId],
     );
   }
 
@@ -169,7 +170,7 @@ class BookingRepository {
    */
   async findAppointmentByIdAndPatient(
     appointmentId: number,
-    patientId: number
+    patientId: number,
   ): Promise<any | null> {
     return await db.oneOrNone(
       `SELECT 
@@ -188,7 +189,7 @@ class BookingRepository {
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON a.centre_id = c.id
       WHERE a.id = $1 AND a.patient_id = $2`,
-      [appointmentId, patientId]
+      [appointmentId, patientId],
     );
   }
 
@@ -197,14 +198,14 @@ class BookingRepository {
    */
   async updateAppointmentStatus(
     appointmentId: number,
-    status: string
+    status: string,
   ): Promise<Appointment> {
     return await db.one(
       `UPDATE appointments 
        SET status = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
-      [status, appointmentId]
+      [status, appointmentId],
     );
   }
 
@@ -218,7 +219,7 @@ class BookingRepository {
       upcoming?: boolean;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<any[]> {
     let query = `
       SELECT 
@@ -275,14 +276,14 @@ class BookingRepository {
    */
   async cancelAppointment(
     appointmentId: number,
-    reason?: string
+    reason?: string,
   ): Promise<Appointment> {
     return await db.one(
       `UPDATE appointments 
        SET status = 'CANCELLED', notes = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
-      [reason || null, appointmentId]
+      [reason || null, appointmentId],
     );
   }
 
@@ -296,7 +297,7 @@ class BookingRepository {
        WHERE patient_id = $1
        AND scheduled_start_at > NOW()
        AND status NOT IN ('CANCELLED', 'NO_SHOW')`,
-      [patientId]
+      [patientId],
     );
 
     return parseInt(result.count);
@@ -308,14 +309,14 @@ class BookingRepository {
   async updateAppointmentGoogleMeet(
     appointmentId: number,
     googleMeetLink: string,
-    googleMeetEventId: string
+    googleMeetEventId: string,
   ): Promise<Appointment> {
     return await db.one(
       `UPDATE appointments 
        SET google_meet_link = $1, google_meet_event_id = $2, updated_at = NOW()
        WHERE id = $3
        RETURNING *`,
-      [googleMeetLink, googleMeetEventId, appointmentId]
+      [googleMeetLink, googleMeetEventId, appointmentId],
     );
   }
 }

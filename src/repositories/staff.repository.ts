@@ -454,6 +454,7 @@ export class StaffRepository {
         u.full_name,
         u.phone,
         u.email,
+        u.username,
         c.name as primary_centre_name,
         c.city as centre_city,
         sp.profile_picture_url

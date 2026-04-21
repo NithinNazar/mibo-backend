@@ -454,6 +454,56 @@ export class AppointmentRepository {
   }): Promise<void> {
     await this.insertStatusHistory(params);
   }
+
+  /**
+   * Update appointment notes
+   * Validates: Requirements 5.5, 8.3
+   */
+  async updateNotes(
+    appointmentId: number,
+    notes: string,
+  ): Promise<Appointment> {
+    const query = `
+      UPDATE appointments
+      SET notes = $1, updated_at = NOW()
+      WHERE id = $2 AND is_active = TRUE
+      RETURNING *
+    `;
+
+    return await db.one<Appointment>(query, [notes, appointmentId]);
+  }
+
+  /**
+   * Find appointment by ID with full details including notes and Google Meet link
+   * Validates: Requirements 5.6, 8.4
+   */
+  async findByIdWithDetails(
+    appointmentId: number,
+  ): Promise<AppointmentWithDetails | null> {
+    const query = `
+      SELECT
+        a.*,
+        u_patient.full_name as patient_name,
+        u_patient.phone as patient_phone,
+        u_patient.email as patient_email,
+        u_clinician.full_name as clinician_name,
+        c.name as centre_name,
+        c.city as centre_city
+      FROM appointments a
+      JOIN patient_profiles pp ON a.patient_id = pp.id
+      JOIN users u_patient ON pp.user_id = u_patient.id
+      JOIN clinician_profiles cp ON a.clinician_id = cp.id
+      JOIN users u_clinician ON cp.user_id = u_clinician.id
+      JOIN centres c ON a.centre_id = c.id
+      WHERE a.id = $1 AND a.is_active = TRUE
+    `;
+
+    try {
+      return await db.one<AppointmentWithDetails>(query, [appointmentId]);
+    } catch (error) {
+      return null;
+    }
+  }
 }
 
 export const appointmentRepository = new AppointmentRepository();

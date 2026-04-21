@@ -9,7 +9,7 @@ export class UserRepository {
   async findByPhone(phone: string): Promise<User | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE phone = $1 AND is_active = TRUE",
-      [phone]
+      [phone],
     );
     return user;
   }
@@ -20,7 +20,7 @@ export class UserRepository {
   async findByIdWithRoles(userId: number): Promise<UserWithRoles | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE id = $1 AND is_active = TRUE",
-      [userId]
+      [userId],
     );
     if (!user) return null;
 
@@ -31,7 +31,7 @@ export class UserRepository {
       JOIN roles r ON ur.role_id = r.id
       WHERE ur.user_id = $1 AND ur.is_active = TRUE
       `,
-      [userId]
+      [userId],
     );
 
     return {
@@ -129,7 +129,7 @@ export class UserRepository {
   async findByPhoneStaffOnly(phone: string): Promise<User | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE phone = $1 AND user_type = 'STAFF' AND is_active = TRUE",
-      [phone]
+      [phone],
     );
     return user;
   }
@@ -140,7 +140,7 @@ export class UserRepository {
   async findByUsernameStaffOnly(username: string): Promise<User | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE username = $1 AND user_type = 'STAFF' AND is_active = TRUE",
-      [username]
+      [username],
     );
     return user;
   }
@@ -151,7 +151,7 @@ export class UserRepository {
   async findByEmailStaffOnly(email: string): Promise<User | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE email = $1 AND user_type = 'STAFF' AND is_active = TRUE",
-      [email]
+      [email],
     );
     return user;
   }
@@ -160,11 +160,11 @@ export class UserRepository {
    * Find user by ID with roles and centre assignments
    */
   async findByIdWithRolesAndCentres(
-    userId: number
+    userId: number,
   ): Promise<UserWithRoles | null> {
     const user = await db.oneOrNone<User>(
       "SELECT * FROM users WHERE id = $1 AND is_active = TRUE",
-      [userId]
+      [userId],
     );
     if (!user) return null;
 
@@ -176,7 +176,7 @@ export class UserRepository {
       JOIN roles r ON ur.role_id = r.id
       WHERE ur.user_id = $1 AND ur.is_active = TRUE
       `,
-      [userId]
+      [userId],
     );
 
     // Get centre assignments
@@ -186,7 +186,7 @@ export class UserRepository {
       FROM user_roles
       WHERE user_id = $1 AND is_active = TRUE AND centre_id IS NOT NULL
       `,
-      [userId]
+      [userId],
     );
 
     return {
@@ -220,6 +220,41 @@ export class UserRepository {
       params.fullName,
     ]);
 
+    return user;
+  }
+
+  /**
+   * Update user fields dynamically
+   * Validates: Requirements 7.6
+   */
+  async updateUser(userId: number, updates: any): Promise<void> {
+    const fields = Object.keys(updates);
+    const values = Object.values(updates);
+
+    if (fields.length === 0) {
+      return;
+    }
+
+    const setClause = fields
+      .map((field, index) => `${field} = $${index + 1}`)
+      .join(", ");
+    const query = `
+      UPDATE users
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $${fields.length + 1}
+    `;
+
+    await db.none(query, [...values, userId]);
+  }
+
+  /**
+   * Find user by username (for uniqueness check)
+   */
+  async findByUsername(username: string): Promise<User | null> {
+    const user = await db.oneOrNone<User>(
+      "SELECT * FROM users WHERE username = $1 AND is_active = TRUE",
+      [username],
+    );
     return user;
   }
 }

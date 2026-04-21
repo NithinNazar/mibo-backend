@@ -44,8 +44,23 @@ router.get("/availability", authMiddleware, (req, res, next) =>
  * GET /api/appointments/:id
  * Get appointment by ID with access control
  */
-router.get("/:id", authMiddleware, (req, res, next) =>
-  appointmentController.getAppointmentById(req, res, next),
+router.get("/:id", authMiddleware, enforceClinicianScope(), (req, res, next) =>
+  appointmentController.getAppointmentByIdWithDetails(req, res, next),
+);
+
+/**
+ * PATCH /api/appointments/:id/notes
+ * Update appointment notes
+ * Roles: CLINICIAN, ADMIN, MANAGER
+ * Clinicians can only update notes for their own appointments
+ * Validates: Requirements 5.5, 5.6
+ */
+router.patch(
+  "/:id/notes",
+  authMiddleware,
+  enforceClinicianScope(),
+  (req, res, next) =>
+    appointmentController.updateAppointmentNotes(req, res, next),
 );
 
 /**

@@ -6,7 +6,7 @@ import {
   validateUpdateStatus,
 } from "../validations/appointment.validations";
 import { ApiError } from "../utils/apiError";
-import { AppointmentStatus } from "../types/appointment.types";
+import { AppointmentStatus, Appointment } from "../types/appointment.types";
 import { patientRepository } from "../repositories/patient.repository";
 import { JwtPayload } from "../utils/jwt";
 import { db } from "../config/db";
@@ -792,6 +792,35 @@ Google Meet link has been sent to patient and doctor.
       logger.error("Failed to notify admins:", error);
       throw error;
     }
+  }
+
+  /**
+   * Update appointment notes
+   * Validates: Requirements 5.5
+   */
+  async updateNotes(
+    appointmentId: number,
+    notes: string,
+  ): Promise<Appointment> {
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    return await appointmentRepository.updateNotes(appointmentId, notes);
+  }
+
+  /**
+   * Get appointment by ID with full details
+   * Validates: Requirements 5.6
+   */
+  async getAppointmentByIdWithDetails(
+    appointmentId: number,
+    authUser: JwtPayload,
+  ): Promise<any> {
+    return await appointmentRepository.findByIdWithDetails(appointmentId);
   }
 }
 

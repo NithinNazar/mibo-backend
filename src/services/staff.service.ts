@@ -1,5 +1,6 @@
 // src/services/staff.service.ts
 import { staffRepository } from "../repositories/staff.repository";
+import { userRepository } from "../repositories/user.repository";
 import { ApiError } from "../utils/apiError";
 import {
   validateCreateStaffUser,
@@ -8,12 +9,13 @@ import {
   validateUpdateClinician,
   validateUpdateClinicianAvailability,
 } from "../validations/staff.validation";
+import * as bcrypt from "bcryptjs";
 
 export class StaffService {
   /**
    * Get staff users with filtering
    */
-  async getStaffUsers(roleId?: number, centreId?: number,isActive?: boolean) {
+  async getStaffUsers(roleId?: number, centreId?: number, isActive?: boolean) {
     return await staffRepository.findStaffUsers({ roleId, centreId, isActive });
   }
 
@@ -99,15 +101,26 @@ export class StaffService {
   /**
    * Get clinicians with filtering
    */
-  async getClinicians(centreId?: number, specialization?: string, isActive?: boolean) {
-    return await staffRepository.findClinicians({ centreId, specialization, isActive });
+  async getClinicians(
+    centreId?: number,
+    specialization?: string,
+    isActive?: boolean,
+  ) {
+    return await staffRepository.findClinicians({
+      centreId,
+      specialization,
+      isActive,
+    });
   }
 
   /**
    * Get clinician by ID with complete details
    */
   async getClinicianById(clinicianId: number, isActive?: boolean) {
-    const clinician = await staffRepository.findClinicianById(clinicianId, isActive);
+    const clinician = await staffRepository.findClinicianById(
+      clinicianId,
+      isActive,
+    );
     if (!clinician) {
       throw ApiError.notFound("Clinician not found");
     }
@@ -721,6 +734,47 @@ export class StaffService {
     }
 
     return slots;
+  }
+
+  /**
+   * Update clinician username and password
+   * Validates: Requirements 7.4, 7.5, 7.6
+   */
+  async updateClinicianCredentials(
+    clinicianId: number,
+    credentials: { username?: string; password?: string },
+  ): Promise<any> {
+    // Get clinician profile to find user_id
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    const updates: any = {};
+
+    if (credentials.username) {
+      // Check if username already exists
+      const existingUser = await userRepository.findByUsername(
+        credentials.username,
+      );
+      if (existingUser && existingUser.id !== clinician.user_id) {
+        throw ApiError.conflict("Username already exists");
+      }
+      updates.username = credentials.username;
+    }
+
+    if (credentials.password) {
+      // Hash password
+      const hashedPassword = await bcrypt.hash(credentials.password, 10);
+      updates.password_hash = hashedPassword;
+    }
+
+    // Update user record
+    await userRepository.updateUser(clinician.user_id, updates);
+
+    // Return updated clinician data
+    return await staffRepository.findClinicianById(clinicianId);
   }
 }
 
