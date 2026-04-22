@@ -37,6 +37,16 @@ router.get(
 );
 
 /**
+ * GET /api/booking/clinician-slots
+ * Get clinician slots within a date range (for admin panel)
+ * Public endpoint - MUST be before /:id route
+ */
+router.get(
+  "/clinician-slots",
+  bookingController.getClinicianSlotsRange.bind(bookingController),
+);
+
+/**
  * GET /api/booking/my-appointments
  * Get all appointments for logged-in patient
  * Protected endpoint - requires authentication

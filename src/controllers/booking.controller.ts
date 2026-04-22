@@ -282,6 +282,43 @@ class BookingController {
   }
 
   /**
+   * Get clinician slots within a date range (for admin panel)
+   * GET /api/booking/clinician-slots
+   */
+  async getClinicianSlotsRange(req: Request, res: Response): Promise<void> {
+    try {
+      const { clinicianId, startDate, endDate, centreId } = req.query;
+
+      if (!clinicianId || !startDate || !endDate) {
+        res.status(400).json({
+          success: false,
+          message:
+            "Missing required parameters: clinicianId, startDate, endDate",
+        });
+        return;
+      }
+
+      const slots = await bookingService.getClinicianSlotsRange(
+        parseInt(clinicianId as string),
+        startDate as string,
+        endDate as string,
+        centreId ? parseInt(centreId as string) : undefined,
+      );
+
+      res.json({
+        success: true,
+        data: slots,
+      });
+    } catch (error: any) {
+      logger.error("Error getting clinician slots range:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to get clinician slots",
+      });
+    }
+  }
+
+  /**
    * Book appointment for patient (Front Desk)
    * POST /api/booking/front-desk
    */

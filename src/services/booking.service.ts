@@ -492,6 +492,69 @@ class BookingService {
   }
 
   /**
+   * Get clinician slots within a date range (for admin panel)
+   * Returns all slots (available and booked) for the specified date range
+   */
+  async getClinicianSlotsRange(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+    centreId?: number,
+  ): Promise<any[]> {
+    try {
+      // Validate clinician
+      const clinician = await bookingRepository.findClinicianById(clinicianId);
+      if (!clinician) {
+        throw new Error("Clinician not found");
+      }
+
+      // Use appointment service to get availability for date range
+      const { appointmentService } = await import("./appointment.services");
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const allSlots: any[] = [];
+
+      // Iterate through each date in the range
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        try {
+          const slots = await appointmentService.checkClinicianAvailability(
+            clinicianId,
+            centreId || clinician.primary_centre_id,
+            dateStr,
+          );
+
+          // Transform slots to match expected format
+          const transformedSlots = slots.map((slot) => ({
+            id: slot.id,
+            clinicianId: clinicianId.toString(),
+            centreId: (centreId || clinician.primary_centre_id).toString(),
+            date: dateStr,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: slot.available ? "available" : "booked",
+            appointmentId: slot.appointmentId?.toString(),
+            blockedSlotId: slot.blockedSlotId,
+            mode: slot.mode || "IN_PERSON",
+          }));
+
+          allSlots.push(...transformedSlots);
+        } catch (error) {
+          // Skip dates with errors (e.g., no schedule defined)
+          logger.debug(`No slots for date ${dateStr}:`, error);
+        }
+      }
+
+      return allSlots;
+    } catch (error: any) {
+      logger.error("Error getting clinician slots range:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Book appointment for patient (Front Desk)
    * Creates or finds patient by phone, then books appointment
    */
