@@ -454,8 +454,8 @@ class BookingService {
       // Use appointment service to get availability for date range
       const { appointmentService } = await import("./appointment.services");
 
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = new Date(startDate + "T00:00:00");
+      const end = new Date(endDate + "T00:00:00");
       const datesWithSlots: { date: string; slotCount: number }[] = [];
 
       // Iterate through each date in the range
@@ -527,17 +527,14 @@ class BookingService {
           );
 
           // Transform slots to match expected format
-          const transformedSlots = slots.map((slot) => ({
-            id: slot.id,
+          const transformedSlots = slots.map((slot: any) => ({
             clinicianId: clinicianId.toString(),
             centreId: (centreId || clinician.primary_centre_id).toString(),
             date: dateStr,
             startTime: slot.startTime,
             endTime: slot.endTime,
             status: slot.available ? "available" : "booked",
-            appointmentId: slot.appointmentId?.toString(),
-            blockedSlotId: slot.blockedSlotId,
-            mode: slot.mode || "IN_PERSON",
+            mode: "IN_PERSON",
           }));
 
           allSlots.push(...transformedSlots);

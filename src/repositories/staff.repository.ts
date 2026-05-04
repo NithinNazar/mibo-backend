@@ -789,6 +789,29 @@ export class StaffRepository {
   }
 
   /**
+   * Delete a specific availability rule (hard delete)
+   */
+  async deleteAvailabilityRule(clinicianId: number, ruleId: number) {
+    // Verify the rule belongs to this clinician
+    const rule = await db.oneOrNone(
+      `SELECT id FROM clinician_availability_rules 
+       WHERE id = $1 AND clinician_id = $2`,
+      [ruleId, clinicianId],
+    );
+
+    if (!rule) {
+      throw new Error(
+        "Availability rule not found or does not belong to this clinician",
+      );
+    }
+
+    // Hard delete the rule
+    await db.none(`DELETE FROM clinician_availability_rules WHERE id = $1`, [
+      ruleId,
+    ]);
+  }
+
+  /**
    * Toggle staff active status (for all staff types)
    */
   async toggleStaffActive(userId: number, isActive: boolean) {
@@ -843,6 +866,130 @@ export class StaffRepository {
     `;
 
     return db.any(query, params);
+  }
+
+  /**
+   * Create a slot exception (block a specific slot without deleting the rule)
+   */
+  async createSlotException(
+    clinicianId: number,
+    centreId: number,
+    exceptionDate: string,
+    startTime: string,
+    endTime: string,
+    mode: string,
+    reason?: string,
+    createdByUserId?: number,
+  ) {
+    const query = `
+      INSERT INTO clinician_slot_exceptions (
+        clinician_id,
+        centre_id,
+        exception_date,
+        start_time,
+        end_time,
+        mode,
+        reason,
+        created_by_user_id
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (clinician_id, centre_id, exception_date, start_time, mode)
+      DO UPDATE SET
+        end_time = EXCLUDED.end_time,
+        reason = EXCLUDED.reason,
+        updated_at = NOW()
+      RETURNING *;
+    `;
+
+    return db.one(query, [
+      clinicianId,
+      centreId,
+      exceptionDate,
+      startTime,
+      endTime,
+      mode,
+      reason || null,
+      createdByUserId || null,
+    ]);
+  }
+
+  /**
+   * Get slot exceptions for a clinician within a date range
+   */
+  async getSlotExceptions(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+    centreId?: number,
+  ) {
+    const conditions: string[] = [
+      "clinician_id = $1",
+      "exception_date >= $2",
+      "exception_date <= $3",
+    ];
+    const params: any[] = [clinicianId, startDate, endDate];
+    let paramIndex = 4;
+
+    if (centreId) {
+      conditions.push(`centre_id = ${paramIndex}`);
+      params.push(centreId);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT *
+      FROM clinician_slot_exceptions
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY exception_date, start_time
+    `;
+
+    return db.any(query, params);
+  }
+
+  /**
+   * Delete a slot exception (unblock a specific slot)
+   */
+  async deleteSlotException(exceptionId: number, clinicianId: number) {
+    // Verify the exception belongs to this clinician
+    const exception = await db.oneOrNone(
+      `SELECT id FROM clinician_slot_exceptions 
+       WHERE id = $1 AND clinician_id = $2`,
+      [exceptionId, clinicianId],
+    );
+
+    if (!exception) {
+      throw new Error(
+        "Slot exception not found or does not belong to this clinician",
+      );
+    }
+
+    // Delete the exception
+    await db.none(`DELETE FROM clinician_slot_exceptions WHERE id = $1`, [
+      exceptionId,
+    ]);
+  }
+
+  /**
+   * Check if a specific slot is blocked by an exception
+   */
+  async isSlotBlocked(
+    clinicianId: number,
+    centreId: number,
+    date: string,
+    startTime: string,
+    mode: string,
+  ): Promise<boolean> {
+    const result = await db.oneOrNone(
+      `SELECT id FROM clinician_slot_exceptions
+       WHERE clinician_id = $1
+         AND centre_id = $2
+         AND exception_date = $3
+         AND start_time = $4
+         AND mode = $5`,
+      [clinicianId, centreId, date, startTime, mode],
+    );
+
+    return result !== null;
   }
 }
 

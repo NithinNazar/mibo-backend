@@ -96,6 +96,55 @@ router.get("/clinicians/:id/availability", (req, res, next) =>
 );
 
 /**
+ * DELETE /api/clinicians/:clinicianId/availability/:ruleId
+ * Delete a specific availability rule
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.delete(
+  "/clinicians/:clinicianId/availability/:ruleId",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) => staffController.deleteAvailabilityRule(req, res, next),
+);
+
+/**
+ * POST /api/clinicians/:clinicianId/slot-exceptions
+ * Create a slot exception (block a specific slot)
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.post(
+  "/clinicians/:clinicianId/slot-exceptions",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) => staffController.createSlotException(req, res, next),
+);
+
+/**
+ * GET /api/clinicians/:clinicianId/slot-exceptions
+ * Get slot exceptions for a clinician
+ * Query params: startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), centreId (optional)
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.get(
+  "/clinicians/:clinicianId/slot-exceptions",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) => staffController.getSlotExceptions(req, res, next),
+);
+
+/**
+ * DELETE /api/clinicians/:clinicianId/slot-exceptions/:exceptionId
+ * Delete a slot exception (unblock a specific slot)
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.delete(
+  "/clinicians/:clinicianId/slot-exceptions/:exceptionId",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) => staffController.deleteSlotException(req, res, next),
+);
+
+/**
  * GET /api/clinicians/:id/slots
  * Get clinician time slots for a specific date
  * Query params: date (YYYY-MM-DD), centreId (optional)

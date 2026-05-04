@@ -357,6 +357,22 @@ export class StaffService {
   }
 
   /**
+   * Delete a specific availability rule
+   */
+  async deleteAvailabilityRule(clinicianId: number, ruleId: number) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    // Delete the availability rule
+    await staffRepository.deleteAvailabilityRule(clinicianId, ruleId);
+
+    return { message: "Availability rule deleted successfully" };
+  }
+
+  /**
    * Create Manager staff
    */
   async createManager(body: {
@@ -666,6 +682,22 @@ export class StaffService {
       centreId,
     );
 
+    // Get slot exceptions for this date
+    const slotExceptions = await staffRepository.getSlotExceptions(
+      clinicianId,
+      date,
+      date,
+      centreId,
+    );
+
+    // Create a Set of blocked slots for quick lookup
+    const blockedSlots = new Set(
+      slotExceptions.map(
+        (ex: any) =>
+          `${ex.exception_date}-${ex.start_time.substring(0, 5)}-${ex.mode}`,
+      ),
+    );
+
     // Generate time slots
     const slots: any[] = [];
 
@@ -699,30 +731,37 @@ export class StaffService {
 
         const slotEndTime = `${String(slotEndHour).padStart(2, "0")}:${String(slotEndMinute).padStart(2, "0")}`;
 
-        // Check if this slot is booked
-        const isBooked = bookedAppointments.some((apt: any) => {
-          const aptStart = new Date(apt.scheduled_start_at);
-          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
-          return aptStartTime === slotStartTime;
-        });
+        // Check if this slot is blocked by an exception
+        const slotKey = `${date}-${slotStartTime}-${rule.mode}`;
+        const isBlocked = blockedSlots.has(slotKey);
 
-        // Find the appointment ID if booked
-        const bookedAppointment = bookedAppointments.find((apt: any) => {
-          const aptStart = new Date(apt.scheduled_start_at);
-          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
-          return aptStartTime === slotStartTime;
-        });
+        // Skip blocked slots - don't include them in the response
+        if (!isBlocked) {
+          // Check if this slot is booked
+          const isBooked = bookedAppointments.some((apt: any) => {
+            const aptStart = new Date(apt.scheduled_start_at);
+            const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+            return aptStartTime === slotStartTime;
+          });
 
-        slots.push({
-          clinicianId: clinicianId.toString(),
-          centreId: rule.centre_id.toString(),
-          date,
-          startTime: slotStartTime,
-          endTime: slotEndTime,
-          status: isBooked ? "booked" : "available",
-          appointmentId: bookedAppointment?.id?.toString(),
-          mode: rule.mode,
-        });
+          // Find the appointment ID if booked
+          const bookedAppointment = bookedAppointments.find((apt: any) => {
+            const aptStart = new Date(apt.scheduled_start_at);
+            const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+            return aptStartTime === slotStartTime;
+          });
+
+          slots.push({
+            clinicianId: clinicianId.toString(),
+            centreId: rule.centre_id.toString(),
+            date,
+            startTime: slotStartTime,
+            endTime: slotEndTime,
+            status: isBooked ? "booked" : "available",
+            appointmentId: bookedAppointment?.id?.toString(),
+            mode: rule.mode,
+          });
+        }
 
         // Move to next slot
         currentMinute += slotDuration;
@@ -775,6 +814,92 @@ export class StaffService {
 
     // Return updated clinician data
     return await staffRepository.findClinicianById(clinicianId);
+  }
+
+  /**
+   * Create a slot exception (block a specific slot)
+   */
+  async createSlotException(
+    clinicianId: number,
+    data: {
+      centreId: number;
+      exceptionDate: string;
+      startTime: string;
+      endTime: string;
+      mode: string;
+      reason?: string;
+    },
+    createdByUserId?: number,
+  ) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(data.exceptionDate)) {
+      throw ApiError.badRequest("Invalid date format. Use YYYY-MM-DD");
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(data.startTime) || !timeRegex.test(data.endTime)) {
+      throw ApiError.badRequest("Invalid time format. Use HH:MM");
+    }
+
+    // Create the exception
+    const exception = await staffRepository.createSlotException(
+      clinicianId,
+      data.centreId,
+      data.exceptionDate,
+      data.startTime,
+      data.endTime,
+      data.mode,
+      data.reason,
+      createdByUserId,
+    );
+
+    return exception;
+  }
+
+  /**
+   * Get slot exceptions for a clinician
+   */
+  async getSlotExceptions(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+    centreId?: number,
+  ) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    return await staffRepository.getSlotExceptions(
+      clinicianId,
+      startDate,
+      endDate,
+      centreId,
+    );
+  }
+
+  /**
+   * Delete a slot exception (unblock a specific slot)
+   */
+  async deleteSlotException(clinicianId: number, exceptionId: number) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    await staffRepository.deleteSlotException(exceptionId, clinicianId);
+
+    return { message: "Slot exception deleted successfully" };
   }
 }
 

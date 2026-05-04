@@ -267,6 +267,32 @@ export class StaffController {
   }
 
   /**
+   * Delete a specific availability rule
+   */
+  async deleteAvailabilityRule(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const ruleId = Number(req.params.ruleId);
+
+      if (isNaN(clinicianId) || isNaN(ruleId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid clinician ID or rule ID",
+        });
+      }
+
+      await staffService.deleteAvailabilityRule(clinicianId, ruleId);
+      return ok(res, null, "Availability rule deleted successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * Create Manager staff
    */
   async createManager(req: AuthRequest, res: Response, next: NextFunction) {
@@ -381,6 +407,97 @@ export class StaffController {
         updatedClinician,
         "Clinician credentials updated successfully",
       );
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Create a slot exception (block a specific slot)
+   */
+  async createSlotException(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const { centreId, exceptionDate, startTime, endTime, mode, reason } =
+        req.body;
+
+      if (!centreId || !exceptionDate || !startTime || !endTime || !mode) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required fields: centreId, exceptionDate, startTime, endTime, mode",
+        });
+      }
+
+      const exception = await staffService.createSlotException(
+        clinicianId,
+        { centreId, exceptionDate, startTime, endTime, mode, reason },
+        req.user?.userId,
+      );
+
+      return created(res, exception, "Slot blocked successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get slot exceptions for a clinician
+   */
+  async getSlotExceptions(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+      const centreId = req.query.centreId
+        ? Number(req.query.centreId)
+        : undefined;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "startDate and endDate query parameters are required",
+        });
+      }
+
+      const exceptions = await staffService.getSlotExceptions(
+        clinicianId,
+        startDate,
+        endDate,
+        centreId,
+      );
+
+      return ok(res, exceptions);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Delete a slot exception (unblock a specific slot)
+   */
+  async deleteSlotException(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const exceptionId = Number(req.params.exceptionId);
+
+      if (isNaN(clinicianId) || isNaN(exceptionId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid clinician ID or exception ID",
+        });
+      }
+
+      await staffService.deleteSlotException(clinicianId, exceptionId);
+      return ok(res, null, "Slot unblocked successfully");
     } catch (err) {
       next(err);
     }

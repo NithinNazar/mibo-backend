@@ -428,7 +428,12 @@ export class AppointmentRepository {
     date: string,
   ): Promise<AvailabilityRule[]> {
     // Get day of week from date (0 = Sunday, 6 = Saturday)
-    const dayOfWeek = new Date(date).getDay();
+    // Parse as local date to avoid timezone issues
+    const dayOfWeek = new Date(date + "T00:00:00").getDay();
+
+    console.log(
+      `[DEBUG] getClinicianAvailabilityRules: clinicianId=${clinicianId}, date=${date}, dayOfWeek=${dayOfWeek}`,
+    );
 
     const query = `
       SELECT *
@@ -439,7 +444,15 @@ export class AppointmentRepository {
       ORDER BY start_time ASC
     `;
 
-    return db.any<AvailabilityRule>(query, [clinicianId, dayOfWeek]);
+    const rules = await db.any<AvailabilityRule>(query, [
+      clinicianId,
+      dayOfWeek,
+    ]);
+    console.log(
+      `[DEBUG] Found ${rules.length} availability rules for clinician ${clinicianId} on day ${dayOfWeek}`,
+    );
+
+    return rules;
   }
 
   /**
