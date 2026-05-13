@@ -22,6 +22,7 @@ export interface PatientProfile {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   notes: string | null;
+  mrn: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -181,6 +182,7 @@ class PatientRepository {
       blood_group?: string;
       emergency_contact_name?: string;
       emergency_contact_phone?: string;
+      mrn?: string;
     },
   ): Promise<any> {
     const updates: string[] = [];
@@ -212,6 +214,11 @@ class PatientRepository {
       values.push(data.emergency_contact_phone);
     }
 
+    if (data.mrn !== undefined) {
+      updates.push(`mrn = $${paramIndex++}`);
+      values.push(data.mrn);
+    }
+
     updates.push(`updated_at = NOW()`);
     values.push(userId);
 
@@ -239,6 +246,7 @@ class PatientRepository {
       emergencyContactName: profile.emergency_contact_name,
       emergencyContactPhone: profile.emergency_contact_phone,
       notes: profile.notes,
+      mrn: profile.mrn,
     };
   }
 
@@ -536,6 +544,7 @@ class PatientRepository {
         pp.emergency_contact_name,
         pp.emergency_contact_phone,
         pp.notes,
+        pp.mrn,
         (
           SELECT COUNT(*) 
           FROM appointments a 
@@ -592,6 +601,7 @@ class PatientRepository {
       emergencyContactName: row.emergency_contact_name,
       emergencyContactPhone: row.emergency_contact_phone,
       notes: row.notes,
+      mrn: row.mrn,
       upcomingAppointmentsCount: row.upcoming_appointments_count,
       pastAppointmentsCount: row.past_appointments_count,
       upcomingAppointments: row.upcoming_appointments,
@@ -650,6 +660,7 @@ class PatientRepository {
     emergency_contact_name?: string;
     emergency_contact_phone?: string;
     notes?: string;
+    mrn?: string;
   }): Promise<any> {
     return await db.tx(async (t) => {
       // Create user
@@ -670,9 +681,10 @@ class PatientRepository {
           emergency_contact_name,
           emergency_contact_phone,
           notes,
+          mrn,
           is_active
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
         RETURNING *`,
         [
           user.id,
@@ -682,6 +694,7 @@ class PatientRepository {
           data.emergency_contact_name || null,
           data.emergency_contact_phone || null,
           data.notes || null,
+          data.mrn || null,
         ],
       );
 
@@ -716,6 +729,33 @@ class PatientRepository {
        VALUES ($1, $2, $3, 'INTERNAL')
        RETURNING *`,
       [patientId, authorUserId, note],
+    );
+  }
+
+  /**
+   * Check if patient has paid registration fee
+   */
+  async hasPatientPaidRegistrationFee(userId: number): Promise<boolean> {
+    const result = await db.oneOrNone(
+      `SELECT registration_fee_paid 
+       FROM patient_profiles 
+       WHERE user_id = $1`,
+      [userId],
+    );
+    return result?.registration_fee_paid || false;
+  }
+
+  /**
+   * Mark patient as having paid registration fee
+   */
+  async markRegistrationFeePaid(userId: number): Promise<void> {
+    await db.none(
+      `UPDATE patient_profiles 
+       SET registration_fee_paid = TRUE,
+           registration_fee_paid_at = NOW(),
+           updated_at = NOW()
+       WHERE user_id = $1`,
+      [userId],
     );
   }
 

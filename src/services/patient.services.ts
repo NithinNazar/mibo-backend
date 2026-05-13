@@ -76,6 +76,7 @@ export class PatientService {
       emergency_contact_name: dto.emergency_contact_name,
       emergency_contact_phone: dto.emergency_contact_phone,
       notes: dto.notes,
+      mrn: dto.mrn,
     });
   }
 

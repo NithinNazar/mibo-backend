@@ -11,6 +11,7 @@ export interface CreatePatientDto {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   notes?: string;
+  mrn?: string;
 }
 
 export interface UpdatePatientDto {
@@ -20,6 +21,7 @@ export interface UpdatePatientDto {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   notes?: string;
+  mrn?: string;
 }
 
 export interface AddMedicalNoteDto {
@@ -36,7 +38,7 @@ export function validateCreatePatient(body: any): CreatePatientDto {
   const cleanPhone = body.phone.trim().replace(/\D/g, "");
   if (!phoneRegex.test(cleanPhone)) {
     throw ApiError.badRequest(
-      "Invalid phone number format. Must be 10 digits starting with 6-9"
+      "Invalid phone number format. Must be 10 digits starting with 6-9",
     );
   }
 
@@ -85,6 +87,10 @@ export function validateCreatePatient(body: any): CreatePatientDto {
     dto.notes = String(body.notes).trim();
   }
 
+  if (body.mrn !== undefined) {
+    dto.mrn = body.mrn ? String(body.mrn).trim() : undefined;
+  }
+
   return dto;
 }
 
@@ -113,6 +119,10 @@ export function validateUpdatePatient(body: any): UpdatePatientDto {
 
   if (body.notes !== undefined) {
     dto.notes = String(body.notes).trim();
+  }
+
+  if (body.mrn !== undefined) {
+    dto.mrn = body.mrn ? String(body.mrn).trim() : undefined;
   }
 
   if (Object.keys(dto).length === 0) {

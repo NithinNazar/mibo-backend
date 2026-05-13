@@ -502,6 +502,80 @@ export class StaffController {
       next(err);
     }
   }
+
+  /**
+   * Delete all availability rules for a specific day of week
+   */
+  async deleteAvailabilityRulesByDay(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const { dayOfWeek, centreId } = req.body;
+
+      if (isNaN(clinicianId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid clinician ID",
+        });
+      }
+
+      if (dayOfWeek === undefined || dayOfWeek === null) {
+        return res.status(400).json({
+          success: false,
+          message: "dayOfWeek is required (0-6, where 0=Sunday, 6=Saturday)",
+        });
+      }
+
+      const result = await staffService.deleteAvailabilityRulesByDay(
+        clinicianId,
+        Number(dayOfWeek),
+        centreId ? Number(centreId) : undefined,
+      );
+
+      return ok(
+        res,
+        result,
+        `Successfully deleted ${result.deletedCount} availability rule(s) for the selected day`,
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get availability rules grouped by day of week
+   */
+  async getAvailabilityRulesByDay(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const clinicianId = Number(req.params.clinicianId);
+      const centreId = req.query.centreId
+        ? Number(req.query.centreId)
+        : undefined;
+
+      if (isNaN(clinicianId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid clinician ID",
+        });
+      }
+
+      const rulesByDay = await staffService.getAvailabilityRulesByDay(
+        clinicianId,
+        centreId,
+      );
+
+      return ok(res, rulesByDay);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const staffController = new StaffController();

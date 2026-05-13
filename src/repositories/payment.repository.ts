@@ -17,6 +17,8 @@ export interface Payment {
   paid_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  consultation_fee: number;
+  registration_fee: number;
 }
 
 class PaymentRepository {
@@ -31,12 +33,15 @@ class PaymentRepository {
     currency?: string;
     paymentLinkId?: string;
     paymentLinkUrl?: string;
+    consultationFee?: number;
+    registrationFee?: number;
   }): Promise<Payment> {
     return await db.one(
       `INSERT INTO payments (
         patient_id, appointment_id, provider, order_id,
-        amount, currency, status, payment_link_id, payment_link_url
-      ) VALUES ($1, $2, 'RAZORPAY', $3, $4, $5, 'CREATED', $6, $7)
+        amount, currency, status, payment_link_id, payment_link_url,
+        consultation_fee, registration_fee
+      ) VALUES ($1, $2, 'RAZORPAY', $3, $4, $5, 'CREATED', $6, $7, $8, $9)
       RETURNING *`,
       [
         data.patientId,
@@ -46,7 +51,9 @@ class PaymentRepository {
         data.currency || "INR",
         data.paymentLinkId || null,
         data.paymentLinkUrl || null,
-      ]
+        data.consultationFee || 0,
+        data.registrationFee || 0,
+      ],
     );
   }
 
@@ -63,11 +70,11 @@ class PaymentRepository {
    * Find payment by appointment ID
    */
   async findPaymentByAppointmentId(
-    appointmentId: number
+    appointmentId: number,
   ): Promise<Payment | null> {
     return await db.oneOrNone(
       "SELECT * FROM payments WHERE appointment_id = $1 ORDER BY created_at DESC LIMIT 1",
-      [appointmentId]
+      [appointmentId],
     );
   }
 
@@ -77,7 +84,7 @@ class PaymentRepository {
   async updatePaymentSuccess(
     orderId: string,
     paymentId: string,
-    paymentMethodDetails?: any
+    paymentMethodDetails?: any,
   ): Promise<Payment> {
     return await db.one(
       `UPDATE payments 
@@ -88,7 +95,7 @@ class PaymentRepository {
            updated_at = NOW()
        WHERE order_id = $3
        RETURNING *`,
-      [paymentId, paymentMethodDetails || null, orderId]
+      [paymentId, paymentMethodDetails || null, orderId],
     );
   }
 
@@ -98,7 +105,7 @@ class PaymentRepository {
   async updatePaymentFailed(
     orderId: string,
     errorCode?: string,
-    errorDescription?: string
+    errorDescription?: string,
   ): Promise<Payment> {
     return await db.one(
       `UPDATE payments 
@@ -108,7 +115,7 @@ class PaymentRepository {
            updated_at = NOW()
        WHERE order_id = $3
        RETURNING *`,
-      [errorCode || null, errorDescription || null, orderId]
+      [errorCode || null, errorDescription || null, orderId],
     );
   }
 
@@ -137,7 +144,7 @@ class PaymentRepository {
       JOIN patient_profiles pp ON a.patient_id = pp.id
       JOIN users pu ON pp.user_id = pu.id
       WHERE p.id = $1`,
-      [paymentId]
+      [paymentId],
     );
   }
 
@@ -150,7 +157,7 @@ class PaymentRepository {
       status?: string;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<Payment[]> {
     let query = `
       SELECT p.*, a.scheduled_start_at, a.appointment_type
@@ -203,7 +210,7 @@ class PaymentRepository {
         data.providerEventId || null,
         data.eventType || null,
         data.rawPayload,
-      ]
+      ],
     );
   }
 
@@ -215,7 +222,7 @@ class PaymentRepository {
       `UPDATE payment_webhook_events 
        SET processed = true, processed_at = NOW()
        WHERE id = $1`,
-      [eventId]
+      [eventId],
     );
   }
 
@@ -236,7 +243,7 @@ class PaymentRepository {
         COUNT(CASE WHEN status = 'FAILED' THEN 1 END) as failed_payments
       FROM payments
       WHERE patient_id = $1`,
-      [patientId]
+      [patientId],
     );
 
     return {
@@ -253,7 +260,7 @@ class PaymentRepository {
   async updatePaymentLink(
     paymentId: number,
     paymentLinkId: string,
-    paymentLinkUrl: string
+    paymentLinkUrl: string,
   ): Promise<Payment> {
     return await db.one(
       `UPDATE payments 
@@ -263,7 +270,7 @@ class PaymentRepository {
            updated_at = NOW()
        WHERE id = $3
        RETURNING *`,
-      [paymentLinkId, paymentLinkUrl, paymentId]
+      [paymentLinkId, paymentLinkUrl, paymentId],
     );
   }
 }

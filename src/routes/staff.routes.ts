@@ -108,6 +108,31 @@ router.delete(
 );
 
 /**
+ * POST /api/clinicians/:clinicianId/availability/delete-by-day
+ * Delete all availability rules for a specific day of week
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.post(
+  "/clinicians/:clinicianId/availability/delete-by-day",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) =>
+    staffController.deleteAvailabilityRulesByDay(req, res, next),
+);
+
+/**
+ * GET /api/clinicians/:clinicianId/availability/by-day
+ * Get availability rules grouped by day of week
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER
+ */
+router.get(
+  "/clinicians/:clinicianId/availability/by-day",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER"),
+  (req, res, next) => staffController.getAvailabilityRulesByDay(req, res, next),
+);
+
+/**
  * POST /api/clinicians/:clinicianId/slot-exceptions
  * Create a slot exception (block a specific slot)
  * Roles: ADMIN, MANAGER, CENTRE_MANAGER

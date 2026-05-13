@@ -617,6 +617,30 @@ export class AppointmentService {
 
     const slots: TimeSlot[] = [];
 
+    // Get current date and time for filtering past slots
+    const now = new Date();
+
+    // Parse the date string properly to avoid timezone issues
+    const [year, month, day] = date.split("-").map(Number);
+    const selectedDate = new Date(year, month - 1, day); // Create date in local timezone
+
+    // Compare dates (ignoring time)
+    const nowDateOnly = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const selectedDateOnly = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+    );
+    const isToday = nowDateOnly.getTime() === selectedDateOnly.getTime();
+
+    const currentTimeMinutes = isToday
+      ? now.getHours() * 60 + now.getMinutes()
+      : 0;
+
     // Generate time slots for each availability rule
     for (const rule of availabilityRules) {
       const startTime = this.parseTime(rule.start_time);
@@ -626,6 +650,12 @@ export class AppointmentService {
       let currentTime = startTime;
 
       while (currentTime + slotDuration <= endTime) {
+        // Skip past time slots if this is today
+        if (isToday && currentTime < currentTimeMinutes) {
+          currentTime += slotDuration;
+          continue;
+        }
+
         const slotStart = this.formatTime(currentTime);
         const slotEnd = this.formatTime(currentTime + slotDuration);
 
@@ -633,7 +663,7 @@ export class AppointmentService {
         const slotStartDateTime = `${date}T${slotStart}:00`;
         const slotEndDateTime = `${date}T${slotEnd}:00`;
 
-        // Check if this slot has a conflict
+        // Check if this slot has a conflict (booked appointment)
         const hasConflict =
           await appointmentRepository.checkSchedulingConflicts(
             clinicianId,
@@ -641,10 +671,20 @@ export class AppointmentService {
             slotEndDateTime,
           );
 
+        // Check if this slot has an exception (blocked by admin)
+        const { staffRepository } =
+          await import("../repositories/staff.repository");
+        const hasException = await staffRepository.hasSlotException(
+          clinicianId,
+          centreId,
+          date,
+          slotStart,
+        );
+
         slots.push({
           startTime: slotStart,
           endTime: slotEnd,
-          available: !hasConflict,
+          available: !hasConflict && !hasException,
         });
 
         currentTime += slotDuration;

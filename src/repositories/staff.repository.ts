@@ -812,6 +812,88 @@ export class StaffRepository {
   }
 
   /**
+   * Delete all availability rules for a specific day of week (hard delete)
+   */
+  async deleteAvailabilityRulesByDay(
+    clinicianId: number,
+    dayOfWeek: number,
+    centreId?: number,
+  ) {
+    const conditions = [
+      "clinician_id = $1",
+      "day_of_week = $2",
+      "is_active = TRUE",
+    ];
+    const params: any[] = [clinicianId, dayOfWeek];
+    let paramIndex = 3;
+
+    if (centreId) {
+      conditions.push(`centre_id = $${paramIndex}`);
+      params.push(centreId);
+      paramIndex++;
+    }
+
+    // Get rules to be deleted for logging
+    const rulesToDelete = await db.any(
+      `SELECT id, day_of_week, start_time, end_time, mode
+       FROM clinician_availability_rules
+       WHERE ${conditions.join(" AND ")}`,
+      params,
+    );
+
+    if (rulesToDelete.length === 0) {
+      throw new Error(`No availability rules found for day ${dayOfWeek}`);
+    }
+
+    // Hard delete all rules for this day
+    await db.none(
+      `DELETE FROM clinician_availability_rules
+       WHERE ${conditions.join(" AND ")}`,
+      params,
+    );
+
+    return {
+      deletedCount: rulesToDelete.length,
+      deletedRules: rulesToDelete,
+    };
+  }
+
+  /**
+   * Get availability rules grouped by day of week
+   */
+  async getAvailabilityRulesByDay(clinicianId: number, centreId?: number) {
+    const conditions = ["clinician_id = $1", "is_active = TRUE"];
+    const params: any[] = [clinicianId];
+    let paramIndex = 2;
+
+    if (centreId) {
+      conditions.push(`centre_id = $${paramIndex}`);
+      params.push(centreId);
+      paramIndex++;
+    }
+
+    const rules = await db.any(
+      `SELECT day_of_week, start_time, end_time, mode, centre_id, COUNT(*) as slot_count
+       FROM clinician_availability_rules
+       WHERE ${conditions.join(" AND ")}
+       GROUP BY day_of_week, start_time, end_time, mode, centre_id
+       ORDER BY day_of_week, start_time`,
+      params,
+    );
+
+    // Group by day of week
+    const rulesByDay: { [key: number]: any[] } = {};
+    rules.forEach((rule: any) => {
+      if (!rulesByDay[rule.day_of_week]) {
+        rulesByDay[rule.day_of_week] = [];
+      }
+      rulesByDay[rule.day_of_week].push(rule);
+    });
+
+    return rulesByDay;
+  }
+
+  /**
    * Toggle staff active status (for all staff types)
    */
   async toggleStaffActive(userId: number, isActive: boolean) {
@@ -944,6 +1026,34 @@ export class StaffRepository {
     `;
 
     return db.any(query, params);
+  }
+
+  /**
+   * Check if a specific slot has an exception (is blocked)
+   */
+  async hasSlotException(
+    clinicianId: number,
+    centreId: number,
+    date: string,
+    startTime: string,
+  ): Promise<boolean> {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM clinician_slot_exceptions
+      WHERE clinician_id = $1
+        AND centre_id = $2
+        AND exception_date = $3
+        AND start_time = $4
+    `;
+
+    const result = await db.one<{ count: string }>(query, [
+      clinicianId,
+      centreId,
+      date,
+      startTime,
+    ]);
+
+    return parseInt(result.count) > 0;
   }
 
   /**

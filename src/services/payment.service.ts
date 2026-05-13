@@ -20,6 +20,8 @@ class PaymentService {
     currency: string;
     razorpayKeyId: string;
     appointment: any;
+    registrationFee: number;
+    consultationFee: number;
   }> {
     try {
       // Get patient profile
@@ -49,7 +51,19 @@ class PaymentService {
 
       // Get consultation fee (in rupees)
       const consultationFee = appointment.consultation_fee || 500;
-      const amountInPaise = consultationFee * 100; // Convert to paise
+
+      // Check if patient has paid registration fee
+      const hasPatientPaidRegistrationFee =
+        await patientRepository.hasPatientPaidRegistrationFee(userId);
+
+      // Add registration fee (₹100) for new patients
+      const registrationFee = hasPatientPaidRegistrationFee ? 0 : 100;
+      const totalAmount = consultationFee + registrationFee;
+      const amountInPaise = totalAmount * 100; // Convert to paise
+
+      logger.info(
+        `💰 Payment calculation for appointment ${appointmentId}: Consultation Fee: ₹${consultationFee}, Registration Fee: ₹${registrationFee}, Total: ₹${totalAmount}`,
+      );
 
       // Create Razorpay order
       const razorpayOrder = await razorpayUtil.createOrder(
@@ -60,16 +74,20 @@ class PaymentService {
           appointmentId: appointmentId.toString(),
           patientId: patient.id.toString(),
           clinicianName: appointment.clinician_name,
+          consultationFee: consultationFee.toString(),
+          registrationFee: registrationFee.toString(),
         },
       );
 
-      // Store payment record in database
+      // Store payment record in database with separate consultation and registration fees
       await paymentRepository.createPayment({
         patientId: patient.id,
         appointmentId: appointmentId,
         orderId: razorpayOrder.id,
-        amount: consultationFee,
+        amount: totalAmount,
         currency: "INR",
+        consultationFee: consultationFee,
+        registrationFee: registrationFee,
       });
 
       logger.info(
@@ -88,6 +106,8 @@ class PaymentService {
           scheduledStartAt: appointment.scheduled_start_at,
           appointmentType: appointment.appointment_type,
         },
+        registrationFee: registrationFee,
+        consultationFee: consultationFee,
       };
     } catch (error: any) {
       logger.error("Error creating payment order:", error);
@@ -165,6 +185,12 @@ class PaymentService {
         },
       );
 
+      // Mark patient as having paid registration fee if this payment included it
+      if (payment.registration_fee && payment.registration_fee > 0) {
+        await patientRepository.markRegistrationFeePaid(userId);
+        logger.info(`✅ Registration fee marked as paid for user ${userId}`);
+      }
+
       // Update appointment status to CONFIRMED
       await bookingRepository.updateAppointmentStatus(
         data.appointmentId,
@@ -228,8 +254,12 @@ class PaymentService {
       console.log("DB value:", appointment.scheduled_start_at);
       console.log("Parsed date:", new Date(appointment.scheduled_start_at));
       console.log(new Date("2026-03-12T04:30:00.000Z").toString());
-      console.log(new Date("2026-03-12T04:30:00.000Z").toLocaleString("en-IN", {timeZone: "Asia/Kolkata"}));
-      const userTimezone = "Asia/Kolkata"; 
+      console.log(
+        new Date("2026-03-12T04:30:00.000Z").toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        }),
+      );
+      const userTimezone = "Asia/Kolkata";
       const dateStr = appointmentDate.toLocaleDateString("en-IN", {
         timeZone: userTimezone,
         day: "numeric",
@@ -268,13 +298,14 @@ class PaymentService {
           //   durationMinutes: 50,
           // });
 
-          const meetingDetails = await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
-                  user.full_name,
-                  appointment.clinician_name,
-                  user.email || "",
-                  new Date(appointment.scheduled_start_at).toISOString(),
-                  new Date(appointment.scheduled_end_at).toISOString(),
-                );
+          const meetingDetails =
+            await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
+              user.full_name,
+              appointment.clinician_name,
+              user.email || "",
+              new Date(appointment.scheduled_start_at).toISOString(),
+              new Date(appointment.scheduled_end_at).toISOString(),
+            );
 
           // Store Google Meet link in database
           await bookingRepository.updateAppointmentGoogleMeet(
@@ -382,6 +413,28 @@ class PaymentService {
         const payment = await paymentRepository.findPaymentByOrderId(orderId);
 
         if (payment) {
+          // Mark patient as having paid registration fee if this payment included it
+          if (payment.registration_fee && payment.registration_fee > 0) {
+            // Get patient user_id from appointment
+            const appointment = await bookingRepository.findAppointmentById(
+              payment.appointment_id,
+            );
+            if (appointment) {
+              const patientProfile =
+                await patientRepository.findPatientProfileByPatientId(
+                  appointment.patient_id,
+                );
+              if (patientProfile) {
+                await patientRepository.markRegistrationFeePaid(
+                  patientProfile.user_id,
+                );
+                logger.info(
+                  `✅ Registration fee marked as paid via webhook for user ${patientProfile.user_id}`,
+                );
+              }
+            }
+          }
+
           // Update appointment status
           await bookingRepository.updateAppointmentStatus(
             payment.appointment_id,
@@ -532,7 +585,26 @@ class PaymentService {
 
       // Get consultation fee
       const consultationFee = appointment.consultation_fee || 500;
-      const amountInPaise = consultationFee * 100; // Convert to paise
+
+      // Check if patient has paid registration fee
+      const patientUser = await patientRepository.findUserById(
+        appointment.patient_id,
+      );
+      if (!patientUser) {
+        throw new Error("Patient user not found");
+      }
+
+      const hasPatientPaidRegistrationFee =
+        await patientRepository.hasPatientPaidRegistrationFee(patientUser.id);
+
+      // Add registration fee (₹100) for new patients
+      const registrationFee = hasPatientPaidRegistrationFee ? 0 : 100;
+      const totalAmount = consultationFee + registrationFee;
+      const amountInPaise = totalAmount * 100; // Convert to paise
+
+      logger.info(
+        `💰 Payment link calculation for appointment ${appointmentId}: Consultation Fee: ₹${consultationFee}, Registration Fee: ₹${registrationFee}, Total: ₹${totalAmount}`,
+      );
 
       // Create Razorpay payment link
       const paymentLink = await razorpayUtil.createPaymentLink(
@@ -561,10 +633,12 @@ class PaymentService {
           patientId: appointment.patient_id,
           appointmentId: appointmentId,
           orderId: paymentLink.id,
-          amount: consultationFee,
+          amount: totalAmount,
           currency: "INR",
           paymentLinkId: paymentLink.id,
           paymentLinkUrl: paymentLink.short_url,
+          consultationFee: consultationFee,
+          registrationFee: registrationFee,
         });
       }
 
@@ -618,7 +692,7 @@ class PaymentService {
       return {
         paymentLink: paymentLink.short_url,
         whatsappSent,
-        amount: consultationFee,
+        amount: totalAmount,
         expiresAt: new Date(paymentLink.expire_by * 1000), // Convert Unix timestamp to Date
       };
     } catch (error: any) {

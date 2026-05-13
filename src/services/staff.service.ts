@@ -901,6 +901,52 @@ export class StaffService {
 
     return { message: "Slot exception deleted successfully" };
   }
+
+  /**
+   * Delete all availability rules for a specific day of week
+   */
+  async deleteAvailabilityRulesByDay(
+    clinicianId: number,
+    dayOfWeek: number,
+    centreId?: number,
+  ) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    // Validate day of week (0-6)
+    if (dayOfWeek < 0 || dayOfWeek > 6) {
+      throw ApiError.badRequest(
+        "Invalid day of week. Must be 0-6 (Sunday-Saturday)",
+      );
+    }
+
+    const result = await staffRepository.deleteAvailabilityRulesByDay(
+      clinicianId,
+      dayOfWeek,
+      centreId,
+    );
+
+    return result;
+  }
+
+  /**
+   * Get availability rules grouped by day of week
+   */
+  async getAvailabilityRulesByDay(clinicianId: number, centreId?: number) {
+    // Check if clinician exists
+    const clinician = await staffRepository.findClinicianById(clinicianId);
+    if (!clinician) {
+      throw ApiError.notFound("Clinician not found");
+    }
+
+    return await staffRepository.getAvailabilityRulesByDay(
+      clinicianId,
+      centreId,
+    );
+  }
 }
 
 export const staffService = new StaffService();
