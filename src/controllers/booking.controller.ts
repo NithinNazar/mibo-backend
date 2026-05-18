@@ -26,6 +26,7 @@ class BookingController {
         appointmentDateUTC,
         appointmentType,
         notes,
+        patientNotes,
       } = req.body;
 
       // Validate required fields
@@ -63,6 +64,7 @@ class BookingController {
         appointmentDateUTC,
         appointmentType,
         notes,
+        patientNotes,
       });
 
       res.status(201).json({

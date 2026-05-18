@@ -36,6 +36,8 @@ export interface CreateClinicianDto {
 }
 
 export interface UpdateClinicianDto {
+  phone?: string;
+  email?: string;
   primary_centre_id?: number;
   specialization?: string[]; // Changed to array
   registration_number?: string;
@@ -312,6 +314,36 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
 
 export function validateUpdateClinician(body: any): UpdateClinicianDto {
   const dto: UpdateClinicianDto = {};
+
+  // Validate phone if provided
+  if (body.phone !== undefined) {
+    const phone = String(body.phone).trim();
+    if (phone) {
+      // Phone validation: 10 digits starting with 6-9
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        throw ApiError.badRequest(
+          "Invalid phone number. Must be 10 digits starting with 6-9",
+        );
+      }
+      dto.phone = phone;
+    }
+  }
+
+  // Validate email if provided
+  if (body.email !== undefined) {
+    const email = String(body.email).trim();
+    if (email) {
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw ApiError.badRequest("Invalid email format");
+      }
+      dto.email = email;
+    } else {
+      dto.email = null as any; // Allow clearing email
+    }
+  }
 
   if (body.primaryCentreId !== undefined) {
     dto.primary_centre_id = Number(body.primaryCentreId);

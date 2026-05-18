@@ -13,6 +13,7 @@ interface BookingData {
   appointmentType: "ONLINE" | "IN_PERSON";
   appointmentDateUTC: string;
   notes?: string;
+  patientNotes?: string;
 }
 
 class BookingService {
@@ -128,6 +129,7 @@ class BookingService {
         bookedByUserId: userId,
         source: "WEB_PATIENT",
         notes: bookingData.notes,
+        patientNotes: bookingData.patientNotes,
       });
 
       // Generate Google Meet link for online appointments

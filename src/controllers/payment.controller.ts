@@ -30,7 +30,7 @@ class PaymentController {
 
       const result = await paymentService.createPaymentOrder(
         req.user.userId,
-        parseInt(appointmentId)
+        parseInt(appointmentId),
       );
 
       res.json({
@@ -162,7 +162,7 @@ class PaymentController {
 
       const payment = await paymentService.getPaymentDetails(
         req.user.userId,
-        appointmentId
+        appointmentId,
       );
 
       res.json({
@@ -201,7 +201,7 @@ class PaymentController {
 
       const payments = await paymentService.getPaymentHistory(
         req.user.userId,
-        filters
+        filters,
       );
 
       res.json({
@@ -248,7 +248,7 @@ class PaymentController {
       const result = await paymentService.sendPaymentLink(
         parseInt(appointmentId),
         patientPhone,
-        patientName
+        patientName,
       );
 
       res.json({
@@ -261,6 +261,37 @@ class PaymentController {
       res.status(400).json({
         success: false,
         message: error.message || "Failed to send payment link",
+      });
+    }
+  }
+
+  /**
+   * Check registration fee status
+   * GET /api/payment/registration-fee-status
+   */
+  async getRegistrationFeeStatus(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized. Please login.",
+        });
+        return;
+      }
+
+      const result = await paymentService.getRegistrationFeeStatus(
+        req.user.userId,
+      );
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error("Error getting registration fee status:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to get registration fee status",
       });
     }
   }

@@ -112,13 +112,14 @@ class BookingRepository {
     bookedByUserId: number;
     source: string;
     notes?: string;
+    patientNotes?: string;
   }): Promise<Appointment> {
     return await db.one(
       `INSERT INTO appointments (
         patient_id, clinician_id, centre_id, appointment_type,
         scheduled_start_at, scheduled_end_at, duration_minutes,
-        status, booked_by_user_id, source, notes, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'BOOKED', $8, $9, $10, true)
+        status, booked_by_user_id, source, notes, patient_notes, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'BOOKED', $8, $9, $10, $11, true)
       RETURNING *`,
       [
         data.patientId,
@@ -131,6 +132,7 @@ class BookingRepository {
         data.bookedByUserId,
         data.source,
         data.notes || null,
+        data.patientNotes || null,
       ],
     );
   }

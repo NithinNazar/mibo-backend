@@ -62,6 +62,17 @@ router.get(
 );
 
 /**
+ * GET /api/payment/registration-fee-status
+ * Check if user has paid registration fee
+ * Protected endpoint - requires authentication
+ */
+router.get(
+  "/registration-fee-status",
+  authMiddleware,
+  paymentController.getRegistrationFeeStatus.bind(paymentController),
+);
+
+/**
  * POST /api/payment/send-link
  * Send payment link to patient via WhatsApp
  * Protected endpoint - requires authentication (FRONT_DESK, ADMIN, MANAGER)

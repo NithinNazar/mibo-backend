@@ -25,6 +25,8 @@ interface CreateStaffData {
 
 interface CreateClinicianData {
   user_id: number;
+  phone?: string;
+  email?: string;
   primary_centre_id: number;
   specialization: string[]; // Changed to array
   registration_number?: string;
@@ -557,109 +559,150 @@ export class StaffRepository {
     clinicianId: number,
     data: Partial<CreateClinicianData>,
   ) {
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.primary_centre_id !== undefined) {
-      fields.push(`primary_centre_id = $${paramIndex}`);
-      values.push(data.primary_centre_id);
-      paramIndex++;
-    }
-
-    if (data.specialization !== undefined) {
-      fields.push(`specialization = $${paramIndex}`);
-      values.push(JSON.stringify(data.specialization));
-      paramIndex++;
-    }
-
-    if (data.registration_number !== undefined) {
-      fields.push(`registration_number = $${paramIndex}`);
-      values.push(data.registration_number);
-      paramIndex++;
-    }
-
-    if (data.years_of_experience !== undefined) {
-      fields.push(`years_of_experience = $${paramIndex}`);
-      values.push(data.years_of_experience);
-      paramIndex++;
-    }
-
-    if (data.consultation_fee !== undefined) {
-      fields.push(`consultation_fee = $${paramIndex}`);
-      values.push(data.consultation_fee);
-      paramIndex++;
-    }
-
-    if (data.bio !== undefined) {
-      fields.push(`bio = $${paramIndex}`);
-      values.push(data.bio);
-      paramIndex++;
-    }
-
-    if (data.consultation_modes !== undefined) {
-      fields.push(`consultation_modes = $${paramIndex}`);
-      values.push(JSON.stringify(data.consultation_modes));
-      paramIndex++;
-    }
-
-    if (data.default_consultation_duration_minutes !== undefined) {
-      fields.push(`default_consultation_duration_minutes = $${paramIndex}`);
-      values.push(data.default_consultation_duration_minutes);
-      paramIndex++;
-    }
-
-    if (data.qualification !== undefined) {
-      fields.push(`qualification = $${paramIndex}`);
-      values.push(JSON.stringify(data.qualification));
-      paramIndex++;
-    }
-
-    if (data.expertise !== undefined) {
-      fields.push(`expertise = $${paramIndex}`);
-      values.push(JSON.stringify(data.expertise));
-      paramIndex++;
-    }
-
-    if (data.languages !== undefined) {
-      fields.push(`languages = $${paramIndex}`);
-      values.push(JSON.stringify(data.languages));
-      paramIndex++;
-    }
-
-    if (fields.length === 0 && !data.profile_picture_url) {
-      throw new Error("No fields to update");
-    }
-
-    if (fields.length > 0) {
-      fields.push("updated_at = NOW()");
-
-      const query = `
-        UPDATE clinician_profiles
-        SET ${fields.join(", ")}
-        WHERE id = $${paramIndex}
-        RETURNING *;
-      `;
-
-      values.push(clinicianId);
-      await db.one(query, values);
-    }
-
-    // Update profile picture in staff_profiles if provided
-    if (data.profile_picture_url !== undefined) {
-      const clinician = await db.one(
+    return await db.tx(async (t) => {
+      // Get clinician's user_id first
+      const clinician = await t.one(
         "SELECT user_id FROM clinician_profiles WHERE id = $1",
         [clinicianId],
       );
-      await db.none(
-        `UPDATE staff_profiles 
-         SET profile_picture_url = $1, updated_at = NOW() 
-         WHERE user_id = $2`,
-        [data.profile_picture_url, clinician.user_id],
-      );
-    }
 
-    return this.findClinicianById(clinicianId);
+      // Update user fields (phone, email) if provided
+      const userFields: string[] = [];
+      const userValues: any[] = [];
+      let userParamIndex = 1;
+
+      if (data.phone !== undefined) {
+        userFields.push(`phone = $${userParamIndex}`);
+        userValues.push(data.phone);
+        userParamIndex++;
+      }
+
+      if (data.email !== undefined) {
+        userFields.push(`email = $${userParamIndex}`);
+        userValues.push(data.email || null);
+        userParamIndex++;
+      }
+
+      if (userFields.length > 0) {
+        userFields.push("updated_at = NOW()");
+        const userQuery = `
+          UPDATE users
+          SET ${userFields.join(", ")}
+          WHERE id = $${userParamIndex}
+        `;
+        userValues.push(clinician.user_id);
+        await t.none(userQuery, userValues);
+      }
+
+      // Update clinician profile fields
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (data.primary_centre_id !== undefined) {
+        fields.push(`primary_centre_id = $${paramIndex}`);
+        values.push(data.primary_centre_id);
+        paramIndex++;
+      }
+
+      if (data.specialization !== undefined) {
+        fields.push(`specialization = $${paramIndex}`);
+        values.push(JSON.stringify(data.specialization));
+        paramIndex++;
+      }
+
+      if (data.registration_number !== undefined) {
+        fields.push(`registration_number = $${paramIndex}`);
+        values.push(data.registration_number);
+        paramIndex++;
+      }
+
+      if (data.years_of_experience !== undefined) {
+        fields.push(`years_of_experience = $${paramIndex}`);
+        values.push(data.years_of_experience);
+        paramIndex++;
+      }
+
+      if (data.consultation_fee !== undefined) {
+        fields.push(`consultation_fee = $${paramIndex}`);
+        values.push(data.consultation_fee);
+        paramIndex++;
+      }
+
+      if (data.bio !== undefined) {
+        fields.push(`bio = $${paramIndex}`);
+        values.push(data.bio);
+        paramIndex++;
+      }
+
+      if (data.consultation_modes !== undefined) {
+        fields.push(`consultation_modes = $${paramIndex}`);
+        values.push(JSON.stringify(data.consultation_modes));
+        paramIndex++;
+      }
+
+      if (data.default_consultation_duration_minutes !== undefined) {
+        fields.push(`default_consultation_duration_minutes = $${paramIndex}`);
+        values.push(data.default_consultation_duration_minutes);
+        paramIndex++;
+      }
+
+      if (data.qualification !== undefined) {
+        fields.push(`qualification = $${paramIndex}`);
+        values.push(JSON.stringify(data.qualification));
+        paramIndex++;
+      }
+
+      if (data.expertise !== undefined) {
+        fields.push(`expertise = $${paramIndex}`);
+        values.push(JSON.stringify(data.expertise));
+        paramIndex++;
+      }
+
+      if (data.languages !== undefined) {
+        fields.push(`languages = $${paramIndex}`);
+        values.push(JSON.stringify(data.languages));
+        paramIndex++;
+      }
+
+      if (fields.length === 0 && !data.profile_picture_url) {
+        // Only user fields were updated, return success
+        if (userFields.length > 0) {
+          return await this.findClinicianById(clinicianId);
+        }
+        throw new Error("No fields to update");
+      }
+
+      if (fields.length > 0) {
+        fields.push("updated_at = NOW()");
+
+        const query = `
+          UPDATE clinician_profiles
+          SET ${fields.join(", ")}
+          WHERE id = $${paramIndex}
+          RETURNING *;
+        `;
+
+        values.push(clinicianId);
+        await t.one(query, values);
+      }
+
+      // Update profile picture in staff_profiles if provided
+      if (data.profile_picture_url !== undefined) {
+        const clinicianData = await t.one(
+          "SELECT user_id FROM clinician_profiles WHERE id = $1",
+          [clinicianId],
+        );
+        await t.none(
+          `UPDATE staff_profiles 
+           SET profile_picture_url = $1, updated_at = NOW() 
+           WHERE user_id = $2`,
+          [data.profile_picture_url, clinicianData.user_id],
+        );
+      }
+
+      return await this.findClinicianById(clinicianId);
+    });
   }
 
   /**

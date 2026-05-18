@@ -553,6 +553,27 @@ class PaymentService {
   }
 
   /**
+   * Get registration fee status for a user
+   */
+  async getRegistrationFeeStatus(userId: number): Promise<{
+    hasPaidRegistrationFee: boolean;
+    registrationFee: number;
+  }> {
+    try {
+      const hasPaid =
+        await patientRepository.hasPatientPaidRegistrationFee(userId);
+
+      return {
+        hasPaidRegistrationFee: hasPaid,
+        registrationFee: hasPaid ? 0 : 100,
+      };
+    } catch (error: any) {
+      logger.error("Error getting registration fee status:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Send payment link to patient via WhatsApp
    * Used by front desk staff to send payment links after booking
    */

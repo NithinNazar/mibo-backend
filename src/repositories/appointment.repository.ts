@@ -44,6 +44,7 @@ export class AppointmentRepository {
     booked_by_user_id: number;
     source: string;
     notes?: string | null;
+    patient_notes?: string | null;
   }): Promise<Appointment> {
     const query = `
       INSERT INTO appointments (
@@ -59,11 +60,12 @@ export class AppointmentRepository {
         booked_by_user_id,
         source,
         notes,
+        patient_notes,
         is_active
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7,
-        $8, $9, $10, $11, $12, TRUE
+        $8, $9, $10, $11, $12, $13, TRUE
       )
       RETURNING *;
     `;
@@ -81,6 +83,7 @@ export class AppointmentRepository {
       params.booked_by_user_id,
       params.source,
       params.notes || null,
+      params.patient_notes || null,
     ]);
 
     await this.insertStatusHistory({
@@ -167,6 +170,7 @@ export class AppointmentRepository {
         u_patient.full_name as patient_name,
         u_patient.phone as patient_phone,
         u_patient.email as patient_email,
+        pp.mrn as patient_mrn,
         u_clinician.full_name as clinician_name,
         c.name as centre_name,
         c.city as centre_city
@@ -228,6 +232,7 @@ export class AppointmentRepository {
         a.*,
         u_patient.full_name as patient_name,
         u_patient.phone as patient_phone,
+        pp.mrn as patient_mrn,
         u_clinician.full_name as clinician_name,
         c.name as centre_name
       FROM appointments a
@@ -254,6 +259,7 @@ export class AppointmentRepository {
         a.*,
         u_patient.full_name as patient_name,
         u_patient.phone as patient_phone,
+        pp.mrn as patient_mrn,
         u_clinician.full_name as clinician_name,
         c.name as centre_name
       FROM appointments a
@@ -499,6 +505,7 @@ export class AppointmentRepository {
         u_patient.full_name as patient_name,
         u_patient.phone as patient_phone,
         u_patient.email as patient_email,
+        pp.mrn as patient_mrn,
         u_clinician.full_name as clinician_name,
         c.name as centre_name,
         c.city as centre_city
