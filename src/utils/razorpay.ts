@@ -247,6 +247,7 @@ class RazorpayUtil {
     customerPhone: string,
     description: string,
     referenceId: string,
+    expireBy: number,
   ): Promise<any> {
     if (!this.razorpay) {
       throw new Error("Razorpay is not configured");
@@ -270,6 +271,7 @@ class RazorpayUtil {
         callback_url: `${ENV.CORS_ORIGIN}/payment-success`,
         callback_method: "get",
         reference_id: `${referenceId}_${Date.now()}`,
+        expire_by: expireBy,
       };
 
       const paymentLink = await this.razorpay.paymentLink.create(options);

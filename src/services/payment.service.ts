@@ -606,6 +606,7 @@ class PaymentService {
         `💰 Payment link calculation for appointment ${appointmentId}: Consultation Fee: ₹${consultationFee}, Registration Fee: ₹${registrationFee}, Total: ₹${totalAmount}`,
       );
 
+      const expireBy = Math.floor(Date.now() / 1000) + (30 * 60);
       // Create Razorpay payment link
       const paymentLink = await razorpayUtil.createPaymentLink(
         amountInPaise,
@@ -613,6 +614,7 @@ class PaymentService {
         patientPhone,
         `Consultation with ${appointment.clinician_name}`,
         `appointment_${appointmentId}`,
+        expireBy,
       );
 
       logger.info(
@@ -658,7 +660,7 @@ class PaymentService {
       let whatsappSent = false;
       if (gallaboxUtil.isReady()) {
         // Calculate expiry in minutes from Razorpay payment link
-        const expiryMinutes = Math.floor(
+        const expiryMinutes = Math.ceil(
           (new Date(paymentLink.expire_by * 1000).getTime() - Date.now()) /
             60000,
         );
