@@ -40,18 +40,7 @@ router.post(
 );
 
 /**
- * GET /api/payment/:appointmentId
- * Get payment details for an appointment
- * Protected endpoint - requires authentication
- */
-router.get(
-  "/:appointmentId",
-  authMiddleware,
-  paymentController.getPaymentDetails.bind(paymentController),
-);
-
-/**
- * GET /api/payment/history
+ * GET /api/payments/history
  * Get payment history for logged-in patient
  * Protected endpoint - requires authentication
  */
@@ -62,7 +51,7 @@ router.get(
 );
 
 /**
- * GET /api/payment/registration-fee-status
+ * GET /api/payments/registration-fee-status
  * Check if user has paid registration fee
  * Protected endpoint - requires authentication
  */
@@ -73,7 +62,7 @@ router.get(
 );
 
 /**
- * POST /api/payment/send-link
+ * POST /api/payments/send-link
  * Send payment link to patient via WhatsApp
  * Protected endpoint - requires authentication (FRONT_DESK, ADMIN, MANAGER)
  */
@@ -81,6 +70,17 @@ router.post(
   "/send-link",
   authMiddleware,
   paymentController.sendPaymentLink.bind(paymentController),
+);
+
+/**
+ * GET /api/payments/:appointmentId
+ * Get payment details for an appointment
+ * Must be last — wildcard catches any unmatched GET segment
+ */
+router.get(
+  "/:appointmentId",
+  authMiddleware,
+  paymentController.getPaymentDetails.bind(paymentController),
 );
 
 export default router;
