@@ -43,8 +43,9 @@ router.get("/availability", authMiddleware, (req, res, next) =>
 /**
  * GET /api/appointments/:id
  * Get appointment by ID with access control
+ * Access control is handled in the controller
  */
-router.get("/:id", authMiddleware, enforceClinicianScope(), (req, res, next) =>
+router.get("/:id", authMiddleware, (req, res, next) =>
   appointmentController.getAppointmentByIdWithDetails(req, res, next),
 );
 
@@ -86,12 +87,18 @@ router.post(
 /**
  * PUT /api/appointments/:id
  * Update appointment (reschedule or update status)
- * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR
+ * Roles: ADMIN, MANAGER, CENTRE_MANAGER, CARE_COORDINATOR, CLINICIAN
  */
 router.put(
   "/:id",
   authMiddleware,
-  requireRole("ADMIN", "MANAGER", "CENTRE_MANAGER", "CARE_COORDINATOR"),
+  requireRole(
+    "ADMIN",
+    "MANAGER",
+    "CENTRE_MANAGER",
+    "CARE_COORDINATOR",
+    "CLINICIAN",
+  ),
   (req, res, next) => appointmentController.updateAppointment(req, res, next),
 );
 

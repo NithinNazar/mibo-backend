@@ -449,12 +449,13 @@ export class AppointmentService {
       `
       SELECT 
         a.*,
-        p.full_name as patient_name,
-        p.phone as patient_phone,
+        u.full_name as patient_name,
+        u.phone as patient_phone,
         c.name as centre_name,
-        c.address as centre_address
+        c.address_line1 as centre_address
       FROM appointments a
       JOIN patient_profiles p ON a.patient_id = p.id
+      JOIN users u ON p.user_id = u.id
       JOIN centres c ON a.centre_id = c.id
       WHERE a.clinician_id = $1
         AND a.scheduled_start_at >= $2
@@ -471,12 +472,13 @@ export class AppointmentService {
       `
       SELECT 
         a.*,
-        p.full_name as patient_name,
-        p.phone as patient_phone,
+        u.full_name as patient_name,
+        u.phone as patient_phone,
         c.name as centre_name,
-        c.address as centre_address
+        c.address_line1 as centre_address
       FROM appointments a
       JOIN patient_profiles p ON a.patient_id = p.id
+      JOIN users u ON p.user_id = u.id
       JOIN centres c ON a.centre_id = c.id
       WHERE a.clinician_id = $1
         AND a.scheduled_start_at > $2
@@ -493,12 +495,13 @@ export class AppointmentService {
       `
       SELECT 
         a.*,
-        p.full_name as patient_name,
-        p.phone as patient_phone,
+        u.full_name as patient_name,
+        u.phone as patient_phone,
         c.name as centre_name,
-        c.address as centre_address
+        c.address_line1 as centre_address
       FROM appointments a
       JOIN patient_profiles p ON a.patient_id = p.id
+      JOIN users u ON p.user_id = u.id
       JOIN centres c ON a.centre_id = c.id
       WHERE a.clinician_id = $1
         AND (
@@ -660,8 +663,12 @@ export class AppointmentService {
         const slotEnd = this.formatTime(currentTime + slotDuration);
 
         // Create UTC ISO strings for conflict checking (slot times are IST, DB stores UTC)
-        const slotStartDateTime = new Date(`${date}T${slotStart}:00+05:30`).toISOString();
-        const slotEndDateTime = new Date(`${date}T${slotEnd}:00+05:30`).toISOString();
+        const slotStartDateTime = new Date(
+          `${date}T${slotStart}:00+05:30`,
+        ).toISOString();
+        const slotEndDateTime = new Date(
+          `${date}T${slotEnd}:00+05:30`,
+        ).toISOString();
 
         // Check if this slot has a conflict (booked appointment)
         const hasConflict =

@@ -244,54 +244,102 @@ export class StaffRepository {
   /**
    * Update staff user profile
    */
-  async updateStaffUser(userId: number, data: Partial<CreateStaffData>) {
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
+  async updateStaffUser(
+    userId: number,
+    data: Partial<CreateStaffData> & { centre_ids?: number[] },
+  ) {
+    return await db.tx(async (t) => {
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
 
-    if (data.full_name !== undefined) {
-      fields.push(`full_name = $${paramIndex}`);
-      values.push(data.full_name);
-      paramIndex++;
-    }
+      if (data.full_name !== undefined) {
+        fields.push(`full_name = $${paramIndex}`);
+        values.push(data.full_name);
+        paramIndex++;
+      }
 
-    if (data.email !== undefined) {
-      fields.push(`email = $${paramIndex}`);
-      values.push(data.email);
-      paramIndex++;
-    }
+      if (data.email !== undefined) {
+        fields.push(`email = $${paramIndex}`);
+        values.push(data.email || null);
+        paramIndex++;
+      }
 
-    if (data.phone !== undefined) {
-      fields.push(`phone = $${paramIndex}`);
-      values.push(data.phone);
-      paramIndex++;
-    }
+      if (data.phone !== undefined) {
+        fields.push(`phone = $${paramIndex}`);
+        values.push(data.phone);
+        paramIndex++;
+      }
 
-    if (fields.length > 0) {
-      fields.push("updated_at = NOW()");
-      const query = `
-        UPDATE users
-        SET ${fields.join(", ")}
-        WHERE id = $${paramIndex}
-        RETURNING *;
-      `;
-      values.push(userId);
-      await db.one(query, values);
-    }
+      if (data.username !== undefined) {
+        fields.push(`username = $${paramIndex}`);
+        values.push(data.username);
+        paramIndex++;
+      }
 
-    // Update staff profile if designation is provided
-    if (data.designation !== undefined) {
-      await db.none(
-        `
-        UPDATE staff_profiles
-        SET designation = $1, updated_at = NOW()
-        WHERE user_id = $2
-        `,
-        [data.designation, userId],
-      );
-    }
+      if (data.password !== undefined) {
+        const passwordHash = await hashPassword(data.password);
+        fields.push(`password_hash = $${paramIndex}`);
+        values.push(passwordHash);
+        paramIndex++;
+      }
 
-    return this.findStaffById(userId);
+      if (fields.length > 0) {
+        fields.push("updated_at = NOW()");
+        const query = `
+          UPDATE users
+          SET ${fields.join(", ")}
+          WHERE id = $${paramIndex}
+          RETURNING *;
+        `;
+        values.push(userId);
+        await t.one(query, values);
+      }
+
+      // Update staff profile if designation is provided
+      if (data.designation !== undefined) {
+        await t.none(
+          `
+          UPDATE staff_profiles
+          SET designation = $1, updated_at = NOW()
+          WHERE user_id = $2
+          `,
+          [data.designation, userId],
+        );
+      }
+
+      // Update centre assignments if provided
+      if (data.centre_ids && Array.isArray(data.centre_ids)) {
+        // Get current role_id for this user
+        const currentRole = await t.oneOrNone(
+          `SELECT role_id FROM user_roles WHERE user_id = $1 AND is_active = TRUE LIMIT 1`,
+          [userId],
+        );
+
+        if (currentRole) {
+          // Deactivate old centre assignments
+          await t.none(
+            `UPDATE centre_staff_assignments SET is_active = FALSE WHERE user_id = $1`,
+            [userId],
+          );
+
+          // Add new centre assignments
+          for (const centreId of data.centre_ids) {
+            await t.none(
+              `
+              INSERT INTO centre_staff_assignments (centre_id, user_id, role_id, is_active)
+              VALUES ($1, $2, $3, TRUE)
+              ON CONFLICT (centre_id, user_id, role_id) 
+              DO UPDATE SET is_active = TRUE, updated_at = NOW()
+              `,
+              [centreId, userId, currentRole.role_id],
+            );
+          }
+        }
+      }
+
+      return await this.findStaffById(userId);
+    });
   }
 
   /**

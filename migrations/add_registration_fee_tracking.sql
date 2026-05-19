@@ -30,6 +30,8 @@ COMMENT ON COLUMN payments.consultation_fee IS 'Clinician consultation fee (sepa
 
 -- 7. Update existing patients who have successful payments to mark registration fee as paid
 -- This ensures existing patients don't have to pay registration fee again
+-- FIXED: Changed a.patient_id = pp.user_id to a.patient_id = pp.id
+-- (appointments.patient_id references patient_profiles.id, not patient_profiles.user_id)
 UPDATE patient_profiles pp
 SET 
   registration_fee_paid = TRUE,
@@ -37,7 +39,7 @@ SET
     SELECT MIN(p.paid_at)
     FROM payments p
     JOIN appointments a ON p.appointment_id = a.id
-    WHERE a.patient_id = pp.user_id 
+    WHERE a.patient_id = pp.id 
     AND p.status = 'SUCCESS'
     AND p.paid_at IS NOT NULL
   )
@@ -45,7 +47,7 @@ WHERE EXISTS (
   SELECT 1
   FROM payments p
   JOIN appointments a ON p.appointment_id = a.id
-  WHERE a.patient_id = pp.user_id 
+  WHERE a.patient_id = pp.id 
   AND p.status = 'SUCCESS'
 );
 

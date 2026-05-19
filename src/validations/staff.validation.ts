@@ -17,6 +17,9 @@ export interface UpdateStaffUserDto {
   phone?: string;
   email?: string;
   designation?: string;
+  username?: string;
+  password?: string;
+  centre_ids?: number[];
 }
 
 export interface CreateClinicianDto {
@@ -171,14 +174,38 @@ export function validateUpdateStaffUser(body: any): UpdateStaffUserDto {
 
   if (body.email !== undefined) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
+    if (body.email && !emailRegex.test(body.email)) {
       throw ApiError.badRequest("Invalid email format");
     }
-    dto.email = body.email.trim();
+    dto.email = body.email ? body.email.trim() : undefined;
   }
 
   if (body.designation !== undefined) {
     dto.designation = String(body.designation).trim();
+  }
+
+  if (body.username !== undefined) {
+    const usernameRegex = /^[a-zA-Z0-9_]{3,50}$/;
+    if (!usernameRegex.test(body.username)) {
+      throw ApiError.badRequest(
+        "Username must be 3-50 alphanumeric characters",
+      );
+    }
+    dto.username = body.username.trim();
+  }
+
+  if (body.password !== undefined) {
+    if (typeof body.password !== "string" || body.password.length < 8) {
+      throw ApiError.badRequest("Password must be at least 8 characters");
+    }
+    dto.password = body.password;
+  }
+
+  if (body.centre_ids !== undefined) {
+    if (!Array.isArray(body.centre_ids)) {
+      throw ApiError.badRequest("centre_ids must be an array");
+    }
+    dto.centre_ids = body.centre_ids.map(Number);
   }
 
   if (Object.keys(dto).length === 0) {
