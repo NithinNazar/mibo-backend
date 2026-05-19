@@ -659,9 +659,9 @@ export class AppointmentService {
         const slotStart = this.formatTime(currentTime);
         const slotEnd = this.formatTime(currentTime + slotDuration);
 
-        // Create datetime strings for conflict checking
-        const slotStartDateTime = `${date}T${slotStart}:00`;
-        const slotEndDateTime = `${date}T${slotEnd}:00`;
+        // Create UTC ISO strings for conflict checking (slot times are IST, DB stores UTC)
+        const slotStartDateTime = new Date(`${date}T${slotStart}:00+05:30`).toISOString();
+        const slotEndDateTime = new Date(`${date}T${slotEnd}:00+05:30`).toISOString();
 
         // Check if this slot has a conflict (booked appointment)
         const hasConflict =
