@@ -9,6 +9,7 @@ export type AppointmentType =
 export type AppointmentStatus =
   | "BOOKED"
   | "CONFIRMED"
+  | "IN_PROGRESS"
   | "RESCHEDULED"
   | "COMPLETED"
   | "CANCELLED"

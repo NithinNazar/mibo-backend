@@ -86,14 +86,29 @@ export class AppointmentController {
     try {
       if (!req.user) return;
 
-      // If the request contains new_status, update status
-      if (req.body.new_status) {
+      // If the request contains new_status or status, update status
+      if (req.body.new_status || req.body.status) {
+        // Normalize to new_status for consistency
+        if (req.body.status && !req.body.new_status) {
+          req.body.new_status = req.body.status;
+        }
+
         const appt = await appointmentService.updateStatus(
           req.body,
           req.params,
           req.user,
         );
         return ok(res, appt, "Appointment status updated");
+      }
+
+      // If the request contains notes, update notes
+      if (req.body.notes !== undefined) {
+        const appointmentId = parseInt(req.params.id);
+        const updatedAppointment = await appointmentService.updateNotes(
+          appointmentId,
+          req.body.notes,
+        );
+        return ok(res, updatedAppointment, "Notes updated successfully");
       }
 
       // Otherwise, reschedule

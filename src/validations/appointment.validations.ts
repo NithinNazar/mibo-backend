@@ -46,6 +46,7 @@ const allowedTypes: AppointmentType[] = [
 const allowedStatuses: AppointmentStatus[] = [
   "BOOKED",
   "CONFIRMED",
+  "IN_PROGRESS",
   "RESCHEDULED",
   "COMPLETED",
   "CANCELLED",
@@ -69,7 +70,7 @@ export function validateCreateAppointment(body: any): CreateAppointmentDto {
   const start = new Date(body.scheduled_start_at);
   if (Number.isNaN(start.getTime())) {
     throw ApiError.badRequest(
-      "scheduled_start_at must be a valid ISO datetime string"
+      "scheduled_start_at must be a valid ISO datetime string",
     );
   }
 
@@ -92,7 +93,7 @@ export function validateCreateAppointment(body: any): CreateAppointmentDto {
 
 export function validateRescheduleAppointment(
   body: any,
-  params: any
+  params: any,
 ): RescheduleAppointmentDto {
   const appointment_id = Number(params.id);
   if (!appointment_id) {
@@ -104,7 +105,7 @@ export function validateRescheduleAppointment(
   const start = new Date(body.scheduled_start_at);
   if (Number.isNaN(start.getTime())) {
     throw ApiError.badRequest(
-      "scheduled_start_at must be a valid ISO datetime string"
+      "scheduled_start_at must be a valid ISO datetime string",
     );
   }
 
@@ -142,7 +143,7 @@ export function validateUpdateStatus(body: any, params: any): UpdateStatusDto {
 
 export function validateCancelAppointment(
   body: any,
-  params: any
+  params: any,
 ): CancelAppointmentDto {
   const appointment_id = Number(params.id);
   if (!appointment_id) {

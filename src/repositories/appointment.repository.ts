@@ -329,10 +329,24 @@ export class AppointmentRepository {
       throw new Error("Appointment not found");
     }
 
+    // Determine if we need to set session timestamps based on status
+    let additionalFields = "";
+
+    if (new_status === "IN_PROGRESS") {
+      // Set session_started_at when status changes to IN_PROGRESS
+      additionalFields =
+        ", session_started_at = COALESCE(session_started_at, NOW())";
+    } else if (new_status === "COMPLETED") {
+      // Set session_ended_at when status changes to COMPLETED
+      // Also ensure session_started_at is set if it wasn't already
+      additionalFields =
+        ", session_started_at = COALESCE(session_started_at, NOW()), session_ended_at = COALESCE(session_ended_at, NOW())";
+    }
+
     const query = `
       UPDATE appointments
       SET status = $1,
-          updated_at = NOW()
+          updated_at = NOW()${additionalFields}
       WHERE id = $2
       RETURNING *;
     `;
