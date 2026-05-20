@@ -653,11 +653,7 @@ export class AppointmentService {
       let currentTime = startTime;
 
       while (currentTime + slotDuration <= endTime) {
-        // Skip past time slots if this is today
-        if (isToday && currentTime < currentTimeMinutes) {
-          currentTime += slotDuration;
-          continue;
-        }
+        const isPastSlot = isToday && currentTime < currentTimeMinutes;
 
         const slotStart = this.formatTime(currentTime);
         const slotEnd = this.formatTime(currentTime + slotDuration);
@@ -677,6 +673,12 @@ export class AppointmentService {
             slotStartDateTime,
             slotEndDateTime,
           );
+
+        // Hide past unbooked slots; still show past booked slots
+        if (isPastSlot && !hasConflict) {
+          currentTime += slotDuration;
+          continue;
+        }
 
         // Check if this slot has an exception (blocked by admin)
         const { staffRepository } =
