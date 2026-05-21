@@ -266,6 +266,37 @@ class PaymentController {
   }
 
   /**
+   * Handle Razorpay webhook for admin booking flow
+   * POST /api/payment/admin-webhook
+   */
+  async handleAdminWebhook(req: Request, res: Response): Promise<void> {
+    try {
+      const signature = req.headers["x-razorpay-signature"] as string;
+
+      if (!signature) {
+        res.status(400).json({
+          success: false,
+          message: "Missing webhook signature",
+        });
+        return;
+      }
+
+      await paymentService.handleAdminWebhook(signature, req.body);
+
+      res.json({
+        success: true,
+        message: "Admin webhook processed successfully",
+      });
+    } catch (error: any) {
+      logger.error("Error handling admin webhook:", error);
+      res.status(500).json({
+        success: false,
+        message: "Admin webhook processing failed",
+      });
+    }
+  }
+
+  /**
    * Check registration fee status
    * GET /api/payment/registration-fee-status
    */

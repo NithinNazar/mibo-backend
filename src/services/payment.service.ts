@@ -1,6 +1,7 @@
 // src/services/payment.service.ts
 import { paymentRepository } from "../repositories/payment.repository";
 import { bookingRepository } from "../repositories/booking.repository";
+import { appointmentRepository } from "../repositories/appointment.repository";
 import { patientRepository } from "../repositories/patient.repository";
 import { razorpayUtil } from "../utils/razorpay";
 import { gallaboxUtil } from "../utils/gallabox";
@@ -720,6 +721,276 @@ class PaymentService {
       };
     } catch (error: any) {
       logger.error("Error sending payment link:", error);
+      throw error;
+    }
+  }
+
+  // ─── ADMIN BOOKING FLOW ──────────────────────────────────────────────────────
+  // The three methods below are exclusively for the admin-created appointment
+  // flow (FRONT_DESK / CARE_COORDINATOR / MANAGER books on behalf of a patient).
+  // Do NOT call them from patient-facing routes or the patient payment flow.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * [ADMIN BOOKING FLOW ONLY]
+   * Create a Razorpay payment link and send it to the patient via WhatsApp.
+   * Called by appointmentService.createAppointment immediately after the
+   * appointment row is inserted with status BOOKED.
+   *
+   * Video link generation and notifications are intentionally deferred —
+   * they only fire once payment is confirmed (see verifyAdminBookingPayment).
+   */
+  async sendAdminBookingPaymentLink(appointmentId: number): Promise<{
+    paymentLink: string;
+    whatsappSent: boolean;
+    amount: number;
+    expiresAt: Date;
+  }> {
+    const appointment =
+      await bookingRepository.findAppointmentById(appointmentId);
+    if (!appointment) {
+      throw new Error("Appointment not found");
+    }
+
+    const existingPayment =
+      await paymentRepository.findPaymentByAppointmentId(appointmentId);
+    if (existingPayment && existingPayment.status === "SUCCESS") {
+      throw new Error("Appointment is already paid");
+    }
+
+    const consultationFee = appointment.consultation_fee || 500;
+
+    // Derive user_id via patient_profiles to check registration fee
+    const patientProfile =
+      await patientRepository.findPatientProfileByPatientId(
+        appointment.patient_id,
+      );
+    if (!patientProfile) {
+      throw new Error("Patient profile not found");
+    }
+    const hasPatientPaidRegistrationFee =
+      await patientRepository.hasPatientPaidRegistrationFee(
+        patientProfile.user_id,
+      );
+
+    const registrationFee = hasPatientPaidRegistrationFee ? 0 : 100;
+    const totalAmount = consultationFee + registrationFee;
+    const amountInPaise = totalAmount * 100;
+
+    logger.info(
+      `💰 [Admin] Payment link calculation for appointment ${appointmentId}: ` +
+        `Consultation ₹${consultationFee}, Registration ₹${registrationFee}, Total ₹${totalAmount}`,
+    );
+
+    const expireBy = Math.floor(Date.now() / 1000) + 30 * 60; // 30-minute window
+
+    const paymentLink = await razorpayUtil.createPaymentLink(
+      amountInPaise,
+      appointment.patient_name,
+      appointment.patient_phone,
+      `Consultation with ${appointment.clinician_name}`,
+      `appointment_${appointmentId}`,
+      expireBy,
+    );
+
+    if (existingPayment) {
+      await paymentRepository.updatePaymentLink(
+        existingPayment.id,
+        paymentLink.id,
+        paymentLink.short_url,
+      );
+    } else {
+      await paymentRepository.createPayment({
+        patientId: appointment.patient_id,
+        appointmentId,
+        orderId: paymentLink.id,
+        amount: totalAmount,
+        currency: "INR",
+        paymentLinkId: paymentLink.id,
+        paymentLinkUrl: paymentLink.short_url,
+        consultationFee,
+        registrationFee,
+      });
+    }
+
+    const expiryMinutes = Math.ceil(
+      (new Date(paymentLink.expire_by * 1000).getTime() - Date.now()) / 60000,
+    );
+
+    let whatsappSent = false;
+    if (gallaboxUtil.isReady()) {
+      const result = await gallaboxUtil.sendPaymentLinkTemplate(
+        appointment.patient_phone,
+        appointment.patient_name,
+        paymentLink.short_url,
+        expiryMinutes,
+        appointmentId,
+      );
+      whatsappSent = result.success;
+
+      if (whatsappSent) {
+        logger.info(
+          `✅ [Admin] Payment link sent via WhatsApp to ${appointment.patient_phone} for appointment ${appointmentId}`,
+        );
+      } else {
+        logger.warn(
+          `⚠️ [Admin] Failed to send payment link via WhatsApp to ${appointment.patient_phone}`,
+        );
+      }
+    } else {
+      logger.warn("[Admin] Gallabox not configured, payment link not sent via WhatsApp");
+    }
+
+    return {
+      paymentLink: paymentLink.short_url,
+      whatsappSent,
+      amount: totalAmount,
+      expiresAt: new Date(paymentLink.expire_by * 1000),
+    };
+  }
+
+  /**
+   * [ADMIN BOOKING FLOW ONLY]
+   * Called from handleWebhook when Razorpay fires payment_link.paid.
+   * Updates the appointment to CONFIRMED, then triggers video link generation
+   * and all notifications (patient, doctor, admins) for ONLINE appointments,
+   * or sends a plain confirmation for IN_PERSON appointments.
+   */
+  async verifyAdminBookingPayment(paymentLinkId: string): Promise<any | null> {
+    const payment =
+      await paymentRepository.findPaymentByPaymentLinkId(paymentLinkId);
+    if (!payment) {
+      logger.warn(
+        `[Admin] No payment record found for payment link ${paymentLinkId}`,
+      );
+      return null;
+    }
+
+    if (payment.status === "SUCCESS") {
+      logger.info(
+        `[Admin] Payment ${paymentLinkId} already processed, skipping`,
+      );
+      return null;
+    }
+
+    // Mark payment successful (payment links don't carry a Razorpay payment ID
+    // in the webhook entity — use the link ID as the identifier)
+    await paymentRepository.updatePaymentSuccess(paymentLinkId, paymentLinkId, {
+      method: "payment_link",
+    });
+
+    // Mark registration fee paid if this payment included it
+    if (payment.registration_fee && payment.registration_fee > 0) {
+      const patientProfile =
+        await patientRepository.findPatientProfileByPatientId(
+          payment.patient_id,
+        );
+      if (patientProfile) {
+        await patientRepository.markRegistrationFeePaid(patientProfile.user_id);
+        logger.info(
+          `✅ [Admin] Registration fee marked as paid for patient ${payment.patient_id}`,
+        );
+      }
+    }
+
+    // Confirm the appointment
+    await bookingRepository.updateAppointmentStatus(
+      payment.appointment_id,
+      "CONFIRMED",
+    );
+
+    logger.info(
+      `✅ [Admin] Appointment ${payment.appointment_id} confirmed after payment link ${paymentLinkId} paid`,
+    );
+
+    const appointment = await bookingRepository.findAppointmentById(
+      payment.appointment_id,
+    );
+    if (!appointment) {
+      logger.error(
+        `[Admin] Appointment ${payment.appointment_id} not found after confirmation`,
+      );
+      return null;
+    }
+
+    return appointment;
+  }
+
+  /**
+   * [ADMIN BOOKING FLOW ONLY]
+   * Called from handleWebhook when payment_link.expired fires.
+   * Rolls back the appointment to CANCELLED and deactivates it so the slot
+   * becomes available again for new bookings.
+   */
+  private async rollbackAdminBookingAppointment(
+    paymentLinkId: string,
+  ): Promise<void> {
+    const payment =
+      await paymentRepository.findPaymentByPaymentLinkId(paymentLinkId);
+    if (!payment) {
+      logger.warn(
+        `[Admin] No payment record found for expired link ${paymentLinkId}`,
+      );
+      return;
+    }
+
+    await paymentRepository.updatePaymentFailed(
+      paymentLinkId,
+      "LINK_EXPIRED",
+      "Payment link expired without payment",
+    );
+
+    await appointmentRepository.rollbackAppointment(payment.appointment_id);
+
+    logger.info(
+      `⚠️ [Admin] Appointment ${payment.appointment_id} rolled back — payment link ${paymentLinkId} expired`,
+    );
+  }
+
+  /**
+   * [ADMIN BOOKING FLOW ONLY]
+   * Dedicated Razorpay webhook handler for admin-created appointments.
+   * Handles payment_link.paid (confirm + notify via appointmentService) and
+   * payment_link.expired (rollback appointment).
+   * Register this on a separate route from the patient-flow handleWebhook.
+   */
+  async handleAdminWebhook(signature: string, payload: any): Promise<void> {
+    try {
+      const webhookEvent = await paymentRepository.storeWebhookEvent({
+        provider: "RAZORPAY",
+        providerEventId: payload.event,
+        eventType: payload.event,
+        rawPayload: payload,
+      });
+
+      const isValid = razorpayUtil.verifyAdminWebhookSignature(
+        JSON.stringify(payload),
+        signature,
+      );
+
+      if (!isValid) {
+        logger.warn("[Admin] Invalid webhook signature");
+        return;
+      }
+
+      const event = payload.event;
+      const paymentLinkEntity = payload.payload?.payment_link?.entity;
+
+      if (event === "payment_link.paid" && paymentLinkEntity?.id) {
+        const appointment = await this.verifyAdminBookingPayment(
+          paymentLinkEntity.id,
+        );
+        if (appointment) {
+          const { appointmentService } = await import("./appointment.services");
+          await appointmentService.handleAdminBookingConfirmed(appointment);
+        }
+      } else if (event === "payment_link.expired" && paymentLinkEntity?.id) {
+        await this.rollbackAdminBookingAppointment(paymentLinkEntity.id);
+      }
+
+      await paymentRepository.markWebhookProcessed(webhookEvent.id);
+    } catch (error: any) {
+      logger.error("[Admin] Error handling admin webhook:", error);
       throw error;
     }
   }

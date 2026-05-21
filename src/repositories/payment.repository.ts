@@ -79,6 +79,19 @@ class PaymentRepository {
   }
 
   /**
+   * Find payment by Razorpay payment link ID
+   * Used in admin booking flow webhook processing
+   */
+  async findPaymentByPaymentLinkId(
+    paymentLinkId: string,
+  ): Promise<Payment | null> {
+    return await db.oneOrNone(
+      "SELECT * FROM payments WHERE payment_link_id = $1 ORDER BY created_at DESC LIMIT 1",
+      [paymentLinkId],
+    );
+  }
+
+  /**
    * Update payment status to success
    */
   async updatePaymentSuccess(
