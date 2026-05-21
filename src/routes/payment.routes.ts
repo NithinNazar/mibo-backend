@@ -31,12 +31,22 @@ router.post(
 
 /**
  * POST /api/payment/webhook
- * Handle Razorpay webhooks
+ * Handle Razorpay webhooks (patient payment flow)
  * Public endpoint - verified by signature
  */
 router.post(
   "/webhook",
   paymentController.handleWebhook.bind(paymentController),
+);
+
+/**
+ * POST /api/payment/admin-webhook
+ * Handle Razorpay webhooks for admin booking flow (payment_link.paid / expired)
+ * Public endpoint - verified by signature
+ */
+router.post(
+  "/admin-webhook",
+  paymentController.handleAdminWebhook.bind(paymentController),
 );
 
 /**

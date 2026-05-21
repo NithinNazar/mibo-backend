@@ -24,6 +24,7 @@ interface EnvironmentConfig {
 
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
+  RAZORPAY_WEBHOOK_SECRET: string;
 
   GOOGLE_SERVICE_ACCOUNT_EMAIL: string;
   GOOGLE_PRIVATE_KEY: string;
@@ -78,6 +79,7 @@ function validateEnv(): EnvironmentConfig {
     // Razorpay
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
+    RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
 
     // Google Meet (Render-safe)
     GOOGLE_SERVICE_ACCOUNT_EMAIL:

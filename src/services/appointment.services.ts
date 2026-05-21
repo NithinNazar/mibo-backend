@@ -10,8 +10,6 @@ import { AppointmentStatus, Appointment } from "../types/appointment.types";
 import { patientRepository } from "../repositories/patient.repository";
 import { JwtPayload } from "../utils/jwt";
 import { db } from "../config/db";
-import { videoService } from "./video.service";
-import { notificationService } from "./notification.service";
 import { paymentService } from "./payment.service";
 import { emailUtil } from "../utils/email";
 import { gallaboxUtil } from "../utils/gallabox";
@@ -206,153 +204,20 @@ export class AppointmentService {
       notes: dto.notes || null,
     });
 
-    // Get patient and clinician details for notifications and payment
-    const patient = await patientRepository.findByPatientId(patient_id);
-    const clinician = await db.oneOrNone(
-      `SELECT u.full_name FROM clinician_profiles cp 
-       JOIN users u ON cp.user_id = u.id 
-       WHERE cp.id = $1`,
-      [appointment.clinician_id],
-    );
-
-    if (!patient || !clinician) {
-      logger.error(
-        `Patient or clinician not found for appointment ${appointment.id}`,
-      );
-      return appointment;
-    }
-
-    const userTimezone = "Asia/Kolkata";
-
-    const appointmentDate = new Date(
-      appointment.scheduled_start_at,
-    ).toLocaleDateString("en-IN", {
-      timeZone: userTimezone,
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    const appointmentTime = new Date(
-      appointment.scheduled_start_at,
-    ).toLocaleTimeString("en-IN", {
-      timeZone: userTimezone,
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const clinicianName = clinician.full_name;
-
-    // If appointment type is ONLINE, generate Google Meet link and send notifications
-    if (dto.appointment_type === "ONLINE") {
-      try {
-        // Generate Google Meet link
-        const meetLink = await videoService.autoGenerateMeetLink(
-          appointment.id,
-        );
-
-        if (meetLink) {
-          logger.info(
-            `Google Meet link generated for appointment ${appointment.id}`,
-          );
-
-          // Send notifications in parallel (don't wait for all to complete)
-          Promise.all([
-            // 1. Send WhatsApp to patient with Meet link
-            gallaboxUtil
-              .sendOnlineMeetingLinkTemplate(
-                patient.user.phone,
-                patient.user.full_name,
-                meetLink,
-                appointmentDate,
-                appointmentTime,
-                clinicianName,
-                appointment.id,
-              )
-              .catch((err) =>
-                logger.error("Failed to send WhatsApp to patient:", err),
-              ),
-
-            // 2. Send email to patient with Meet link (if email exists)
-            patient.user.email
-              ? emailUtil
-                  .sendOnlineConsultationLink(
-                    patient.user.email,
-                    patient.user.full_name,
-                    clinicianName,
-                    meetLink,
-                    appointmentDate,
-                    appointmentTime,
-                  )
-                  .catch((err) =>
-                    logger.error("Failed to send email to patient:", err),
-                  )
-              : Promise.resolve(),
-
-            // 3. Send WhatsApp to doctor with appointment details
-            this.notifyDoctorAboutOnlineConsultation(
-              appointment.clinician_id,
-              patient.user.full_name,
-              appointmentDate,
-              appointmentTime,
-              meetLink,
-              appointment.id,
-            ).catch((err) => logger.error("Failed to notify doctor:", err)),
-
-            // 4. Notify admins and managers
-            this.notifyAdminsAboutOnlineConsultation(
-              appointment.id,
-              patient.user.full_name,
-              clinicianName,
-              appointmentDate,
-              appointmentTime,
-            ).catch((err) => logger.error("Failed to notify admins:", err)),
-          ]).catch((err) => {
-            logger.error("Error in notification promises:", err);
-          });
-
-          logger.info(
-            `All notifications sent for online consultation ${appointment.id}`,
-          );
-        }
-      } catch (error: any) {
-        logger.error(
-          `Failed to generate Meet link or send notifications for appointment ${appointment.id}:`,
-          error,
-        );
-        // Don't throw - appointment creation should succeed even if notifications fail
-      }
-    } else {
-      // For non-online appointments, send regular confirmation
-      try {
-        await notificationService.sendAppointmentConfirmation(appointment.id);
-      } catch (error: any) {
-        logger.error(
-          `Failed to send confirmation for appointment ${appointment.id}:`,
-          error,
-        );
-      }
-    }
-
-    // Generate and send payment link for all appointments (both ONLINE and IN_PERSON)
-    // This happens AFTER appointment creation and notifications
+    // [ADMIN BOOKING FLOW] Send payment link — video link and notifications are
+    // deferred until payment is confirmed (handled in payment.service.ts webhook).
     try {
       logger.info(
         `Generating payment link for appointment ${appointment.id}...`,
       );
 
-      const paymentLinkResult = await paymentService.sendPaymentLink(
-        appointment.id,
-        patient.user.phone,
-        patient.user.full_name,
-      );
+      const paymentLinkResult =
+        await paymentService.sendAdminBookingPaymentLink(appointment.id);
 
       logger.info(
-        `✅ Payment link generated and sent for appointment ${appointment.id}: ${paymentLinkResult.paymentLink}`,
+        `✅ Payment link generated for appointment ${appointment.id}: ${paymentLinkResult.paymentLink}`,
       );
 
-      // Add payment link info to appointment response
       (appointment as any).paymentLink = paymentLinkResult.paymentLink;
       (appointment as any).paymentLinkSent = paymentLinkResult.whatsappSent;
       (appointment as any).paymentAmount = paymentLinkResult.amount;
@@ -361,7 +226,6 @@ export class AppointmentService {
         `Failed to generate payment link for appointment ${appointment.id}:`,
         error,
       );
-      // Don't throw - appointment creation should succeed even if payment link fails
       (appointment as any).paymentLinkError = error.message;
     }
 
@@ -870,6 +734,122 @@ Google Meet link has been sent to patient and doctor.
     authUser: JwtPayload,
   ): Promise<any> {
     return await appointmentRepository.findByIdWithDetails(appointmentId);
+  }
+
+  /**
+   * [ADMIN BOOKING FLOW ONLY]
+   * Called after payment is confirmed via verifyAdminBookingPayment.
+   * Generates a Google Meet link (ONLINE) or sends a plain confirmation
+   * (IN_PERSON) and notifies the patient, doctor, and admins.
+   * Reuses existing notifyDoctorAboutOnlineConsultation and
+   * notifyAdminsAboutOnlineConsultation private helpers.
+   */
+  async handleAdminBookingConfirmed(appointment: any): Promise<void> {
+    const userTimezone = "Asia/Kolkata";
+
+    const appointmentDate = new Date(
+      appointment.scheduled_start_at,
+    ).toLocaleDateString("en-IN", {
+      timeZone: userTimezone,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const appointmentTime = new Date(
+      appointment.scheduled_start_at,
+    ).toLocaleTimeString("en-IN", {
+      timeZone: userTimezone,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (appointment.appointment_type === "ONLINE") {
+      try {
+        const { videoService } = await import("./video.service");
+        const meetLink = await videoService.autoGenerateMeetLink(appointment.id);
+
+        if (meetLink) {
+          logger.info(
+            `Google Meet link generated for appointment ${appointment.id}`,
+          );
+
+          Promise.all([
+            gallaboxUtil
+              .sendOnlineMeetingLinkTemplate(
+                appointment.patient_phone,
+                appointment.patient_name,
+                meetLink,
+                appointmentDate,
+                appointmentTime,
+                appointment.clinician_name,
+                appointment.id,
+              )
+              .catch((err: any) =>
+                logger.error("[Admin] Failed to send WhatsApp to patient:", err),
+              ),
+
+            appointment.patient_email
+              ? emailUtil
+                  .sendOnlineConsultationLink(
+                    appointment.patient_email,
+                    appointment.patient_name,
+                    appointment.clinician_name,
+                    meetLink,
+                    appointmentDate,
+                    appointmentTime,
+                  )
+                  .catch((err: any) =>
+                    logger.error("[Admin] Failed to send email to patient:", err),
+                  )
+              : Promise.resolve(),
+
+            this.notifyDoctorAboutOnlineConsultation(
+              appointment.clinician_id,
+              appointment.patient_name,
+              appointmentDate,
+              appointmentTime,
+              meetLink,
+              appointment.id,
+            ).catch((err: any) =>
+              logger.error("[Admin] Failed to notify doctor:", err),
+            ),
+
+            this.notifyAdminsAboutOnlineConsultation(
+              appointment.id,
+              appointment.patient_name,
+              appointment.clinician_name,
+              appointmentDate,
+              appointmentTime,
+            ).catch((err: any) =>
+              logger.error("[Admin] Failed to notify admins:", err),
+            ),
+          ]).catch((err: any) => {
+            logger.error("[Admin] Error in notification promises:", err);
+          });
+
+          logger.info(
+            `All notifications sent for online consultation ${appointment.id}`,
+          );
+        }
+      } catch (error: any) {
+        logger.error(
+          `Failed to generate Meet link or send notifications for appointment ${appointment.id}:`,
+          error,
+        );
+      }
+    } else {
+      try {
+        const { notificationService } = await import("./notification.service");
+        await notificationService.sendAppointmentConfirmation(appointment.id);
+      } catch (error: any) {
+        logger.error(
+          `Failed to send confirmation for appointment ${appointment.id}:`,
+          error,
+        );
+      }
+    }
   }
 }
 

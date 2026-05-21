@@ -507,6 +507,21 @@ export class AppointmentRepository {
   }
 
   /**
+   * Rollback a BOOKED appointment to CANCELLED and deactivate it.
+   * [ADMIN BOOKING FLOW ONLY] — called when payment link expires or payment fails.
+   * Status guard prevents cancelling an already-confirmed appointment if a
+   * delayed or duplicate webhook arrives after payment succeeded.
+   */
+  async rollbackAppointment(appointmentId: number): Promise<void> {
+    await db.none(
+      `UPDATE appointments
+       SET status = 'CANCELLED', is_active = FALSE, updated_at = NOW()
+       WHERE id = $1 AND status = 'BOOKED'`,
+      [appointmentId],
+    );
+  }
+
+  /**
    * Find appointment by ID with full details including notes and Google Meet link
    * Validates: Requirements 5.6, 8.4
    */

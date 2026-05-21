@@ -170,6 +170,24 @@ class RazorpayUtil {
     }
   }
 
+  verifyAdminWebhookSignature(body: string, signature: string): boolean {
+    if (!ENV.RAZORPAY_WEBHOOK_SECRET) {
+      throw new Error("Razorpay webhook secret is not configured");
+    }
+
+    try {
+      const expectedSignature = crypto
+        .createHmac("sha256", ENV.RAZORPAY_WEBHOOK_SECRET)
+        .update(body)
+        .digest("hex");
+
+      return expectedSignature === signature;
+    } catch (error: any) {
+      logger.error("Admin webhook signature verification failed:", error);
+      return false;
+    }
+  }
+
   /**
    * Fetch payment details
    * @param paymentId Razorpay payment ID
