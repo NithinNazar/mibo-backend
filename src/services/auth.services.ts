@@ -24,6 +24,7 @@ interface AuthResponse {
     role: string;
     avatar: string | null;
     centreIds: string[];
+    assignedCentreId?: string; // For FRONT_DESK users
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -347,6 +348,13 @@ export class AuthService {
         typeof firstRole === "string" ? firstRole : firstRole.name || firstRole;
     }
 
+    // For FRONT_DESK users, set assignedCentreId to the first centre in centreIds
+    const centreIds = (user.centreIds || []).map((id: number) => id.toString());
+    const assignedCentreId =
+      roleName === "FRONT_DESK" && centreIds.length > 0
+        ? centreIds[0]
+        : undefined;
+
     return {
       id: user.id.toString(),
       name: user.full_name,
@@ -355,7 +363,8 @@ export class AuthService {
       username: user.username,
       role: roleName, // Primary role as string
       avatar: null, // TODO: Add avatar support
-      centreIds: (user.centreIds || []).map((id: number) => id.toString()),
+      centreIds: centreIds,
+      ...(assignedCentreId && { assignedCentreId }), // Add assignedCentreId for FRONT_DESK
       isActive: user.is_active,
       createdAt: user.created_at,
       updatedAt: user.updated_at,

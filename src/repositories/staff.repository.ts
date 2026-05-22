@@ -213,18 +213,35 @@ export class StaffRepository {
         data.designation || null,
       ]);
 
-      // Assign roles
-      for (const roleId of roleIds) {
-        await t.none(
-          `
-          INSERT INTO user_roles (user_id, role_id, is_active)
-          VALUES ($1, $2, TRUE)
-          `,
-          [user.id, roleId],
-        );
+      // Assign roles with centre_id
+      // If centres are provided, assign each role with the corresponding centre
+      // Otherwise, assign roles without centre (for roles like MANAGER that don't need centres)
+      if (centreIds.length > 0) {
+        for (let i = 0; i < roleIds.length; i++) {
+          const roleId = roleIds[i];
+          const centreId = centreIds[i] || centreIds[0]; // Use corresponding centre or first centre
+          await t.none(
+            `
+            INSERT INTO user_roles (user_id, role_id, centre_id, is_active)
+            VALUES ($1, $2, $3, TRUE)
+            `,
+            [user.id, roleId, centreId],
+          );
+        }
+      } else {
+        // No centres provided (e.g., for MANAGER role)
+        for (const roleId of roleIds) {
+          await t.none(
+            `
+            INSERT INTO user_roles (user_id, role_id, is_active)
+            VALUES ($1, $2, TRUE)
+            `,
+            [user.id, roleId],
+          );
+        }
       }
 
-      // Assign centres with role_id
+      // Assign centres to centre_staff_assignments table
       for (let i = 0; i < centreIds.length; i++) {
         const centreId = centreIds[i];
         const roleId = roleIds[i] || roleIds[0]; // Use corresponding role or first role
