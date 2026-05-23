@@ -117,6 +117,14 @@ export class StaffController {
 
       // Transform to camelCase for frontend
       const transformed = clinicians.map(transformClinicianResponse);
+
+      // Add caching headers for better performance
+      // Cache for 5 minutes (300 seconds) to reduce server load
+      res.set({
+        "Cache-Control": "public, max-age=300, s-maxage=300",
+        ETag: `W/"clinicians-${clinicians.length}-${Date.now()}"`,
+      });
+
       return ok(res, transformed);
     } catch (err) {
       next(err);

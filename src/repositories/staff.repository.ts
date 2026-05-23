@@ -473,29 +473,36 @@ export class StaffRepository {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    // OPTIMIZED: Removed the expensive LEFT JOIN with json_agg subquery
+    // Availability rules are rarely needed for the public clinicians list
+    // Frontend only needs basic clinician info for the /experts page
     const query = `
       SELECT
-        cp.*,
+        cp.id,
+        cp.user_id,
+        cp.primary_centre_id,
+        cp.specialization,
+        cp.registration_number,
+        cp.years_of_experience,
+        cp.consultation_fee,
+        cp.bio,
+        cp.consultation_modes,
+        cp.default_consultation_duration_minutes,
+        cp.qualification,
+        cp.expertise,
+        cp.languages,
+        cp.is_active,
         u.full_name,
         u.phone,
         u.email,
         c.name as primary_centre_name,
+        c.city as centre_city,
         sp.profile_picture_url,
-        sp.designation,
-        COALESCE(ar.availability_rules, '[]'::json) AS availability_rules
+        sp.designation
       FROM clinician_profiles cp
       JOIN users u ON cp.user_id = u.id
       JOIN centres c ON cp.primary_centre_id = c.id
       LEFT JOIN staff_profiles sp ON u.id = sp.user_id
-      LEFT JOIN (
-        SELECT clinician_id, json_agg(row_to_json(ar.*)) AS availability_rules
-        FROM (
-          SELECT *
-          FROM clinician_availability_rules
-          WHERE is_active = TRUE
-        ) ar
-        GROUP BY clinician_id
-      ) ar ON ar.clinician_id = cp.id
       ${whereClause}
       ORDER BY u.full_name ASC
     `;
