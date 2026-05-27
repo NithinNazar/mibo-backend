@@ -484,19 +484,27 @@ export class AppointmentService {
 
     const slots: TimeSlot[] = [];
 
-    // Get current date and time for filtering past slots
+    // Get current date and time in IST (Asia/Kolkata) for filtering past slots
     const now = new Date();
+
+    // Convert current UTC time to IST (UTC+5:30)
+    const istOffset = 5.5 * 60; // IST is UTC+5:30 in minutes
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const istMinutesRaw = utcMinutes + istOffset;
+    const istMinutes = istMinutesRaw % (24 * 60); // Handle day overflow
+
+    // Get current date in IST
+    const istDate = new Date(now.getTime() + istOffset * 60 * 1000);
+    const istYear = istDate.getUTCFullYear();
+    const istMonth = istDate.getUTCMonth();
+    const istDay = istDate.getUTCDate();
 
     // Parse the date string properly to avoid timezone issues
     const [year, month, day] = date.split("-").map(Number);
     const selectedDate = new Date(year, month - 1, day); // Create date in local timezone
 
-    // Compare dates (ignoring time)
-    const nowDateOnly = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
+    // Compare dates (ignoring time) - both in IST
+    const nowDateOnly = new Date(istYear, istMonth, istDay);
     const selectedDateOnly = new Date(
       selectedDate.getFullYear(),
       selectedDate.getMonth(),
@@ -504,9 +512,7 @@ export class AppointmentService {
     );
     const isToday = nowDateOnly.getTime() === selectedDateOnly.getTime();
 
-    const currentTimeMinutes = isToday
-      ? now.getHours() * 60 + now.getMinutes()
-      : 0;
+    const currentTimeMinutes = isToday ? istMinutes : 0;
 
     // Generate time slots for each availability rule
     for (const rule of availabilityRules) {
@@ -768,7 +774,9 @@ Google Meet link has been sent to patient and doctor.
     if (appointment.appointment_type === "ONLINE") {
       try {
         const { videoService } = await import("./video.service");
-        const meetLink = await videoService.autoGenerateMeetLink(appointment.id);
+        const meetLink = await videoService.autoGenerateMeetLink(
+          appointment.id,
+        );
 
         if (meetLink) {
           logger.info(
@@ -787,7 +795,10 @@ Google Meet link has been sent to patient and doctor.
                 appointment.id,
               )
               .catch((err: any) =>
-                logger.error("[Admin] Failed to send WhatsApp to patient:", err),
+                logger.error(
+                  "[Admin] Failed to send WhatsApp to patient:",
+                  err,
+                ),
               ),
 
             appointment.patient_email
@@ -801,7 +812,10 @@ Google Meet link has been sent to patient and doctor.
                     appointmentTime,
                   )
                   .catch((err: any) =>
-                    logger.error("[Admin] Failed to send email to patient:", err),
+                    logger.error(
+                      "[Admin] Failed to send email to patient:",
+                      err,
+                    ),
                   )
               : Promise.resolve(),
 
