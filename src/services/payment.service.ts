@@ -192,7 +192,7 @@ class PaymentService {
         logger.info(`✅ Registration fee marked as paid for user ${userId}`);
       }
 
-      // Update appointment status to CONFIRMED
+      // Update appointment status to CONFIRMED and activate the appointment
       await bookingRepository.updateAppointmentStatus(
         data.appointmentId,
         "CONFIRMED",
@@ -730,6 +730,41 @@ class PaymentService {
   // flow (FRONT_DESK / CARE_COORDINATOR / MANAGER books on behalf of a patient).
   // Do NOT call them from patient-facing routes or the patient payment flow.
   // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Handle payment failure or cancellation from the frontend.
+   * Marks the payment FAILED and immediately cancels the appointment — no retry.
+   */
+  async handlePaymentFailure(
+    userId: number,
+    data: {
+      appointmentId: number;
+      razorpayOrderId: string;
+      errorCode?: string;
+      errorDescription?: string;
+    },
+  ): Promise<void> {
+    const patient = await patientRepository.findPatientProfileByUserId(userId);
+    if (!patient) throw new Error("Patient profile not found");
+
+    const appointment = await bookingRepository.findAppointmentByIdAndPatient(
+      data.appointmentId,
+      patient.id,
+    );
+    if (!appointment) throw new Error("Appointment not found");
+
+    await paymentRepository.updatePaymentFailed(
+      data.razorpayOrderId,
+      data.errorCode || "PAYMENT_CANCELLED",
+      data.errorDescription || "Payment was cancelled or failed by user",
+    );
+
+    await appointmentRepository.rollbackAppointment(data.appointmentId);
+
+    logger.info(
+      `⚠️ Payment failure recorded for order ${data.razorpayOrderId} — appointment ${data.appointmentId} cancelled and slot freed`,
+    );
+  }
 
   /**
    * [ADMIN BOOKING FLOW ONLY]

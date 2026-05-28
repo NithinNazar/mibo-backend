@@ -206,17 +206,17 @@ class BookingRepository {
     let additionalFields = "";
 
     if (status === "IN_PROGRESS") {
-      // Set session_started_at when status changes to IN_PROGRESS
       additionalFields =
         ", session_started_at = COALESCE(session_started_at, NOW())";
     } else if (status === "COMPLETED") {
-      // Set session_ended_at when status changes to COMPLETED
       additionalFields =
         ", session_ended_at = COALESCE(session_ended_at, NOW())";
+    } else if (status === "CONFIRMED") {
+      additionalFields = ", is_active = TRUE";
     }
 
     return await db.one(
-      `UPDATE appointments 
+      `UPDATE appointments
        SET status = $1, updated_at = NOW()${additionalFields}
        WHERE id = $2
        RETURNING *`,

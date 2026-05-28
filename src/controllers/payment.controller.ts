@@ -221,6 +221,47 @@ class PaymentController {
   }
 
   /**
+   * Handle payment failure or cancellation from the frontend
+   * POST /api/payments/failure
+   */
+  async handlePaymentFailure(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: "Unauthorized. Please login." });
+        return;
+      }
+
+      const { appointmentId, razorpayOrderId, errorCode, errorDescription } = req.body;
+
+      if (!appointmentId || !razorpayOrderId) {
+        res.status(400).json({
+          success: false,
+          message: "Missing required fields: appointmentId, razorpayOrderId",
+        });
+        return;
+      }
+
+      await paymentService.handlePaymentFailure(req.user.userId, {
+        appointmentId: parseInt(appointmentId),
+        razorpayOrderId,
+        errorCode,
+        errorDescription,
+      });
+
+      res.json({
+        success: true,
+        message: "Payment failure recorded. Your appointment has been cancelled.",
+      });
+    } catch (error: any) {
+      logger.error("Error handling payment failure:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to record payment failure",
+      });
+    }
+  }
+
+  /**
    * Send payment link to patient via WhatsApp
    * POST /api/payment/send-link
    */
