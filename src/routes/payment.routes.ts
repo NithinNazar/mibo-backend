@@ -83,6 +83,17 @@ router.post(
 );
 
 /**
+ * POST /api/payments/failure
+ * Record payment failure or user cancellation — cancels the appointment immediately
+ * Protected endpoint - requires authentication
+ */
+router.post(
+  "/failure",
+  authMiddleware,
+  paymentController.handlePaymentFailure.bind(paymentController),
+);
+
+/**
  * GET /api/payments/:appointmentId
  * Get payment details for an appointment
  * Must be last — wildcard catches any unmatched GET segment

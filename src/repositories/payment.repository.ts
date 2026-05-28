@@ -100,11 +100,13 @@ class PaymentRepository {
     paymentMethodDetails?: any,
   ): Promise<Payment> {
     return await db.one(
-      `UPDATE payments 
+      `UPDATE payments
        SET payment_id = $1,
            status = 'SUCCESS',
            paid_at = NOW(),
            payment_method_details = $2,
+           error_code = NULL,
+           error_description = NULL,
            updated_at = NOW()
        WHERE order_id = $3
        RETURNING *`,
