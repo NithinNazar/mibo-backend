@@ -324,7 +324,7 @@ export class AppointmentService {
       WHERE a.clinician_id = $1
         AND a.scheduled_start_at >= $2
         AND a.scheduled_start_at <= $3
-        AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
+        AND a.status IN ('CONFIRMED', 'IN_PROGRESS')
         AND a.is_active = TRUE
       ORDER BY a.scheduled_start_at ASC
       `,
@@ -346,7 +346,7 @@ export class AppointmentService {
       JOIN centres c ON a.centre_id = c.id
       WHERE a.clinician_id = $1
         AND a.scheduled_start_at > $2
-        AND a.status NOT IN ('CANCELLED', 'NO_SHOW', 'COMPLETED')
+        AND a.status IN ('CONFIRMED', 'IN_PROGRESS')
         AND a.is_active = TRUE
       ORDER BY a.scheduled_start_at ASC
       LIMIT 50
