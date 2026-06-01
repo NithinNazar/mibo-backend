@@ -31,6 +31,7 @@ const allowedOrigins = [
   // Production domains
   "https://mibo.care",
   "https://www.mibo.care",
+  "https://admin.mibo.care", // Admin Panel
   // Vercel domains (if still using)
   "https://mibo-alt-v2.vercel.app",
   "https://mibo-alt-v2-git-main-nithin-nazars-projects.vercel.app",
@@ -155,7 +156,7 @@ app.get("/health", (req, res) => {
     message: "Server is healthy",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: ENV,// TODO: ROLLBACK AFTER TESTING
+    environment: ENV, // TODO: ROLLBACK AFTER TESTING
   });
 });
 

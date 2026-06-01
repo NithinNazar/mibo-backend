@@ -14,6 +14,7 @@ import paymentRoutes from "./payment.routes";
 import slotBlockingRoutes from "./slot-blocking.routes";
 import patientNotificationRoutes from "./patient-notification.routes";
 import testOtpRoutes from "./test-otp.routes"; // TEST ONLY - Simple OTP without database
+import uploadRoutes from "./upload.routes"; // Image upload to S3
 import { healthController } from "../controllers/health.controller";
 import { ENV } from "../config/env";
 
@@ -48,6 +49,7 @@ router.get("/", (req, res) => {
       payments: "/api/payments",
       adminSlots: "/api/admin/slots",
       patientNotifications: "/api/patient/notifications",
+      upload: "/api/upload",
     },
   });
 });
@@ -68,6 +70,7 @@ router.use("/video", videoRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes); // Standardized to plural
 router.use("/admin/slots", slotBlockingRoutes); // Admin slot blocking
+router.use("/upload", uploadRoutes); // Image upload to S3
 
 // TEST ONLY - Simple OTP endpoints without database (for testing with dummy data)
 if (ENV.NODE_ENV === "development") {
