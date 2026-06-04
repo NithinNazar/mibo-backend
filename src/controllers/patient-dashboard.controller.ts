@@ -21,12 +21,12 @@ export class PatientDashboardController {
 
       // Get appointments
       const appointments = await patientRepository.getPatientAppointments(
-        patient.profile.id
+        patient.profile.id,
       );
 
       // Get payments
       const payments = await patientRepository.getPatientPayments(
-        patient.profile.id
+        patient.profile.id,
       );
 
       // Categorize appointments
@@ -35,20 +35,20 @@ export class PatientDashboardController {
         (apt: any) =>
           new Date(apt.scheduled_start_at) > now &&
           apt.status !== "CANCELLED" &&
-          apt.status !== "COMPLETED"
+          apt.status !== "COMPLETED",
       );
 
       const pastAppointments = appointments.filter(
         (apt: any) =>
           new Date(apt.scheduled_start_at) <= now ||
           apt.status === "COMPLETED" ||
-          apt.status === "CANCELLED"
+          apt.status === "CANCELLED",
       );
 
       // Calculate statistics
       const totalAppointments = appointments.length;
       const completedAppointments = appointments.filter(
-        (apt: any) => apt.status === "COMPLETED"
+        (apt: any) => apt.status === "COMPLETED",
       ).length;
       const totalSpent = payments
         .filter((p: any) => p.status === "SUCCESS")
@@ -58,9 +58,12 @@ export class PatientDashboardController {
         patient: {
           id: patient.profile.id,
           name: patient.user.full_name,
+          firstName: patient.user.first_name,
+          lastName: patient.user.last_name,
           phone: patient.user.phone,
           email: patient.user.email,
           date_of_birth: patient.profile.date_of_birth,
+          age: patient.profile.age,
           gender: patient.profile.gender,
           blood_group: patient.profile.blood_group,
         },
@@ -93,7 +96,7 @@ export class PatientDashboardController {
       }
 
       const appointments = await patientRepository.getPatientAppointments(
-        patient.profile.id
+        patient.profile.id,
       );
 
       return ok(res, { appointments });
@@ -116,7 +119,7 @@ export class PatientDashboardController {
       }
 
       const payments = await patientRepository.getPatientPayments(
-        patient.profile.id
+        patient.profile.id,
       );
 
       return ok(res, { payments });
@@ -143,12 +146,15 @@ export class PatientDashboardController {
           id: patient.user.id,
           phone: patient.user.phone,
           full_name: patient.user.full_name,
+          first_name: patient.user.first_name,
+          last_name: patient.user.last_name,
           email: patient.user.email,
           created_at: patient.user.created_at,
         },
         profile: {
           id: patient.profile.id,
           date_of_birth: patient.profile.date_of_birth,
+          age: patient.profile.age,
           gender: patient.profile.gender,
           blood_group: patient.profile.blood_group,
           emergency_contact_name: patient.profile.emergency_contact_name,
@@ -163,7 +169,7 @@ export class PatientDashboardController {
 
   /**
    * PUT /api/patient/profile
-   * Update patient profile
+   * Update patient profile (including completion of legacy user profiles)
    */
   async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
@@ -174,52 +180,40 @@ export class PatientDashboardController {
         throw ApiError.notFound("Patient profile not found");
       }
 
+      // Extract user and profile data
+      const { firstName, lastName, email, age, gender, ...otherProfileData } =
+        req.body;
+
       // Update user info (name, email)
-      const { full_name, email, ...profileData } = req.body;
-
-      if (full_name || email) {
-        const { db } = await import("../config/db");
-        const updates: string[] = [];
-        const values: any[] = [];
-        let paramIndex = 1;
-
-        if (full_name) {
-          updates.push(`full_name = $${paramIndex}`);
-          values.push(full_name);
-          paramIndex++;
+      if (firstName || lastName || email) {
+        const userUpdates: any = {};
+        if (firstName) userUpdates.first_name = firstName;
+        if (lastName) userUpdates.last_name = lastName;
+        if (firstName && lastName) {
+          userUpdates.full_name = `${firstName} ${lastName}`.trim();
         }
+        if (email !== undefined) userUpdates.email = email;
 
-        if (email) {
-          updates.push(`email = $${paramIndex}`);
-          values.push(email);
-          paramIndex++;
-        }
-
-        if (updates.length > 0) {
-          updates.push("updated_at = NOW()");
-          values.push(req.user.userId);
-
-          const query = `
-            UPDATE users
-            SET ${updates.join(", ")}
-            WHERE id = $${paramIndex}
-          `;
-
-          await db.none(query, values);
+        if (Object.keys(userUpdates).length > 0) {
+          await patientRepository.updateUser(req.user.userId, userUpdates);
         }
       }
 
-      // Update profile data
-      if (Object.keys(profileData).length > 0) {
+      // Update patient profile (age, gender, etc.)
+      const profileUpdates: any = { ...otherProfileData };
+      if (age !== undefined) profileUpdates.age = age;
+      if (gender) profileUpdates.gender = gender;
+
+      if (Object.keys(profileUpdates).length > 0) {
         await patientRepository.updatePatientProfile(
-          patient.profile.id,
-          profileData
+          req.user.userId,
+          profileUpdates,
         );
       }
 
       // Get updated profile
       const updatedPatient = await patientRepository.findByUserId(
-        req.user.userId
+        req.user.userId,
       );
 
       return ok(
@@ -229,11 +223,14 @@ export class PatientDashboardController {
             id: updatedPatient!.user.id,
             phone: updatedPatient!.user.phone,
             full_name: updatedPatient!.user.full_name,
+            first_name: updatedPatient!.user.first_name,
+            last_name: updatedPatient!.user.last_name,
             email: updatedPatient!.user.email,
           },
           profile: {
             id: updatedPatient!.profile.id,
             date_of_birth: updatedPatient!.profile.date_of_birth,
+            age: updatedPatient!.profile.age,
             gender: updatedPatient!.profile.gender,
             blood_group: updatedPatient!.profile.blood_group,
             emergency_contact_name:
@@ -242,7 +239,7 @@ export class PatientDashboardController {
               updatedPatient!.profile.emergency_contact_phone,
           },
         },
-        "Profile updated successfully"
+        "Profile updated successfully",
       );
     } catch (err) {
       next(err);
@@ -279,7 +276,7 @@ export class PatientDashboardController {
         LEFT JOIN payments p ON p.appointment_id = a.id
         WHERE a.id = $1 AND a.patient_id = $2
         `,
-        [appointmentId, patient.profile.id]
+        [appointmentId, patient.profile.id],
       );
 
       if (!appointment) {
@@ -325,7 +322,7 @@ export class PatientDashboardController {
           updated_at = NOW()
         WHERE id = $2
         `,
-        [reason, appointmentId]
+        [reason, appointmentId],
       );
 
       return ok(
@@ -336,7 +333,7 @@ export class PatientDashboardController {
           message:
             "Cancellation request submitted successfully. Admin will review and process your refund.",
         },
-        "Cancellation request submitted successfully"
+        "Cancellation request submitted successfully",
       );
     } catch (err) {
       next(err);

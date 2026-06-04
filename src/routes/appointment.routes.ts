@@ -22,6 +22,93 @@ router.get(
 );
 
 /**
+ * GET /api/appointments/dashboard/stats
+ * Get clinician dashboard statistics
+ * Role: CLINICIAN only
+ */
+router.get(
+  "/dashboard/stats",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) =>
+    appointmentController.getClinicianDashboardStats(req, res, next),
+);
+
+/**
+ * GET /api/appointments/dashboard/appointments
+ * Get clinician's appointments for dashboard with filters
+ * Role: CLINICIAN only
+ */
+router.get(
+  "/dashboard/appointments",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) =>
+    appointmentController.getClinicianDashboardAppointments(req, res, next),
+);
+
+/**
+ * POST /api/appointments/:id/start-session
+ * Start a session - marks appointment as IN_PROGRESS
+ * Role: CLINICIAN only
+ */
+router.post(
+  "/:id/start-session",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) => appointmentController.startSession(req, res, next),
+);
+
+/**
+ * POST /api/appointments/:id/end-session
+ * End a session - marks appointment as COMPLETED
+ * Role: CLINICIAN only
+ */
+router.post(
+  "/:id/end-session",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) => appointmentController.endSession(req, res, next),
+);
+
+/**
+ * POST /api/appointments/:id/clinician-notes
+ * Save clinician notes for a session
+ * Role: CLINICIAN only
+ */
+router.post(
+  "/:id/clinician-notes",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) => appointmentController.saveClinicianNotes(req, res, next),
+);
+
+/**
+ * GET /api/appointments/:id/previous-notes
+ * Get previous session notes for the patient
+ * Role: CLINICIAN only
+ */
+router.get(
+  "/:id/previous-notes",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) =>
+    appointmentController.getPreviousSessionNotes(req, res, next),
+);
+
+/**
+ * POST /api/appointments/:id/schedule-followup
+ * Schedule a follow-up appointment
+ * Role: CLINICIAN only
+ */
+router.post(
+  "/:id/schedule-followup",
+  authMiddleware,
+  requireRole("CLINICIAN"),
+  (req, res, next) => appointmentController.scheduleFollowUp(req, res, next),
+);
+
+/**
  * GET /api/appointments
  * Get appointments with query filters (centreId, clinicianId, patientId, date, status)
  * Role-based filtering applied automatically

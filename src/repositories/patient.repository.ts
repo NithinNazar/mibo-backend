@@ -7,6 +7,8 @@ export interface User {
   phone: string;
   email: string | null;
   full_name: string;
+  first_name: string | null;
+  last_name: string | null;
   user_type: string;
   is_active: boolean;
   created_at: Date;
@@ -17,6 +19,7 @@ export interface PatientProfile {
   id: number;
   user_id: number;
   date_of_birth: Date | null;
+  age: number | null;
   gender: string | null;
   blood_group: string | null;
   emergency_contact_name: string | null;
@@ -73,14 +76,16 @@ class PatientRepository {
    */
   async createUser(
     phone: string,
-    fullName: string,
+    firstName: string,
+    lastName: string,
     email?: string,
   ): Promise<User> {
+    const fullName = `${firstName} ${lastName}`.trim();
     return await db.one(
-      `INSERT INTO users (phone, full_name, email, user_type, is_active)
-       VALUES ($1, $2, $3, 'PATIENT', true)
+      `INSERT INTO users (phone, first_name, last_name, full_name, email, user_type, is_active)
+       VALUES ($1, $2, $3, $4, $5, 'PATIENT', true)
        RETURNING *`,
-      [phone, fullName, email || null],
+      [phone, firstName, lastName, fullName, email || null],
     );
   }
 
@@ -90,7 +95,8 @@ class PatientRepository {
    */
   async createUserWithTransaction(
     phone: string,
-    fullName: string,
+    firstName: string,
+    lastName: string,
     email?: string,
   ): Promise<User> {
     return await db.tx(async (t) => {
@@ -106,11 +112,12 @@ class PatientRepository {
       }
 
       // Create new user
+      const fullName = `${firstName} ${lastName}`.trim();
       return await t.one(
-        `INSERT INTO users (phone, full_name, email, user_type, is_active)
-         VALUES ($1, $2, $3, 'PATIENT', true)
+        `INSERT INTO users (phone, first_name, last_name, full_name, email, user_type, is_active)
+         VALUES ($1, $2, $3, $4, $5, 'PATIENT', true)
          RETURNING *`,
-        [phone, fullName, email || null],
+        [phone, firstName, lastName, fullName, email || null],
       );
     });
   }
@@ -120,11 +127,26 @@ class PatientRepository {
    */
   async updateUser(
     userId: number,
-    data: { full_name?: string; email?: string },
+    data: {
+      first_name?: string;
+      last_name?: string;
+      full_name?: string;
+      email?: string;
+    },
   ): Promise<User> {
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
+
+    if (data.first_name) {
+      updates.push(`first_name = $${paramIndex++}`);
+      values.push(data.first_name);
+    }
+
+    if (data.last_name) {
+      updates.push(`last_name = $${paramIndex++}`);
+      values.push(data.last_name);
+    }
 
     if (data.full_name) {
       updates.push(`full_name = $${paramIndex++}`);
@@ -162,12 +184,16 @@ class PatientRepository {
   /**
    * Create patient profile
    */
-  async createPatientProfile(userId: number): Promise<PatientProfile> {
+  async createPatientProfile(
+    userId: number,
+    age?: number,
+    gender?: string,
+  ): Promise<PatientProfile> {
     return await db.one(
-      `INSERT INTO patient_profiles (user_id, is_active)
-       VALUES ($1, true)
+      `INSERT INTO patient_profiles (user_id, age, gender, is_active)
+       VALUES ($1, $2, $3, true)
        RETURNING *`,
-      [userId],
+      [userId, age || null, gender || null],
     );
   }
 
@@ -178,6 +204,7 @@ class PatientRepository {
     userId: number,
     data: {
       date_of_birth?: Date;
+      age?: number;
       gender?: string;
       blood_group?: string;
       emergency_contact_name?: string;
@@ -192,6 +219,11 @@ class PatientRepository {
     if (data.date_of_birth) {
       updates.push(`date_of_birth = $${paramIndex++}`);
       values.push(data.date_of_birth);
+    }
+
+    if (data.age !== undefined) {
+      updates.push(`age = $${paramIndex++}`);
+      values.push(data.age);
     }
 
     if (data.gender) {
@@ -235,12 +267,14 @@ class PatientRepository {
     return {
       userId: user.id,
       fullName: user.full_name,
+      firstName: user.first_name,
+      lastName: user.last_name,
       phone: user.phone,
       email: user.email,
-      // username: user.username,
       createdAt: user.created_at,
       id: profile.id,
       dateOfBirth: profile.date_of_birth,
+      age: profile.age,
       gender: profile.gender,
       bloodGroup: profile.blood_group,
       emergencyContactName: profile.emergency_contact_name,

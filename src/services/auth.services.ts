@@ -136,8 +136,14 @@ export class AuthService {
 
     await userRepository.markOtpUsed(otpRecord.id);
 
+    // Query clinician profile
+    const clinicianProfile = await db.oneOrNone<{ id: number }>(
+      "SELECT id FROM clinician_profiles WHERE user_id = $1 AND is_active = TRUE",
+      [inactiveUser.id],
+    );
+
     // Generate tokens and return response
-    return this.generateAuthResponse(inactiveUser.id);
+    return this.generateAuthResponse(inactiveUser.id, clinicianProfile?.id);
   }
 
   /**
@@ -173,8 +179,14 @@ export class AuthService {
       throw ApiError.unauthorized("Invalid credentials");
     }
 
+    // Query clinician profile
+    const clinicianProfile = await db.oneOrNone<{ id: number }>(
+      "SELECT id FROM clinician_profiles WHERE user_id = $1 AND is_active = TRUE",
+      [inactiveUser.id],
+    );
+
     // Generate tokens and return response
-    return this.generateAuthResponse(inactiveUser.id);
+    return this.generateAuthResponse(inactiveUser.id, clinicianProfile?.id);
   }
 
   /**

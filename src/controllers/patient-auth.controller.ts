@@ -56,7 +56,8 @@ class PatientAuthController {
    */
   async verifyOtp(req: Request, res: Response): Promise<void> {
     try {
-      const { phone, otp, full_name, email } = req.body;
+      const { phone, otp, first_name, last_name, email, age, gender } =
+        req.body;
 
       if (!phone || !otp) {
         res.status(400).json({
@@ -69,21 +70,27 @@ class PatientAuthController {
       const result = await patientAuthService.verifyOTPAndLogin(
         phone,
         otp,
-        full_name,
+        first_name,
+        last_name,
         email,
+        age,
+        gender,
       );
 
       res.json({
         success: true,
         message: result.isNewUser
           ? "Account created successfully! Welcome to Mibo."
-          : "Login successful! Welcome back.",
+          : result.requiresProfileCompletion
+            ? "Login successful! Please complete your profile."
+            : "Login successful! Welcome back.",
         data: {
           user: result.user,
           patient: result.patient,
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           isNewUser: result.isNewUser,
+          requiresProfileCompletion: result.requiresProfileCompletion,
         },
       });
     } catch (error: any) {

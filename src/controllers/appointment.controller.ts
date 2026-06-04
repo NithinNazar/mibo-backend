@@ -287,6 +287,215 @@ export class AppointmentController {
       next(err);
     }
   }
+
+  /**
+   * Get clinician dashboard statistics
+   */
+  async getClinicianDashboardStats(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      if (!req.user.clinicianId) {
+        return res.status(403).json({
+          success: false,
+          message: "Clinician ID not found",
+        });
+      }
+
+      const startDate =
+        (req.query.startDate as string) ||
+        new Date().toISOString().split("T")[0];
+      const endDate =
+        (req.query.endDate as string) || new Date().toISOString().split("T")[0];
+
+      const stats = await appointmentService.getClinicianDashboardStats(
+        req.user.clinicianId,
+        startDate,
+        endDate,
+      );
+
+      return ok(res, stats);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get clinician's appointments for dashboard
+   */
+  async getClinicianDashboardAppointments(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      if (!req.user.clinicianId) {
+        return res.status(403).json({
+          success: false,
+          message: "Clinician ID not found",
+        });
+      }
+
+      const startDate =
+        (req.query.startDate as string) ||
+        new Date().toISOString().split("T")[0];
+      const endDate =
+        (req.query.endDate as string) || new Date().toISOString().split("T")[0];
+      const status = req.query.status as string | undefined;
+
+      const appointments =
+        await appointmentService.getClinicianAppointmentsForDashboard(
+          req.user.clinicianId,
+          startDate,
+          endDate,
+          status,
+        );
+
+      return ok(res, appointments);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Start a session
+   */
+  async startSession(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const appointment = await appointmentService.startSession(
+        appointmentId,
+        req.user,
+      );
+
+      return ok(res, appointment, "Session started successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * End a session
+   */
+  async endSession(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const appointment = await appointmentService.endSession(
+        appointmentId,
+        req.user,
+      );
+
+      return ok(res, appointment, "Session completed successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Save clinician notes
+   */
+  async saveClinicianNotes(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const { session_notes } = req.body;
+
+      if (!session_notes || session_notes.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Session notes are required",
+        });
+      }
+
+      const note = await appointmentService.saveClinicianNotes(
+        appointmentId,
+        session_notes,
+        req.user,
+      );
+
+      return ok(res, note, "Notes saved successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Get previous session notes
+   */
+  async getPreviousSessionNotes(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const patientId = parseInt(req.query.patientId as string);
+
+      if (!req.user.clinicianId) {
+        return res.status(403).json({
+          success: false,
+          message: "Clinician ID not found",
+        });
+      }
+
+      const notes = await appointmentService.getPreviousSessionNotes(
+        patientId,
+        req.user.clinicianId,
+        appointmentId,
+      );
+
+      return ok(res, notes);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Schedule follow-up appointment
+   */
+  async scheduleFollowUp(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const { follow_up_date, follow_up_notes } = req.body;
+
+      if (!follow_up_date) {
+        return res.status(400).json({
+          success: false,
+          message: "Follow-up date is required",
+        });
+      }
+
+      const followUp = await appointmentService.scheduleFollowUp(
+        appointmentId,
+        follow_up_date,
+        follow_up_notes || "",
+        req.user,
+      );
+
+      return ok(res, followUp, "Follow-up scheduled successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const appointmentController = new AppointmentController();

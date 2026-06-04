@@ -139,14 +139,18 @@ class PatientAuthService {
   async verifyOTPAndLogin(
     phone: string,
     otp: string,
-    name?: string,
+    firstName?: string,
+    lastName?: string,
     email?: string,
+    age?: number,
+    gender?: string,
   ): Promise<{
     user: any;
     patient: any;
     accessToken: string;
     refreshToken: string;
     isNewUser: boolean;
+    requiresProfileCompletion: boolean;
   }> {
     try {
       // Verify OTP (works for both regular and test users)
@@ -159,29 +163,61 @@ class PatientAuthService {
       // Check if user exists
       let user = await patientRepository.findUserByPhone(phone);
       let isNewUser = false;
+      let requiresProfileCompletion = false;
 
       if (!user) {
         // New user - create account with transaction safety
-        if (!name) {
-          throw new Error("Name is required for new users");
+        if (!firstName || !lastName) {
+          throw new Error(
+            "First name and last name are required for new users",
+          );
         }
 
         user = await patientRepository.createUserWithTransaction(
           phone,
-          name,
+          firstName,
+          lastName,
           email,
         );
         isNewUser = true;
 
         logger.info(`✅ New patient account created: ${phone}`);
-      } else if (name || email) {
-        // Existing user - update info if provided
-        const updateData: any = {};
-        if (name) updateData.full_name = name;
-        if (email) updateData.email = email;
+      } else {
+        // Existing user - check if they are a legacy user
+        const isLegacyUser = !user.first_name || !user.last_name;
 
-        if (Object.keys(updateData).length > 0) {
-          user = await patientRepository.updateUser(user.id, updateData);
+        if (isLegacyUser && (firstName || lastName || email)) {
+          // Legacy user providing profile completion data
+          const updateData: any = {};
+          if (firstName) updateData.first_name = firstName;
+          if (lastName) updateData.last_name = lastName;
+          if (firstName && lastName) {
+            updateData.full_name = `${firstName} ${lastName}`.trim();
+          }
+          if (email) updateData.email = email;
+
+          if (Object.keys(updateData).length > 0) {
+            user = await patientRepository.updateUser(user.id, updateData);
+          }
+        } else if (isLegacyUser) {
+          // Legacy user not providing data yet - flag for profile completion
+          requiresProfileCompletion = true;
+          logger.info(
+            `⚠️ Legacy user detected: ${phone} - requires profile completion`,
+          );
+        } else if (firstName || lastName || email) {
+          // Regular existing user updating info
+          const updateData: any = {};
+          if (firstName) updateData.first_name = firstName;
+          if (lastName) updateData.last_name = lastName;
+          if (firstName && lastName) {
+            updateData.full_name = `${firstName} ${lastName}`.trim();
+          }
+          if (email) updateData.email = email;
+
+          if (Object.keys(updateData).length > 0) {
+            user = await patientRepository.updateUser(user.id, updateData);
+          }
         }
       }
 
@@ -189,7 +225,52 @@ class PatientAuthService {
       let patient = await patientRepository.findPatientProfileByUserId(user.id);
 
       if (!patient) {
-        patient = await patientRepository.createPatientProfile(user.id);
+        // Create new profile with age and gender if provided
+        patient = await patientRepository.createPatientProfile(
+          user.id,
+          age,
+          gender,
+        );
+      } else {
+        // Check if patient profile is incomplete (legacy user)
+        const hasIncompleteProfile =
+          patient.age === null || patient.gender === null;
+
+        if (hasIncompleteProfile && (age !== undefined || gender)) {
+          // Update existing profile with completion data
+          const profileUpdates: any = {};
+          if (age !== undefined) profileUpdates.age = age;
+          if (gender) profileUpdates.gender = gender;
+
+          if (Object.keys(profileUpdates).length > 0) {
+            await patientRepository.updatePatientProfile(
+              user.id,
+              profileUpdates,
+            );
+            patient = await patientRepository.findPatientProfileByUserId(
+              user.id,
+            );
+            requiresProfileCompletion = false; // Profile now complete
+          }
+        } else if (hasIncompleteProfile) {
+          // Flag for profile completion if not already flagged
+          requiresProfileCompletion = requiresProfileCompletion || true;
+        } else if (age !== undefined || gender) {
+          // Update existing complete profile
+          const profileUpdates: any = {};
+          if (age !== undefined) profileUpdates.age = age;
+          if (gender) profileUpdates.gender = gender;
+
+          if (Object.keys(profileUpdates).length > 0) {
+            await patientRepository.updatePatientProfile(
+              user.id,
+              profileUpdates,
+            );
+            patient = await patientRepository.findPatientProfileByUserId(
+              user.id,
+            );
+          }
+        }
       }
 
       // Generate tokens
@@ -208,23 +289,32 @@ class PatientAuthService {
 
       logger.info(`✅ Patient logged in: ${phone}`);
 
+      // Ensure patient is not null before returning
+      if (!patient) {
+        throw new Error("Failed to create or retrieve patient profile");
+      }
+
       return {
         user: {
           id: user.id,
           phone: user.phone,
           email: user.email,
           fullName: user.full_name,
+          firstName: user.first_name,
+          lastName: user.last_name,
           userType: user.user_type,
         },
         patient: {
           id: patient.id,
           dateOfBirth: patient.date_of_birth,
+          age: patient.age,
           gender: patient.gender,
           bloodGroup: patient.blood_group,
         },
         accessToken,
         refreshToken,
         isNewUser,
+        requiresProfileCompletion,
       };
     } catch (error: any) {
       logger.error("Error verifying OTP:", error);

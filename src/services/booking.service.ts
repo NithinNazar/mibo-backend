@@ -608,11 +608,17 @@ class BookingService {
           `Creating new patient: ${bookingData.patientName} (${bookingData.patientPhone})`,
         );
 
+        // Split name into first and last name
+        const nameParts = bookingData.patientName.trim().split(" ");
+        const firstName = nameParts[0] || bookingData.patientName;
+        const lastName = nameParts.slice(1).join(" ") || "";
+
         // Create user first
         patient = await patientRepository.createUser(
           bookingData.patientPhone,
-          bookingData.patientName,
-          bookingData.patientEmail,
+          firstName,
+          lastName,
+          bookingData.patientEmail || undefined,
         );
 
         // Create patient profile

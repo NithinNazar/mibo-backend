@@ -743,6 +743,296 @@ Google Meet link has been sent to patient and doctor.
   }
 
   /**
+   * Get clinician dashboard statistics for a specific date range
+   */
+  async getClinicianDashboardStats(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+  ): Promise<any> {
+    const stats = await db.one(
+      `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'BOOKED') as waiting,
+        COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') as ongoing,
+        COUNT(*) FILTER (WHERE status = 'CONFIRMED') as confirmed,
+        COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
+        COUNT(*) FILTER (WHERE status = 'CANCELLED' OR status = 'CANCELLED_BY_ADMIN') as cancelled
+      FROM appointments
+      WHERE clinician_id = $1
+        AND DATE(scheduled_start_at AT TIME ZONE 'Asia/Kolkata') >= $2
+        AND DATE(scheduled_start_at AT TIME ZONE 'Asia/Kolkata') <= $3
+        AND is_active = TRUE
+      `,
+      [clinicianId, startDate, endDate],
+    );
+
+    return {
+      total: parseInt(stats.total) || 0,
+      waiting: parseInt(stats.waiting) || 0,
+      ongoing: parseInt(stats.ongoing) || 0,
+      confirmed: parseInt(stats.confirmed) || 0,
+      completed: parseInt(stats.completed) || 0,
+      cancelled: parseInt(stats.cancelled) || 0,
+    };
+  }
+
+  /**
+   * Start a session - marks appointment as IN_PROGRESS and logs start time
+   */
+  async startSession(
+    appointmentId: number,
+    authUser: JwtPayload,
+  ): Promise<Appointment> {
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Verify clinician owns this appointment
+    if (authUser.userType === "STAFF" && authUser.clinicianId) {
+      if (appointment.clinician_id !== authUser.clinicianId) {
+        throw ApiError.forbidden(
+          "You can only start sessions for your own appointments",
+        );
+      }
+    }
+
+    if (appointment.status === "COMPLETED") {
+      throw ApiError.badRequest("Cannot start a completed appointment");
+    }
+
+    if (appointment.status === "CANCELLED") {
+      throw ApiError.badRequest("Cannot start a cancelled appointment");
+    }
+
+    // Update status to IN_PROGRESS and set session_started_at
+    const updated = await appointmentRepository.updateStatus(
+      appointmentId,
+      "IN_PROGRESS",
+      authUser.userId,
+      "Session started by clinician",
+    );
+
+    return updated;
+  }
+
+  /**
+   * End a session - marks appointment as COMPLETED and logs end time
+   */
+  async endSession(
+    appointmentId: number,
+    authUser: JwtPayload,
+  ): Promise<Appointment> {
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Verify clinician owns this appointment
+    if (authUser.userType === "STAFF" && authUser.clinicianId) {
+      if (appointment.clinician_id !== authUser.clinicianId) {
+        throw ApiError.forbidden(
+          "You can only end sessions for your own appointments",
+        );
+      }
+    }
+
+    if (appointment.status === "COMPLETED") {
+      throw ApiError.badRequest("Session is already completed");
+    }
+
+    // Update status to COMPLETED and set session_ended_at
+    const updated = await appointmentRepository.updateStatus(
+      appointmentId,
+      "COMPLETED",
+      authUser.userId,
+      "Session completed by clinician",
+    );
+
+    return updated;
+  }
+
+  /**
+   * Save clinician notes during or after a session
+   */
+  async saveClinicianNotes(
+    appointmentId: number,
+    sessionNotes: string,
+    authUser: JwtPayload,
+  ): Promise<any> {
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Verify clinician owns this appointment
+    if (authUser.userType === "STAFF" && authUser.clinicianId) {
+      if (appointment.clinician_id !== authUser.clinicianId) {
+        throw ApiError.forbidden(
+          "You can only add notes to your own appointments",
+        );
+      }
+    }
+
+    // Update appointment notes
+    await appointmentRepository.updateNotes(appointmentId, sessionNotes);
+
+    // Also save to clinician_notes_history for historical tracking
+    const noteHistory = await db.one(
+      `
+      INSERT INTO clinician_notes_history (
+        appointment_id,
+        clinician_id,
+        patient_id,
+        session_notes,
+        created_by_user_id
+      ) VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        appointmentId,
+        appointment.clinician_id,
+        appointment.patient_id,
+        sessionNotes,
+        authUser.userId,
+      ],
+    );
+
+    return noteHistory;
+  }
+
+  /**
+   * Get previous session notes for a patient with a specific clinician
+   */
+  async getPreviousSessionNotes(
+    patientId: number,
+    clinicianId: number,
+    currentAppointmentId: number,
+  ): Promise<any[]> {
+    const notes = await db.any(
+      `
+      SELECT 
+        cnh.*,
+        a.scheduled_start_at,
+        a.appointment_type,
+        a.status
+      FROM clinician_notes_history cnh
+      JOIN appointments a ON cnh.appointment_id = a.id
+      WHERE cnh.patient_id = $1
+        AND cnh.clinician_id = $2
+        AND cnh.appointment_id != $3
+        AND a.is_active = TRUE
+      ORDER BY cnh.created_at DESC
+      LIMIT 10
+      `,
+      [patientId, clinicianId, currentAppointmentId],
+    );
+
+    return notes;
+  }
+
+  /**
+   * Schedule a follow-up appointment
+   */
+  async scheduleFollowUp(
+    parentAppointmentId: number,
+    followUpDate: string,
+    followUpNotes: string,
+    authUser: JwtPayload,
+  ): Promise<any> {
+    const appointment =
+      await appointmentRepository.getAppointmentById(parentAppointmentId);
+
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Verify clinician owns this appointment
+    if (authUser.userType === "STAFF" && authUser.clinicianId) {
+      if (appointment.clinician_id !== authUser.clinicianId) {
+        throw ApiError.forbidden(
+          "You can only schedule follow-ups for your own appointments",
+        );
+      }
+    }
+
+    const followUp = await db.one(
+      `
+      INSERT INTO follow_up_appointments (
+        parent_appointment_id,
+        patient_id,
+        clinician_id,
+        follow_up_date,
+        follow_up_notes,
+        created_by_user_id
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        parentAppointmentId,
+        appointment.patient_id,
+        appointment.clinician_id,
+        followUpDate,
+        followUpNotes,
+        authUser.userId,
+      ],
+    );
+
+    return followUp;
+  }
+
+  /**
+   * Get clinician's appointments with filters for dashboard
+   */
+  async getClinicianAppointmentsForDashboard(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+    status?: string,
+  ): Promise<any[]> {
+    let statusFilter = "";
+    const params: any[] = [clinicianId, startDate, endDate];
+
+    if (status) {
+      statusFilter = "AND a.status = $4";
+      params.push(status);
+    }
+
+    const appointments = await db.any(
+      `
+      SELECT 
+        a.*,
+        u.full_name as patient_name,
+        u.phone as patient_phone,
+        pp.mrn as patient_mrn,
+        c.name as centre_name,
+        c.address_line1 as centre_address
+      FROM appointments a
+      JOIN patient_profiles pp ON a.patient_id = pp.id
+      JOIN users u ON pp.user_id = u.id
+      JOIN centres c ON a.centre_id = c.id
+      WHERE a.clinician_id = $1
+        AND DATE(a.scheduled_start_at AT TIME ZONE 'Asia/Kolkata') >= $2
+        AND DATE(a.scheduled_start_at AT TIME ZONE 'Asia/Kolkata') <= $3
+        AND a.is_active = TRUE
+        ${statusFilter}
+      ORDER BY a.scheduled_start_at ASC
+      `,
+      params,
+    );
+
+    return appointments;
+  }
+
+  /**
    * [ADMIN BOOKING FLOW ONLY]
    * Called after payment is confirmed via verifyAdminBookingPayment.
    * Generates a Google Meet link (ONLINE) or sends a plain confirmation
