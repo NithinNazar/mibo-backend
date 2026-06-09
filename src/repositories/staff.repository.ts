@@ -1144,6 +1144,51 @@ export class StaffRepository {
   }
 
   /**
+   * Get blocked slots from blocked_slots table within a date range
+   */
+  async getBlockedSlots(
+    clinicianId: number,
+    startDate: string,
+    endDate: string,
+    centreId?: number,
+  ) {
+    const conditions: string[] = [
+      "clinician_id = $1",
+      "blocked_date >= $2",
+      "blocked_date <= $3",
+    ];
+    const params: any[] = [clinicianId, startDate, endDate];
+    let paramIndex = 4;
+
+    if (centreId) {
+      conditions.push(`centre_id = $${paramIndex}`);
+      params.push(centreId);
+      paramIndex++;
+    }
+
+    const query = `
+      SELECT 
+        id,
+        clinician_id,
+        centre_id,
+        blocked_date,
+        start_time,
+        end_time,
+        reason,
+        is_blocked,
+        blocked_by_admin_id,
+        blocked_at,
+        unblocked_by_admin_id,
+        unblocked_at
+      FROM blocked_slots
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY blocked_date, start_time
+    `;
+
+    return db.any(query, params);
+  }
+
+  /**
    * Check if a specific slot has an exception (is blocked)
    */
   async hasSlotException(

@@ -682,20 +682,31 @@ export class StaffService {
       centreId,
     );
 
-    // Get slot exceptions for this date
-    const slotExceptions = await staffRepository.getSlotExceptions(
+    // Get blocked slots from blocked_slots table
+    const blockedSlotsData = await staffRepository.getBlockedSlots(
       clinicianId,
       date,
       date,
       centreId,
     );
 
-    // Create a Set of blocked slots for quick lookup
-    const blockedSlots = new Set(
-      slotExceptions.map(
-        (ex: any) =>
-          `${ex.exception_date}-${ex.start_time.substring(0, 5)}-${ex.mode}`,
-      ),
+    // Create a Map of blocked slots for quick lookup (key: date-startTime-centreId, value: blocked_slot_id)
+    // NOTE: We don't use mode in the key because blocked_slots table doesn't store mode
+    // NOTE: We MUST include centre_id because the unique constraint includes it
+    const blockedSlotsMap = new Map(
+      blockedSlotsData
+        .filter((slot: any) => slot.is_blocked) // Only include currently blocked slots
+        .map((slot: any) => {
+          // Format blocked_date to YYYY-MM-DD (PostgreSQL returns Date object)
+          const formattedDate =
+            slot.blocked_date instanceof Date
+              ? slot.blocked_date.toISOString().split("T")[0]
+              : slot.blocked_date;
+          return [
+            `${formattedDate}-${slot.start_time.substring(0, 5)}-${slot.centre_id}`,
+            slot.id,
+          ];
+        }),
     );
 
     // Generate time slots
@@ -731,37 +742,37 @@ export class StaffService {
 
         const slotEndTime = `${String(slotEndHour).padStart(2, "0")}:${String(slotEndMinute).padStart(2, "0")}`;
 
-        // Check if this slot is blocked by an exception
-        const slotKey = `${date}-${slotStartTime}-${rule.mode}`;
-        const isBlocked = blockedSlots.has(slotKey);
+        // Check if this slot is blocked
+        const blockedSlotKey = `${date}-${slotStartTime}-${rule.centre_id}`;
+        const blockedSlotId = blockedSlotsMap.get(blockedSlotKey);
+        const isBlocked = !!blockedSlotId;
 
-        // Skip blocked slots - don't include them in the response
-        if (!isBlocked) {
-          // Check if this slot is booked
-          const isBooked = bookedAppointments.some((apt: any) => {
-            const aptStart = new Date(apt.scheduled_start_at);
-            const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
-            return aptStartTime === slotStartTime;
-          });
+        // Check if this slot is booked
+        const isBooked = bookedAppointments.some((apt: any) => {
+          const aptStart = new Date(apt.scheduled_start_at);
+          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+          return aptStartTime === slotStartTime;
+        });
 
-          // Find the appointment ID if booked
-          const bookedAppointment = bookedAppointments.find((apt: any) => {
-            const aptStart = new Date(apt.scheduled_start_at);
-            const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
-            return aptStartTime === slotStartTime;
-          });
+        // Find the appointment ID if booked
+        const bookedAppointment = bookedAppointments.find((apt: any) => {
+          const aptStart = new Date(apt.scheduled_start_at);
+          const aptStartTime = `${String(aptStart.getUTCHours()).padStart(2, "0")}:${String(aptStart.getUTCMinutes()).padStart(2, "0")}`;
+          return aptStartTime === slotStartTime;
+        });
 
-          slots.push({
-            clinicianId: clinicianId.toString(),
-            centreId: rule.centre_id.toString(),
-            date,
-            startTime: slotStartTime,
-            endTime: slotEndTime,
-            status: isBooked ? "booked" : "available",
-            appointmentId: bookedAppointment?.id?.toString(),
-            mode: rule.mode,
-          });
-        }
+        // Include ALL slots (available, booked, AND blocked) - UI will handle display
+        slots.push({
+          clinicianId: clinicianId.toString(),
+          centreId: rule.centre_id.toString(),
+          date,
+          startTime: slotStartTime,
+          endTime: slotEndTime,
+          status: isBlocked ? "blocked" : isBooked ? "booked" : "available",
+          appointmentId: bookedAppointment?.id?.toString(),
+          blockedSlotId: blockedSlotId || undefined, // Include blocked_slot_id for unblocking
+          mode: rule.mode,
+        });
 
         // Move to next slot
         currentMinute += slotDuration;

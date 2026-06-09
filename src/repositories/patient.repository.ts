@@ -251,6 +251,35 @@ class PatientRepository {
       values.push(data.mrn);
     }
 
+    // 🔧 FIX: If no updates, just fetch and return current profile
+    if (updates.length === 0) {
+      const profile = await db.one(
+        "SELECT * FROM patient_profiles WHERE user_id = $1",
+        [userId],
+      );
+      const user = await this.findUserById(userId);
+      if (!user) throw new Error("User not found");
+
+      return {
+        userId: user.id,
+        fullName: user.full_name,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        email: user.email,
+        createdAt: user.created_at,
+        id: profile.id,
+        dateOfBirth: profile.date_of_birth,
+        age: profile.age,
+        gender: profile.gender,
+        bloodGroup: profile.blood_group,
+        emergencyContactName: profile.emergency_contact_name,
+        emergencyContactPhone: profile.emergency_contact_phone,
+        notes: profile.notes,
+        mrn: profile.mrn,
+      };
+    }
+
     updates.push(`updated_at = NOW()`);
     values.push(userId);
 

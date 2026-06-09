@@ -281,9 +281,9 @@ class SlotBlockingService {
         u_patient.email as patient_email,
         a.scheduled_start_at as appointment_time,
         u_clinician.full_name as clinician_name,
-        p.payment_status,
+        p.status as payment_status,
         CASE
-          WHEN p.payment_status = 'COMPLETED' THEN TRUE
+          WHEN p.status = 'COMPLETED' THEN TRUE
           ELSE FALSE
         END as refund_eligible
       FROM appointments a
@@ -294,9 +294,9 @@ class SlotBlockingService {
       LEFT JOIN payments p ON a.id = p.appointment_id
       WHERE a.clinician_id = $1
         AND a.centre_id = $2
-        AND DATE(a.scheduled_start_at) = $3
-        AND TIME(a.scheduled_start_at) >= $4
-        AND TIME(a.scheduled_start_at) < $5
+        AND DATE(a.scheduled_start_at AT TIME ZONE 'UTC') = $3
+        AND (a.scheduled_start_at AT TIME ZONE 'UTC')::time >= $4
+        AND (a.scheduled_start_at AT TIME ZONE 'UTC')::time < $5
         AND a.status IN ('BOOKED', 'CONFIRMED', 'RESCHEDULED')
         AND a.is_active = TRUE
     `;

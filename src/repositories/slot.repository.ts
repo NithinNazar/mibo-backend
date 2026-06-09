@@ -77,7 +77,7 @@ export class SlotRepository {
     reason: string = "Clinician unavailable",
   ): Promise<BlockedSlot> {
     return db.tx(async (t) => {
-      // Check if slot is already blocked
+      // Check if slot exists (blocked or unblocked)
       const existingQuery = `
         SELECT *
         FROM blocked_slots
@@ -86,7 +86,6 @@ export class SlotRepository {
           AND blocked_date = $3
           AND start_time = $4
           AND end_time = $5
-          AND is_blocked = TRUE
         FOR UPDATE
       `;
 
@@ -99,10 +98,33 @@ export class SlotRepository {
       ])) as BlockedSlot | null;
 
       if (existing) {
-        throw new Error("SLOT_ALREADY_BLOCKED");
+        // If slot exists and is already blocked, throw error
+        if (existing.is_blocked) {
+          throw new Error("SLOT_ALREADY_BLOCKED");
+        }
+
+        // If slot exists but is unblocked, update it to blocked
+        const updateQuery = `
+          UPDATE blocked_slots
+          SET is_blocked = TRUE,
+              reason = $1,
+              blocked_by_admin_id = $2,
+              blocked_at = NOW(),
+              updated_at = NOW(),
+              unblocked_by_admin_id = NULL,
+              unblocked_at = NULL
+          WHERE id = $3
+          RETURNING *
+        `;
+
+        return t.one(updateQuery, [
+          reason,
+          adminId,
+          existing.id,
+        ]) as Promise<BlockedSlot>;
       }
 
-      // Insert new blocked slot
+      // Insert new blocked slot if it doesn't exist
       const insertQuery = `
         INSERT INTO blocked_slots (
           clinician_id,

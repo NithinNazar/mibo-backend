@@ -253,8 +253,17 @@ class PatientAuthService {
             requiresProfileCompletion = false; // Profile now complete
           }
         } else if (hasIncompleteProfile) {
-          // Flag for profile completion if not already flagged
-          requiresProfileCompletion = requiresProfileCompletion || true;
+          // 🔧 FIX: Only flag for profile completion if ALSO a legacy user (missing name)
+          // This prevents complete users with missing age/gender from being flagged
+          const isLegacyUser = !user.first_name || !user.last_name;
+          if (isLegacyUser) {
+            requiresProfileCompletion = true;
+            logger.info(
+              `⚠️ Legacy user with incomplete profile: ${phone} - requires completion`,
+            );
+          }
+          // If user has name but missing age/gender, don't force modal
+          // They can update via profile settings later
         } else if (age !== undefined || gender) {
           // Update existing complete profile
           const profileUpdates: any = {};

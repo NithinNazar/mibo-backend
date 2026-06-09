@@ -186,7 +186,7 @@ router.get("/clinicians/:id/slots", (req, res, next) =>
  * Validates: Requirements 7.1, 7.2, 7.6
  */
 router.patch(
-  "/:id/credentials",
+  "/clinicians/:id/credentials",
   authMiddleware,
   requireRole("ADMIN", "MANAGER"),
   (req, res, next) =>

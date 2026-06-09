@@ -226,12 +226,29 @@ export class StaffController {
     try {
       const id = Number(req.params.id);
       const { isActive } = req.body;
-      const staff = await staffService.toggleStaffActive(id, isActive);
-      return ok(
-        res,
-        staff,
-        `Staff ${isActive ? "activated" : "deactivated"} successfully`,
-      );
+
+      // Check if this is a clinician path (mounted at /clinicians)
+      // If so, treat id as clinician_id, otherwise as user_id
+      if (req.baseUrl.includes("/clinicians")) {
+        // This is a clinician toggle request
+        const clinician = await staffService.toggleClinicianActive(
+          id,
+          isActive,
+        );
+        return ok(
+          res,
+          clinician,
+          `Clinician ${isActive ? "activated" : "deactivated"} successfully`,
+        );
+      } else {
+        // This is a generic staff toggle request
+        const staff = await staffService.toggleStaffActive(id, isActive);
+        return ok(
+          res,
+          staff,
+          `Staff ${isActive ? "activated" : "deactivated"} successfully`,
+        );
+      }
     } catch (err) {
       next(err);
     }
