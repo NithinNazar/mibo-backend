@@ -2145,3 +2145,42 @@
 {"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-09 14:35:10"}
 {"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-09 14:35:10"}
 {"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-06-09 14:37:06"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:42:50"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:42:54"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:42:55"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-10 04:42:56"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-10 04:42:57"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-10 04:42:57"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-10 04:42:57"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:43:24"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-10 04:43:26"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:51:57"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:52:00"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 04:52:00"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-10 04:52:00"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-10 04:52:01"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-10 04:52:01"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-10 04:52:01"}
+{"level":"error","message":"Auth middleware error: Invalid or expired access token","service":"mibo-backend","stack":"Error: Invalid or expired access token\n    at PatientAuthService.verifyAccessToken (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\patient-auth.service.ts:42:13)\n    at authMiddleware (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\middlewares\\auth.middleware.ts:42:40)\n    at Layer.handleRequest (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\index.js:435:11)\n    at Layer.handleRequest (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\index.js:295:15\n    at processParams (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\index.js:582:12)\n    at next (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\index.js:291:5)","timestamp":"2026-06-10 05:26:03"}
+{"level":"error","message":"Cannot destructure property 'refreshToken' of 'req.body' as it is undefined.","method":"POST","params":{},"path":"/api/auth/logout","query":{},"service":"mibo-backend","stack":"TypeError: Cannot destructure property 'refreshToken' of 'req.body' as it is undefined.\n    at AuthController.logout (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\auth.controllers.ts:96:15)\n    at C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\routes\\auth.routes.ts:47:18\n    at Layer.handleRequest (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\validations\\auth.validations.ts:91:5\n    at Layer.handleRequest (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at authMiddleware (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\middlewares\\auth.middleware.ts:47:5)\n    at Layer.handleRequest (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\node_modules\\router\\lib\\route.js:157:13)","timestamp":"2026-06-10 05:26:03","userId":"2"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-06-10 05:29:27"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 18:53:15"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 18:53:18"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 18:53:19"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-10 18:53:19"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-10 18:53:20"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-10 18:53:20"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-10 18:53:20"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 19:18:14"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 19:18:16"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-10 19:18:16"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-10 19:18:16"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-10 19:18:17"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-10 19:18:17"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-10 19:18:17"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-06-10 19:21:15"}

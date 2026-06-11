@@ -550,7 +550,7 @@ export class AppointmentService {
           continue;
         }
 
-        // Check if this slot has an exception (blocked by admin)
+        // Check if this slot has an exception (blocked by admin in clinician edit modal)
         const { staffRepository } =
           await import("../repositories/staff.repository");
         const hasException = await staffRepository.hasSlotException(
@@ -560,10 +560,21 @@ export class AppointmentService {
           slotStart,
         );
 
+        // Check if this slot is blocked in the admin slot management page
+        const { slotRepository } =
+          await import("../repositories/slot.repository");
+        const isBlocked = await slotRepository.isSlotBlocked(
+          clinicianId,
+          centreId,
+          date,
+          slotStart,
+          slotEnd,
+        );
+
         slots.push({
           startTime: slotStart,
           endTime: slotEnd,
-          available: !hasConflict && !hasException,
+          available: !hasConflict && !hasException && !isBlocked,
         });
 
         currentTime += slotDuration;
