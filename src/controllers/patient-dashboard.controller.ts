@@ -181,8 +181,15 @@ export class PatientDashboardController {
       }
 
       // Extract user and profile data
-      const { firstName, lastName, email, age, gender, ...otherProfileData } =
-        req.body;
+      const {
+        firstName,
+        lastName,
+        email,
+        age,
+        gender,
+        dateOfBirth,
+        ...otherProfileData
+      } = req.body;
 
       // Update user info (name, email)
       if (firstName || lastName || email) {
@@ -199,16 +206,37 @@ export class PatientDashboardController {
         }
       }
 
-      // Update patient profile (age, gender, etc.)
+      // Update patient profile (age, gender, dateOfBirth, etc.)
       const profileUpdates: any = { ...otherProfileData };
       if (age !== undefined) profileUpdates.age = age;
       if (gender) profileUpdates.gender = gender;
+      if (dateOfBirth) {
+        // Convert date string to Date object
+        try {
+          profileUpdates.date_of_birth = new Date(dateOfBirth);
+
+          // Validate date is valid
+          if (isNaN(profileUpdates.date_of_birth.getTime())) {
+            throw new Error("Invalid date format");
+          }
+        } catch (dateError) {
+          console.error("Date conversion error:", dateError);
+          throw ApiError.badRequest(
+            "Invalid date of birth format. Please use YYYY-MM-DD",
+          );
+        }
+      }
 
       if (Object.keys(profileUpdates).length > 0) {
-        await patientRepository.updatePatientProfile(
-          req.user.userId,
-          profileUpdates,
-        );
+        try {
+          await patientRepository.updatePatientProfile(
+            req.user.userId,
+            profileUpdates,
+          );
+        } catch (dbError: any) {
+          console.error("Profile update database error:", dbError);
+          throw dbError;
+        }
       }
 
       // Get updated profile

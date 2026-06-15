@@ -1,51 +1,38 @@
-// Script to check current database schema
+// Check database schema for patient_profiles table
 import { db } from "../config/db";
 
 async function checkSchema() {
   try {
-    console.log("\n=== PATIENT_PROFILES TABLE ===");
-    const patientColumns = await db.any(`
-      SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'patient_profiles'
-      ORDER BY ordinal_position
-    `);
-    console.table(patientColumns);
+    console.log("Checking patient_profiles table schema...\n");
 
-    console.log("\n=== APPOINTMENTS TABLE ===");
-    const appointmentColumns = await db.any(`
-      SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'appointments'
-      ORDER BY ordinal_position
-    `);
-    console.table(appointmentColumns);
+    const columns = await db.any(`
+            SELECT 
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns
+            WHERE table_name = 'patient_profiles'
+            ORDER BY ordinal_position
+        `);
 
-    console.log("\n=== PAYMENTS TABLE ===");
-    const paymentColumns = await db.any(`
-      SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
-      FROM information_schema.columns 
-      WHERE table_name = 'payments'
-      ORDER BY ordinal_position
-    `);
-    console.table(paymentColumns);
+    console.log("Columns in patient_profiles table:");
+    console.table(columns);
 
-    console.log("\n=== APPOINTMENT STATISTICS ===");
-    const stats = await db.one(`
-      SELECT 
-        COUNT(*) as total_appointments,
-        COUNT(DISTINCT patient_id) as unique_patients
-      FROM appointments
-    `);
-    console.log(stats);
+    // Check specifically for date_of_birth
+    const hasDateOfBirth = columns.some(
+      (col) => col.column_name === "date_of_birth",
+    );
 
-    console.log("\n=== PAYMENT STATISTICS ===");
-    const paymentStats = await db.any(`
-      SELECT status, COUNT(*) as count
-      FROM payments
-      GROUP BY status
-    `);
-    console.table(paymentStats);
+    if (hasDateOfBirth) {
+      console.log("\n✅ date_of_birth column EXISTS");
+    } else {
+      console.log("\n❌ date_of_birth column DOES NOT EXIST");
+      console.log("\nYou need to run the migration:");
+      console.log(
+        "ALTER TABLE patient_profiles ADD COLUMN date_of_birth DATE NULL;",
+      );
+    }
 
     process.exit(0);
   } catch (error) {
