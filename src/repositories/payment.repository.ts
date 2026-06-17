@@ -288,6 +288,42 @@ class PaymentRepository {
       [paymentLinkId, paymentLinkUrl, paymentId],
     );
   }
+
+  /**
+   * Create direct payment record (CASH/CARD/UPI) confirmed by staff
+   * Used when patient pays directly at front desk
+   */
+  async createDirectPayment(data: {
+    patientId: number;
+    appointmentId: number;
+    amount: number;
+    currency: string;
+    consultationFee: number;
+    registrationFee: number;
+    paymentMethod: "CASH" | "CARD" | "UPI";
+    confirmedByUserId: number;
+  }): Promise<Payment> {
+    return await db.one(
+      `INSERT INTO payments (
+        patient_id, appointment_id, provider, order_id, payment_id,
+        amount, currency, status, payment_method,
+        consultation_fee, registration_fee,
+        paid_at, created_at, updated_at
+      ) VALUES ($1, $2, 'DIRECT', $3, $4, $5, $6, 'SUCCESS', $7, $8, $9, NOW(), NOW(), NOW())
+      RETURNING *`,
+      [
+        data.patientId,
+        data.appointmentId,
+        `direct_${data.appointmentId}_${Date.now()}`, // order_id for tracking
+        `${data.paymentMethod.toLowerCase()}_${data.appointmentId}_${data.confirmedByUserId}`, // payment_id
+        data.amount,
+        data.currency,
+        data.paymentMethod,
+        data.consultationFee,
+        data.registrationFee,
+      ],
+    );
+  }
 }
 
 export const paymentRepository = new PaymentRepository();

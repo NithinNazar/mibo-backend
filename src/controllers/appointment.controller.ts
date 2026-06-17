@@ -496,6 +496,40 @@ export class AppointmentController {
       next(err);
     }
   }
+
+  /**
+   * Confirm direct payment (CASH/CARD/UPI)
+   * Used by admin/front desk staff when patient pays directly at front desk
+   */
+  async confirmDirectPayment(
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+      const { paymentMethod } = req.body;
+
+      if (!paymentMethod || !["CASH", "CARD", "UPI"].includes(paymentMethod)) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid payment method (CASH, CARD, or UPI) is required",
+        });
+      }
+
+      const result = await appointmentService.confirmDirectPayment(
+        appointmentId,
+        paymentMethod as "CASH" | "CARD" | "UPI",
+        req.user,
+      );
+
+      return ok(res, result, "Payment confirmed successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const appointmentController = new AppointmentController();

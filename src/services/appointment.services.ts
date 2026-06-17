@@ -8,11 +8,14 @@ import {
 import { ApiError } from "../utils/apiError";
 import { AppointmentStatus, Appointment } from "../types/appointment.types";
 import { patientRepository } from "../repositories/patient.repository";
+import { paymentRepository } from "../repositories/payment.repository";
+import { bookingRepository } from "../repositories/booking.repository";
 import { JwtPayload } from "../utils/jwt";
 import { db } from "../config/db";
 import { paymentService } from "./payment.service";
 import { emailUtil } from "../utils/email";
 import { gallaboxUtil } from "../utils/gallabox";
+import { googleMeetUtil } from "../utils/googleMeet";
 import logger from "../config/logger";
 
 interface AppointmentFilters {
@@ -114,11 +117,23 @@ export class AppointmentService {
           "patient_id is required when staff creates an appointment",
         );
       }
-      const patient = await patientRepository.findByPatientId(dto.patient_id);
-      if (!patient) {
-        throw ApiError.badRequest("Target patient not found");
+      // 🔧 FIX: Admin panel sends userId, not patient_profile_id
+      // Try to find by userId first (most common case from admin panel)
+      const patientByUserId = await patientRepository.findByUserId(
+        dto.patient_id,
+      );
+      if (patientByUserId) {
+        patient_id = patientByUserId.profile.id;
+      } else {
+        // Fallback: try patient_profile_id (for backward compatibility)
+        const patientByProfileId = await patientRepository.findByPatientId(
+          dto.patient_id,
+        );
+        if (!patientByProfileId) {
+          throw ApiError.badRequest("Target patient not found");
+        }
+        patient_id = patientByProfileId.profile.id;
       }
-      patient_id = patient.profile.id;
     }
 
     const start = new Date(dto.scheduled_start_at);
@@ -918,6 +933,226 @@ Google Meet link has been sent to patient and doctor.
     );
 
     return noteHistory;
+  }
+
+  /**
+   * Confirm direct payment (CASH/CARD/UPI) made at front desk
+   * Used by admin/front desk staff when patient pays directly
+   */
+  async confirmDirectPayment(
+    appointmentId: number,
+    paymentMethod: "CASH" | "CARD" | "UPI",
+    authUser: JwtPayload,
+  ): Promise<any> {
+    // Verify user is staff (admin or front desk)
+    if (authUser.userType !== "STAFF") {
+      throw ApiError.forbidden("Only staff can confirm direct payments");
+    }
+
+    if (
+      !["ADMIN", "FRONT_DESK", "CARE_COORDINATOR", "MANAGER"].some((role) =>
+        authUser.roles.includes(role),
+      )
+    ) {
+      throw ApiError.forbidden("Insufficient permissions to confirm payments");
+    }
+
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Check if appointment is already confirmed or completed
+    if (
+      appointment.status === "CONFIRMED" ||
+      appointment.status === "COMPLETED"
+    ) {
+      throw ApiError.badRequest("Appointment is already confirmed");
+    }
+
+    if (appointment.status === "CANCELLED") {
+      throw ApiError.badRequest(
+        "Cannot confirm payment for cancelled appointment",
+      );
+    }
+
+    // Get consultation fee
+    // Use booking repository to get full appointment details with fees and names
+    const fullAppointment =
+      await bookingRepository.findAppointmentById(appointmentId);
+    if (!fullAppointment) {
+      throw ApiError.notFound("Appointment details not found");
+    }
+
+    const consultationFee = fullAppointment.consultation_fee || 500;
+
+    // Check if patient has paid registration fee
+    const patientProfile =
+      await patientRepository.findPatientProfileByPatientId(
+        appointment.patient_id,
+      );
+    if (!patientProfile) {
+      throw ApiError.badRequest("Patient profile not found");
+    }
+
+    const hasPatientPaidRegistrationFee =
+      await patientRepository.hasPatientPaidRegistrationFee(
+        patientProfile.user_id,
+      );
+    const registrationFee = hasPatientPaidRegistrationFee ? 0 : 100;
+    const totalAmount = consultationFee + registrationFee;
+
+    logger.info(
+      `💰 [Direct Payment] Recording ${paymentMethod} payment for appointment ${appointmentId}: ` +
+        `Consultation ₹${consultationFee}, Registration ₹${registrationFee}, Total ₹${totalAmount}`,
+    );
+
+    // Create payment record with direct payment method
+    const payment = await paymentRepository.createDirectPayment({
+      patientId: appointment.patient_id,
+      appointmentId: appointmentId,
+      amount: totalAmount,
+      currency: "INR",
+      consultationFee: consultationFee,
+      registrationFee: registrationFee,
+      paymentMethod: paymentMethod,
+      confirmedByUserId: authUser.userId,
+    });
+
+    // Mark patient as having paid registration fee if this payment included it
+    if (registrationFee > 0) {
+      await patientRepository.markRegistrationFeePaid(patientProfile.user_id);
+      logger.info(
+        `✅ Registration fee marked as paid for user ${patientProfile.user_id}`,
+      );
+    }
+
+    // Update appointment status to CONFIRMED
+    await appointmentRepository.updateStatus(
+      appointmentId,
+      "CONFIRMED",
+      authUser.userId,
+      `Direct ${paymentMethod} payment confirmed`,
+    );
+
+    logger.info(
+      `✅ [Direct Payment] ${paymentMethod} payment confirmed for appointment ${appointmentId}`,
+    );
+
+    // For ONLINE appointments, create Google Meet link and send notifications
+    if (appointment.appointment_type === "ONLINE") {
+      try {
+        const appointmentDate = new Date(appointment.scheduled_start_at);
+        const patientUser = await patientRepository.findUserById(
+          patientProfile.user_id,
+        );
+
+        if (patientUser) {
+          logger.info(
+            `📹 Creating Google Meet link for online appointment ${appointmentId}`,
+          );
+
+          const meetingDetails =
+            await googleMeetUtil.createMeetLinkForAppointmentFromFrontend(
+              patientUser.full_name,
+              fullAppointment.clinician_name,
+              patientUser.email || "",
+              new Date(appointment.scheduled_start_at).toISOString(),
+              new Date(appointment.scheduled_end_at).toISOString(),
+            );
+
+          // Store Google Meet link
+          await bookingRepository.updateAppointmentGoogleMeet(
+            appointmentId,
+            meetingDetails.meetLink,
+            meetingDetails.eventId,
+          );
+
+          logger.info(
+            `✅ Google Meet link created: ${meetingDetails.meetLink}`,
+          );
+
+          // Send WhatsApp with Meet link
+          if (gallaboxUtil.isReady() && patientUser.phone) {
+            const dateStr = appointmentDate.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+            const timeStr = appointmentDate.toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+
+            await gallaboxUtil.sendOnlineConsultationConfirmation(
+              patientUser.phone,
+              patientUser.full_name,
+              fullAppointment.clinician_name,
+              dateStr,
+              timeStr,
+              meetingDetails.meetLink,
+            );
+
+            logger.info(`✅ WhatsApp sent to patient with Google Meet link`);
+          }
+        }
+      } catch (meetError: any) {
+        logger.error("Error creating Google Meet link:", meetError);
+        // Continue even if Meet link fails
+      }
+    } else {
+      // For IN_PERSON appointments, send regular confirmation
+      try {
+        const patientUser = await patientRepository.findUserById(
+          patientProfile.user_id,
+        );
+        if (patientUser && patientUser.phone && gallaboxUtil.isReady()) {
+          const appointmentDate = new Date(appointment.scheduled_start_at);
+          const dateStr = appointmentDate.toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+          const timeStr = appointmentDate.toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          await gallaboxUtil.sendAppointmentConfirmation(
+            patientUser.phone,
+            patientUser.full_name,
+            fullAppointment.clinician_name,
+            dateStr,
+            timeStr,
+            fullAppointment.centre_name,
+          );
+
+          logger.info(`✅ WhatsApp confirmation sent to patient`);
+        }
+      } catch (error: any) {
+        logger.error("Error sending confirmation:", error);
+        // Continue even if WhatsApp fails
+      }
+    }
+
+    return {
+      success: true,
+      appointment: {
+        id: appointmentId,
+        status: "CONFIRMED",
+      },
+      payment: {
+        id: payment.id,
+        amount: totalAmount,
+        method: paymentMethod,
+        status: "SUCCESS",
+      },
+    };
   }
 
   /**

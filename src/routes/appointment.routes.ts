@@ -109,6 +109,19 @@ router.post(
 );
 
 /**
+ * POST /api/appointments/:id/confirm-direct-payment
+ * Confirm direct payment (CASH/CARD/UPI) made at front desk
+ * Roles: ADMIN, MANAGER, FRONT_DESK, CARE_COORDINATOR
+ */
+router.post(
+  "/:id/confirm-direct-payment",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "FRONT_DESK", "CARE_COORDINATOR"),
+  (req, res, next) =>
+    appointmentController.confirmDirectPayment(req, res, next),
+);
+
+/**
  * GET /api/appointments
  * Get appointments with query filters (centreId, clinicianId, patientId, date, status)
  * Role-based filtering applied automatically
