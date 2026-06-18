@@ -498,6 +498,27 @@ export class AppointmentController {
   }
 
   /**
+   * Send payment link to patient
+   * Used when admin/front desk chooses to send Razorpay payment link
+   */
+  async sendPaymentLink(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return;
+
+      const appointmentId = parseInt(req.params.id);
+
+      const result = await appointmentService.sendPaymentLinkToPatient(
+        appointmentId,
+        req.user,
+      );
+
+      return ok(res, result, "Payment link sent successfully");
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * Confirm direct payment (CASH/CARD/UPI)
    * Used by admin/front desk staff when patient pays directly at front desk
    */
@@ -510,7 +531,7 @@ export class AppointmentController {
       if (!req.user) return;
 
       const appointmentId = parseInt(req.params.id);
-      const { paymentMethod } = req.body;
+      const { paymentMethod, paymentNotes } = req.body;
 
       if (!paymentMethod || !["CASH", "CARD", "UPI"].includes(paymentMethod)) {
         return res.status(400).json({
@@ -522,6 +543,7 @@ export class AppointmentController {
       const result = await appointmentService.confirmDirectPayment(
         appointmentId,
         paymentMethod as "CASH" | "CARD" | "UPI",
+        paymentNotes,
         req.user,
       );
 

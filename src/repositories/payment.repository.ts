@@ -302,14 +302,15 @@ class PaymentRepository {
     registrationFee: number;
     paymentMethod: "CASH" | "CARD" | "UPI";
     confirmedByUserId: number;
+    paymentNotes?: string;
   }): Promise<Payment> {
     return await db.one(
       `INSERT INTO payments (
         patient_id, appointment_id, provider, order_id, payment_id,
         amount, currency, status, payment_method,
-        consultation_fee, registration_fee,
+        consultation_fee, registration_fee, payment_notes,
         paid_at, created_at, updated_at
-      ) VALUES ($1, $2, 'DIRECT', $3, $4, $5, $6, 'SUCCESS', $7, $8, $9, NOW(), NOW(), NOW())
+      ) VALUES ($1, $2, 'DIRECT', $3, $4, $5, $6, 'SUCCESS', $7, $8, $9, $10, NOW(), NOW(), NOW())
       RETURNING *`,
       [
         data.patientId,
@@ -321,6 +322,7 @@ class PaymentRepository {
         data.paymentMethod,
         data.consultationFee,
         data.registrationFee,
+        data.paymentNotes || null,
       ],
     );
   }

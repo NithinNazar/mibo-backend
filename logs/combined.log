@@ -2395,3 +2395,101 @@
 {"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 05:18:33"}
 {"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 05:18:33"}
 {"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 05:18:33"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:15:40"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:15:43"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:15:44"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 19:15:44"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 19:15:45"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 19:15:45"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 19:15:45"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:22:25"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:22:27"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:22:28"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 19:22:28"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 19:22:29"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 19:22:29"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 19:22:29"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:28:43"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:28:46"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:28:46"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 19:28:46"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 19:28:47"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 19:28:47"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 19:28:47"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-06-17 19:34:11"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:34:30"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:34:32"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 19:34:33"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 19:34:33"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 19:34:34"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 19:34:34"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 19:34:34"}
+{"body":{"password":"***MASKED***","username":"admin"},"level":"warn","message":"Invalid credentials","method":"POST","params":{},"path":"/api/auth/login/username-password","query":{},"service":"mibo-backend","stack":"Error: Invalid credentials\n    at Function.unauthorized (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\utils\\apiError.ts:30:12)\n    at AuthService.loginWithUsernamePassword (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\auth.services.ts:226:22)\n    at AuthController.loginWithUsernamePassword (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\auth.controllers.ts:65:22)","timestamp":"2026-06-17 19:35:08"}
+{"level":"info","message":"Generating payment link for appointment 103...","service":"mibo-backend","timestamp":"2026-06-17 19:36:34"}
+{"level":"info","message":"💰 [Admin] Payment link calculation for appointment 103: Consultation ₹1, Registration ₹0, Total ₹1","service":"mibo-backend","timestamp":"2026-06-17 19:36:34"}
+{"level":"info","message":"Payment link created: plink_T2j2PtACaiy9b4","service":"mibo-backend","timestamp":"2026-06-17 19:36:35"}
+{"level":"info","message":"✅ Payment link template sent to 919048810697 for appointment 103","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"✅ [Admin] Payment link sent via WhatsApp to 919048810697 for appointment 103","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"✅ Payment link generated for appointment 103: https://rzp.io/rzp/QlAawWg","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"💰 [Direct Payment] Recording CASH payment for appointment 103: Consultation ₹1, Registration ₹0, Total ₹1","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"✅ [Direct Payment] CASH payment confirmed for appointment 103","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"📹 Creating Google Meet link for online appointment 103","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"details":{"error":"invalid_client","error_description":"The OAuth client was not found."},"error":"invalid_client: The OAuth client was not found.","level":"error","message":"Failed to create Google Meet event:","service":"mibo-backend","timestamp":"2026-06-17 19:36:37"}
+{"level":"error","message":"Error creating Google Meet link: Failed to create Google Meet event: invalid_client: The OAuth client was not found.","service":"mibo-backend","stack":"Error: Failed to create Google Meet event: invalid_client: The OAuth client was not found.\n    at GoogleMeetUtil.createCalendarEvent (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\utils\\googleMeet.ts:153:13)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at GoogleMeetUtil.createMeetLinkForAppointmentFromFrontend (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\utils\\googleMeet.ts:272:20)\n    at AppointmentService.confirmDirectPayment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\appointment.services.ts:1059:13)\n    at AppointmentController.confirmDirectPayment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\appointment.controller.ts:522:22)","timestamp":"2026-06-17 19:36:37"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:13:52"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:13:55"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:13:56"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:13:56"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:13:57"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:13:57"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:13:57"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:21"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:23"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:15:23"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:23"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:15:24"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:15:24"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:15:24"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:29"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:15:31"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:40"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:15:43"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:49"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:15:51"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:16:04"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:16:06"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-17 23:16:07"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-17 23:16:07"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-17 23:16:07"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-17 23:16:07"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-17 23:16:07"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 04:48:33"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 04:48:37"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 04:48:37"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-18 04:48:37"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-18 04:48:39"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-18 04:48:39"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-18 04:48:39"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 05:27:14"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 05:27:16"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-06-18 05:27:17"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-06-18 05:27:17"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-06-18 05:27:18"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-06-18 05:27:18"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-06-18 05:27:18"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-06-18 05:35:12"}

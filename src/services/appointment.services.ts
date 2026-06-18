@@ -219,30 +219,13 @@ export class AppointmentService {
       notes: dto.notes || null,
     });
 
-    // [ADMIN BOOKING FLOW] Send payment link — video link and notifications are
-    // deferred until payment is confirmed (handled in payment.service.ts webhook).
-    try {
-      logger.info(
-        `Generating payment link for appointment ${appointment.id}...`,
-      );
-
-      const paymentLinkResult =
-        await paymentService.sendAdminBookingPaymentLink(appointment.id);
-
-      logger.info(
-        `✅ Payment link generated for appointment ${appointment.id}: ${paymentLinkResult.paymentLink}`,
-      );
-
-      (appointment as any).paymentLink = paymentLinkResult.paymentLink;
-      (appointment as any).paymentLinkSent = paymentLinkResult.whatsappSent;
-      (appointment as any).paymentAmount = paymentLinkResult.amount;
-    } catch (error: any) {
-      logger.error(
-        `Failed to generate payment link for appointment ${appointment.id}:`,
-        error,
-      );
-      (appointment as any).paymentLinkError = error.message;
-    }
+    // [ADMIN BOOKING FLOW] Payment link is NO LONGER sent automatically.
+    // Staff must explicitly choose between:
+    // 1. "Send Payment Link" → calls sendPaymentLink() endpoint
+    // 2. "Pay via Cash/Card/UPI" → calls confirmDirectPayment() endpoint
+    logger.info(
+      `✅ Appointment ${appointment.id} created with status BOOKED. Awaiting payment confirmation.`,
+    );
 
     return appointment;
   }
@@ -936,12 +919,76 @@ Google Meet link has been sent to patient and doctor.
   }
 
   /**
+   * Send Razorpay payment link to patient
+   * Used when admin/front desk chooses "Confirm: Send Payment Link" option
+   */
+  async sendPaymentLinkToPatient(
+    appointmentId: number,
+    authUser: JwtPayload,
+  ): Promise<any> {
+    // Verify user is staff
+    if (authUser.userType !== "STAFF") {
+      throw ApiError.forbidden("Only staff can send payment links");
+    }
+
+    if (
+      !["ADMIN", "FRONT_DESK", "CARE_COORDINATOR", "MANAGER"].some((role) =>
+        authUser.roles.includes(role),
+      )
+    ) {
+      throw ApiError.forbidden("Insufficient permissions");
+    }
+
+    const appointment =
+      await appointmentRepository.getAppointmentById(appointmentId);
+    if (!appointment) {
+      throw ApiError.notFound("Appointment not found");
+    }
+
+    // Check appointment status
+    if (appointment.status !== "BOOKED") {
+      throw ApiError.badRequest(
+        "Payment link can only be sent for BOOKED appointments",
+      );
+    }
+
+    // Send payment link
+    try {
+      logger.info(
+        `📤 Sending payment link for appointment ${appointmentId}...`,
+      );
+
+      const paymentLinkResult =
+        await paymentService.sendAdminBookingPaymentLink(appointmentId);
+
+      logger.info(
+        `✅ Payment link sent for appointment ${appointmentId}: ${paymentLinkResult.paymentLink}`,
+      );
+
+      return {
+        success: true,
+        paymentLink: paymentLinkResult.paymentLink,
+        whatsappSent: paymentLinkResult.whatsappSent,
+        amount: paymentLinkResult.amount,
+        expiresAt: paymentLinkResult.expiresAt,
+      };
+    } catch (error: any) {
+      logger.error(
+        `Failed to send payment link for appointment ${appointmentId}:`,
+        error,
+      );
+      throw ApiError.internal("Failed to send payment link: " + error.message);
+    }
+  }
+
+  /**
    * Confirm direct payment (CASH/CARD/UPI) made at front desk
    * Used by admin/front desk staff when patient pays directly
    */
   async confirmDirectPayment(
     appointmentId: number,
     paymentMethod: "CASH" | "CARD" | "UPI",
+    paymentNotes: string | undefined,
     authUser: JwtPayload,
   ): Promise<any> {
     // Verify user is staff (admin or front desk)
@@ -1018,6 +1065,7 @@ Google Meet link has been sent to patient and doctor.
       registrationFee: registrationFee,
       paymentMethod: paymentMethod,
       confirmedByUserId: authUser.userId,
+      paymentNotes: paymentNotes,
     });
 
     // Mark patient as having paid registration fee if this payment included it

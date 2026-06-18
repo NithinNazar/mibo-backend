@@ -109,6 +109,18 @@ router.post(
 );
 
 /**
+ * POST /api/appointments/:id/send-payment-link
+ * Send Razorpay payment link to patient via WhatsApp
+ * Roles: ADMIN, MANAGER, FRONT_DESK, CARE_COORDINATOR
+ */
+router.post(
+  "/:id/send-payment-link",
+  authMiddleware,
+  requireRole("ADMIN", "MANAGER", "FRONT_DESK", "CARE_COORDINATOR"),
+  (req, res, next) => appointmentController.sendPaymentLink(req, res, next),
+);
+
+/**
  * POST /api/appointments/:id/confirm-direct-payment
  * Confirm direct payment (CASH/CARD/UPI) made at front desk
  * Roles: ADMIN, MANAGER, FRONT_DESK, CARE_COORDINATOR

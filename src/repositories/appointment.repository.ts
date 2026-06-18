@@ -17,6 +17,8 @@ interface AppointmentWithDetails extends Appointment {
   clinician_name: string;
   centre_name: string;
   centre_city?: string;
+  payment_method?: string | null;
+  payment_notes?: string | null;
 }
 
 interface AvailabilityRule {
@@ -234,13 +236,16 @@ export class AppointmentRepository {
         u_patient.phone as patient_phone,
         pp.mrn as patient_mrn,
         u_clinician.full_name as clinician_name,
-        c.name as centre_name
+        c.name as centre_name,
+        p.payment_method,
+        p.payment_notes
       FROM appointments a
       JOIN patient_profiles pp ON a.patient_id = pp.id
       JOIN users u_patient ON pp.user_id = u_patient.id
       JOIN clinician_profiles cp ON a.clinician_id = cp.id
       JOIN users u_clinician ON cp.user_id = u_clinician.id
       JOIN centres c ON a.centre_id = c.id
+      LEFT JOIN payments p ON a.id = p.appointment_id
       WHERE ${conditions.join(" AND ")}
       ORDER BY a.scheduled_start_at DESC
     `;
