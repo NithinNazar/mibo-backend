@@ -437,20 +437,44 @@ class BookingService {
    */
   async getDatesWithSlots(
     clinicianId: number,
-    centreId: number,
+    centreId: number | undefined,
     startDate: string,
     endDate: string,
-  ): Promise<{ date: string; slotCount: number }[]> {
+  ): Promise<{ date: string; slotCount: number; firstSlot?: string }[]> {
     try {
-      // Validate clinician and centre
+      // Validate clinician
       const clinician = await bookingRepository.findClinicianById(clinicianId);
       if (!clinician) {
         throw new Error("Clinician not found");
       }
 
-      const centre = await bookingRepository.findCentreById(centreId);
-      if (!centre) {
-        throw new Error("Centre not found");
+      // Get all centres for this clinician if centreId not specified
+      let centreIds: number[] = [];
+      if (centreId) {
+        const centre = await bookingRepository.findCentreById(centreId);
+        if (!centre) {
+          throw new Error("Centre not found");
+        }
+        centreIds = [centreId];
+      } else {
+        // Get all centres where this clinician works
+        const centres =
+          await bookingRepository.getClinicianCentres(clinicianId);
+        centreIds = centres.map((c) => c.centre_id);
+
+        // Fallback: if no availability rules found, use primary centre
+        if (centreIds.length === 0 && clinician.primary_centre_id) {
+          logger.warn(
+            `No availability rules found for clinician ${clinicianId}, using primary centre ${clinician.primary_centre_id}`,
+          );
+          centreIds = [clinician.primary_centre_id];
+        }
+      }
+
+      // If still no centres found, return empty array
+      if (centreIds.length === 0) {
+        logger.warn(`No centres found for clinician ${clinicianId}`);
+        return [];
       }
 
       // Use appointment service to get availability for date range
@@ -458,33 +482,66 @@ class BookingService {
 
       const start = new Date(startDate + "T00:00:00");
       const end = new Date(endDate + "T00:00:00");
-      const datesWithSlots: { date: string; slotCount: number }[] = [];
+      const dateSlotMap = new Map<
+        string,
+        { slotCount: number; firstSlot: string | null }
+      >();
 
       // Iterate through each date in the range
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
 
-        try {
-          const slots = await appointmentService.checkClinicianAvailability(
-            clinicianId,
-            centreId,
-            dateStr,
-          );
+        let totalAvailableForDate = 0;
+        let firstAvailableSlot: string | null = null;
 
-          // Count available slots
-          const availableCount = slots.filter((slot) => slot.available).length;
+        // Check slots across all centres
+        for (const cId of centreIds) {
+          try {
+            const slots = await appointmentService.checkClinicianAvailability(
+              clinicianId,
+              cId,
+              dateStr,
+            );
 
-          if (availableCount > 0) {
-            datesWithSlots.push({
-              date: dateStr,
-              slotCount: availableCount,
-            });
+            // Filter available slots
+            const availableSlots = slots.filter((slot) => slot.available);
+            const availableCount = availableSlots.length;
+            totalAvailableForDate += availableCount;
+
+            // Get the first available slot time if we don't have one yet
+            if (!firstAvailableSlot && availableSlots.length > 0) {
+              firstAvailableSlot = availableSlots[0].startTime;
+            }
+          } catch (error) {
+            // Skip centres/dates with errors (e.g., no schedule defined)
+            logger.debug(
+              `No slots for date ${dateStr} at centre ${cId}:`,
+              error,
+            );
           }
-        } catch (error) {
-          // Skip dates with errors (e.g., no schedule defined)
-          logger.debug(`No slots for date ${dateStr}:`, error);
+        }
+
+        if (totalAvailableForDate > 0) {
+          dateSlotMap.set(dateStr, {
+            slotCount: totalAvailableForDate,
+            firstSlot: firstAvailableSlot,
+          });
         }
       }
+
+      // Convert map to array
+      const datesWithSlots: {
+        date: string;
+        slotCount: number;
+        firstSlot?: string;
+      }[] = [];
+      dateSlotMap.forEach((value, date) => {
+        datesWithSlots.push({
+          date,
+          slotCount: value.slotCount,
+          firstSlot: value.firstSlot || undefined,
+        });
+      });
 
       return datesWithSlots;
     } catch (error: any) {

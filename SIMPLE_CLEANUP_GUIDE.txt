@@ -1,0 +1,168 @@
+====================================================================
+SIMPLE DATABASE CLEANUP GUIDE - FOR PGADMIN
+====================================================================
+
+⚠️ CRITICAL: BACKUP YOUR DATABASE FIRST!
+
+====================================================================
+STEP 1: VERIFY WHAT WILL BE DELETED (DEVELOPMENT DB)
+====================================================================
+
+1. Open pgAdmin
+2. Connect to your DEVELOPMENT database
+3. Open Query Tool (Tools > Query Tool)
+4. Open file: VERIFY_BEFORE_CLEANUP.sql
+5. Click Execute (F5)
+6. Review the output:
+   - Check how many staff users exist (should stay)
+   - Check how many active clinicians exist (should stay)
+   - Check how many patients exist (will be deleted)
+   - Check how many appointments exist (will be deleted)
+
+====================================================================
+STEP 2: RUN CLEANUP ON DEVELOPMENT DB
+====================================================================
+
+1. In the same Query Tool window
+2. Open file: CLEANUP_DEV_AUTO_COMMIT.sql
+3. READ THE WARNINGS at the top
+4. Click Execute (F5)
+5. Watch the output - it will show:
+   - "Deleted appointments: X"
+   - "Deleted payments: X"
+   - "Deleted patients: X"
+   - etc.
+
+⚠️ Changes are IMMEDIATE - no undo!
+
+====================================================================
+STEP 3: VERIFY CLEANUP WORKED
+====================================================================
+
+1. In the same Query Tool window
+2. Open file: VERIFY_AFTER_CLEANUP.sql
+3. Click Execute (F5)
+4. Check the results:
+   - Patient users: 0 ✓
+   - Appointments: 0 ✓
+   - Payments: 0 ✓
+   - Staff users: > 0 ✓
+   - Active clinicians: > 0 ✓
+   - Final status: "DATABASE IS READY FOR PRODUCTION" ✓
+
+====================================================================
+STEP 4: TEST ADMIN PANEL (DEVELOPMENT)
+====================================================================
+
+1. Open admin panel in browser
+2. Try logging in as:
+   - Admin user ✓
+   - Clinician user ✓
+   - Front desk user ✓
+3. Check clinician dashboard:
+   - Can see dashboard ✓
+   - No appointments shown ✓
+   - Availability slots intact ✓
+
+====================================================================
+STEP 5: TEST PATIENT FRONTEND (DEVELOPMENT)
+====================================================================
+
+1. Open patient website in browser
+2. Try creating NEW patient account ✓
+3. Try searching for clinicians ✓
+4. Try booking an appointment ✓
+5. Check if appointment appears in admin panel ✓
+
+====================================================================
+STEP 6: IF EVERYTHING WORKS, REPEAT ON PRODUCTION
+====================================================================
+
+⚠️⚠️⚠️ ONLY AFTER TESTING ON DEVELOPMENT! ⚠️⚠️⚠️
+
+1. BACKUP PRODUCTION DATABASE FIRST!
+2. Connect to PRODUCTION database in pgAdmin
+3. Run: VERIFY_BEFORE_CLEANUP.sql
+4. Review output carefully
+5. Run: CLEANUP_DEV_AUTO_COMMIT.sql (same script)
+6. Run: VERIFY_AFTER_CLEANUP.sql
+7. Test admin panel login
+8. Test patient registration
+
+====================================================================
+FILES YOU NEED:
+====================================================================
+
+1. VERIFY_BEFORE_CLEANUP.sql - Check what exists
+2. CLEANUP_DEV_AUTO_COMMIT.sql - Delete test data (auto-commits)
+3. VERIFY_AFTER_CLEANUP.sql - Verify cleanup worked
+
+====================================================================
+WHAT GETS DELETED:
+====================================================================
+
+✗ All patient users and profiles
+✗ All appointments
+✗ All payments
+✗ All blocked slots
+✗ All slot exceptions
+✗ All inactive clinicians
+
+====================================================================
+WHAT STAYS:
+====================================================================
+
+✓ All staff users (Admin, Front Desk, etc.)
+✓ All active clinicians
+✓ All availability rules
+✓ All user roles and permissions
+✓ All login credentials
+
+====================================================================
+IF SOMETHING GOES WRONG:
+====================================================================
+
+1. Restore from backup:
+   - Right-click database in pgAdmin
+   - Click "Restore"
+   - Select your backup file
+
+2. Contact support with:
+   - Error message
+   - Screenshot of output
+   - Which step you were on
+
+====================================================================
+QUICK CHECKLIST:
+====================================================================
+
+Before cleanup:
+□ Backup database
+□ Run VERIFY_BEFORE_CLEANUP.sql
+□ Review counts
+
+Run cleanup:
+□ Run CLEANUP_DEV_AUTO_COMMIT.sql on DEV first
+□ Watch output for errors
+
+After cleanup:
+□ Run VERIFY_AFTER_CLEANUP.sql
+□ Test admin logins
+□ Test patient registration
+□ Test appointment booking
+
+Repeat on production:
+□ Backup production database
+□ Run same 3 scripts
+□ Test everything again
+
+====================================================================
+SUPPORT:
+====================================================================
+
+If you need help, save:
+- All query outputs
+- Any error messages
+- Screenshots of pgAdmin
+
+====================================================================

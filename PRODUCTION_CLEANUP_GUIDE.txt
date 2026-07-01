@@ -1,0 +1,310 @@
+====================================================================
+PRODUCTION DATABASE CLEANUP GUIDE
+====================================================================
+
+⚠️⚠️⚠️ CRITICAL: BACKUP PRODUCTION DATABASE FIRST! ⚠️⚠️⚠️
+
+This guide was created after successfully cleaning the development 
+database. All lessons learned have been incorporated.
+
+====================================================================
+LESSONS LEARNED FROM DEVELOPMENT CLEANUP:
+====================================================================
+
+1. ✓ Must delete appointments FIRST (they reference patient_profiles)
+2. ✓ Must delete notifications BEFORE users (critical - this was missed initially!)
+3. ✓ Must delete auth_sessions BEFORE users
+4. ✓ Correct order prevents ALL foreign key constraint errors
+5. ✓ user_roles table uses role_id (FK to roles), not a 'role' column
+6. ✓ All scripts are auto-commit (no manual COMMIT needed)
+
+====================================================================
+STEP 1: BACKUP PRODUCTION DATABASE
+====================================================================
+
+⚠️ DO THIS FIRST! MANDATORY!
+
+In pgAdmin:
+1. Right-click your production database
+2. Click "Backup..."
+3. Choose a filename: mibo_production_backup_2026-06-25.sql
+4. Save it to a safe location
+5. Verify the backup file was created
+
+====================================================================
+STEP 2: VERIFY WHAT WILL BE DELETED (PRODUCTION)
+====================================================================
+
+1. Open pgAdmin
+2. Connect to your PRODUCTION database (AWS RDS)
+3. Open Query Tool (Tools > Query Tool)
+4. Open file: PRODUCTION_VERIFY_BEFORE_CLEANUP.sql
+5. Click Execute (F5)
+6. Review the output carefully:
+
+   WHAT WILL BE DELETED:
+   - Patient users and profiles
+   - Appointments
+   - Payments
+   - Blocked slots and exceptions
+   - Inactive clinicians
+   - Notifications
+   - Auth sessions
+
+   WHAT WILL BE KEPT:
+   - Staff users (Admin, Front Desk, Managers, Care Coordinators)
+   - Active clinicians
+   - Availability rules
+   - User roles and permissions
+
+7. Take a screenshot or save the output for reference
+
+====================================================================
+STEP 3: RUN CLEANUP ON PRODUCTION
+====================================================================
+
+⚠️ ONLY AFTER BACKING UP AND VERIFYING!
+
+1. In the same Query Tool window (connected to PRODUCTION)
+2. Open file: PRODUCTION_CLEANUP.sql
+3. READ THE WARNINGS at the top carefully
+4. Take a deep breath - this is the point of no return
+5. Click Execute (F5)
+6. Watch the output - you should see:
+   - "Deleted appointments: X"
+   - "Deleted payments: X"
+   - "Deleted notifications for patients: X" (critical!)
+   - "Deleted patient users: X"
+   - "Deleted inactive clinicians: X"
+   - Final verification showing 0 counts
+
+⚠️ If you see ANY errors:
+   - STOP immediately
+   - Save the error message
+   - Contact support
+   - DO NOT run the script again
+
+✓ If everything completes successfully:
+   - All notices appear without errors
+   - Proceed to Step 4
+
+====================================================================
+STEP 4: VERIFY CLEANUP WORKED
+====================================================================
+
+1. In the same Query Tool window
+2. Open file: PRODUCTION_VERIFY_AFTER_CLEANUP.sql
+3. Click Execute (F5)
+4. Check the results - ALL MUST BE CORRECT:
+
+   MUST BE 0 (DELETED):
+   ✓ Patient users: 0
+   ✓ Patient profiles: 0
+   ✓ Appointments: 0
+   ✓ Payments: 0
+   ✓ Inactive clinicians: 0
+   ✓ Blocked slots: 0
+   ✓ Slot exceptions: 0
+
+   MUST HAVE COUNTS (PRESERVED):
+   ✓ Staff users: > 0
+   ✓ Active clinicians: > 0
+   ✓ Availability rules: > 0
+   ✓ User roles: > 0
+
+   FINAL STATUS:
+   ✓✓✓ "PRODUCTION DATABASE IS READY FOR REAL PATIENTS" ✓✓✓
+
+5. Take a screenshot of the final status
+6. Save the complete verification output
+
+====================================================================
+STEP 5: TEST ADMIN PANEL (PRODUCTION)
+====================================================================
+
+1. Open admin panel in browser (production URL)
+2. Clear browser cache (Ctrl+Shift+Delete)
+3. Test logging in as:
+   ✓ Admin user (your existing credentials)
+   ✓ Clinician user (existing clinician)
+   ✓ Front desk user (if applicable)
+
+4. Check clinician dashboard:
+   ✓ Can see dashboard
+   ✓ No appointments shown (should be empty)
+   ✓ Availability slots intact
+   ✓ Can view schedule
+
+5. Check all appointments page:
+   ✓ Empty (no appointments)
+   ✓ Search/filter works
+   ✓ No errors
+
+====================================================================
+STEP 6: TEST PATIENT FRONTEND (PRODUCTION)
+====================================================================
+
+1. Open patient website in browser (production URL)
+2. Use incognito/private browsing mode
+3. Test the complete flow:
+
+   A. Patient Registration:
+      ✓ Can create new account
+      ✓ Receives OTP
+      ✓ Can verify phone number
+      ✓ Profile creation works
+
+   B. Browse Clinicians:
+      ✓ Can see active clinicians
+      ✓ Can filter by location
+      ✓ Can filter by price
+      ✓ Can filter by expertise
+      ✓ Clinician cards display correctly
+
+   C. Book Appointment:
+      ✓ Can select clinician
+      ✓ Can see available slots
+      ✓ Can book appointment
+      ✓ Payment flow works
+      ✓ Confirmation received
+
+   D. View in Admin Panel:
+      ✓ Appointment appears in admin panel
+      ✓ Payment status correct
+      ✓ Patient details visible
+
+====================================================================
+STEP 7: MONITOR PRODUCTION
+====================================================================
+
+For the next 24-48 hours:
+
+1. Monitor application logs for errors
+2. Check backend server logs
+3. Watch for any user-reported issues
+4. Verify all booking flows work correctly
+5. Check payment gateway integration
+6. Monitor database performance
+
+====================================================================
+FILES YOU NEED (IN ORDER):
+====================================================================
+
+1. PRODUCTION_VERIFY_BEFORE_CLEANUP.sql - Check before cleanup
+2. PRODUCTION_CLEANUP.sql - Delete test data (auto-commits)
+3. PRODUCTION_VERIFY_AFTER_CLEANUP.sql - Verify cleanup worked
+
+====================================================================
+WHAT GETS DELETED:
+====================================================================
+
+✗ All patient users and profiles (all test data)
+✗ All appointments (past and future)
+✗ All payments and transactions
+✗ All blocked slots
+✗ All slot exceptions
+✗ All inactive clinicians
+✗ All notifications (patient-related)
+✗ All auth sessions (will regenerate on login)
+
+====================================================================
+WHAT STAYS INTACT:
+====================================================================
+
+✓ All staff users (Admin, Front Desk, Managers, Care Coordinators)
+✓ All active clinicians (with their profiles)
+✓ All availability rules and schedules
+✓ All user roles and permissions
+✓ All login credentials (staff can still log in)
+✓ All centre assignments
+✓ Database structure and tables
+
+====================================================================
+IF SOMETHING GOES WRONG:
+====================================================================
+
+1. RESTORE FROM BACKUP IMMEDIATELY:
+   - Right-click database in pgAdmin
+   - Click "Restore"
+   - Select your backup file: mibo_production_backup_2026-06-25.sql
+   - Click Restore
+
+2. Contact support with:
+   - Error message (exact text)
+   - Screenshot of pgAdmin output
+   - Which step you were on
+   - Backup file location
+
+3. DO NOT:
+   - Run the cleanup script again without investigating
+   - Delete the backup file
+   - Make manual database changes
+   - Panic (backup is there!)
+
+====================================================================
+SUCCESS CHECKLIST:
+====================================================================
+
+Before cleanup:
+□ Production database backed up
+□ Backup file verified and saved
+□ PRODUCTION_VERIFY_BEFORE_CLEANUP.sql executed
+□ Review completed - know what will be deleted/kept
+
+Run cleanup:
+□ PRODUCTION_CLEANUP.sql executed successfully
+□ No errors in output
+□ All deletion counts shown
+
+After cleanup:
+□ PRODUCTION_VERIFY_AFTER_CLEANUP.sql executed
+□ All patient data = 0
+□ All staff data preserved
+□ Final status: "READY FOR REAL PATIENTS"
+
+Testing:
+□ Admin login works
+□ Clinician dashboard works
+□ Patient registration works (NEW account)
+□ Appointment booking works
+□ Payment flow works
+□ Appointment visible in admin panel
+
+Production ready:
+□ All tests passed
+□ No errors in logs
+□ Team notified
+□ Monitoring in place
+
+====================================================================
+TIMELINE:
+====================================================================
+
+1. Backup: 5-10 minutes
+2. Verify before: 2 minutes
+3. Run cleanup: 1-2 minutes
+4. Verify after: 2 minutes
+5. Test admin: 10 minutes
+6. Test patient flow: 15 minutes
+
+Total: ~35-45 minutes
+
+====================================================================
+SUPPORT CONTACTS:
+====================================================================
+
+If you need help:
+- Save all query outputs
+- Take screenshots of errors
+- Note which step failed
+- Have backup file location ready
+
+====================================================================
+
+This guide incorporates all lessons learned from successfully 
+cleaning the development database. The production cleanup should 
+work smoothly if you follow these steps carefully.
+
+Good luck! 🚀
+
+====================================================================

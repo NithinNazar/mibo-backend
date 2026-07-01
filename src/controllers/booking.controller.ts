@@ -254,18 +254,18 @@ class BookingController {
     try {
       const { clinicianId, centreId, startDate, endDate } = req.query;
 
-      if (!clinicianId || !centreId || !startDate || !endDate) {
+      if (!clinicianId || !startDate || !endDate) {
         res.status(400).json({
           success: false,
           message:
-            "Missing required parameters: clinicianId, centreId, startDate, endDate",
+            "Missing required parameters: clinicianId, startDate, endDate",
         });
         return;
       }
 
       const dates = await bookingService.getDatesWithSlots(
         parseInt(clinicianId as string),
-        parseInt(centreId as string),
+        centreId ? parseInt(centreId as string) : undefined,
         startDate as string,
         endDate as string,
       );

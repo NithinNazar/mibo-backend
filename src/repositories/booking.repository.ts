@@ -319,6 +319,21 @@ class BookingRepository {
   }
 
   /**
+   * Get all centres where a clinician has availability rules
+   */
+  async getClinicianCentres(
+    clinicianId: number,
+  ): Promise<{ centre_id: number }[]> {
+    return await db.any(
+      `SELECT DISTINCT centre_id 
+       FROM clinician_availability_rules 
+       WHERE clinician_id = $1 AND is_active = true
+       ORDER BY centre_id`,
+      [clinicianId],
+    );
+  }
+
+  /**
    * Update appointment with Google Meet link and event ID
    */
   async updateAppointmentGoogleMeet(
