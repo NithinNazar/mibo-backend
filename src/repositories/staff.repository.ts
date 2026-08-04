@@ -36,6 +36,7 @@ interface CreateClinicianData {
   consultation_modes?: string[];
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  profile_video_url?: string;
   qualification?: string[]; // Changed to array
   expertise?: string[];
   languages?: string[];
@@ -576,9 +577,10 @@ export class StaffRepository {
           qualification,
           expertise,
           languages,
+          profile_video_url,
           is_active
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, TRUE)
         RETURNING *;
       `;
 
@@ -608,6 +610,7 @@ export class StaffRepository {
         qualification,
         expertise,
         languages,
+        data.profile_video_url || null,
       ]);
 
       // Update staff profile with profile picture if provided
@@ -734,6 +737,12 @@ export class StaffRepository {
       if (data.languages !== undefined) {
         fields.push(`languages = $${paramIndex}`);
         values.push(JSON.stringify(data.languages));
+        paramIndex++;
+      }
+
+      if (data.profile_video_url !== undefined) {
+        fields.push(`profile_video_url = $${paramIndex}`);
+        values.push(data.profile_video_url || null);
         paramIndex++;
       }
 

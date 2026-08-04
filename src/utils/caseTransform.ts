@@ -102,6 +102,9 @@ export function transformClinicianResponse(clinician: any): any {
   if (clinician.profile_picture_url !== undefined) {
     transformed.profilePictureUrl = clinician.profile_picture_url;
   }
+  if (clinician.profile_video_url !== undefined) {
+    transformed.profileVideoUrl = clinician.profile_video_url;
+  }
 
   // Ensure array fields are properly handled
   if (clinician.specialization !== undefined) {
