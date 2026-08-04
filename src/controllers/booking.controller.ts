@@ -284,6 +284,49 @@ class BookingController {
   }
 
   /**
+   * Get next immediate available slot for a clinician
+   * GET /api/booking/next-available-slot
+   */
+  async getNextAvailableSlot(req: Request, res: Response): Promise<void> {
+    try {
+      const { clinicianId, centreId } = req.query;
+
+      if (!clinicianId) {
+        res.status(400).json({
+          success: false,
+          message: "Missing required parameter: clinicianId",
+        });
+        return;
+      }
+
+      const nextSlot = await bookingService.getNextAvailableSlot(
+        parseInt(clinicianId as string),
+        centreId ? parseInt(centreId as string) : undefined,
+      );
+
+      if (!nextSlot) {
+        res.json({
+          success: true,
+          data: null,
+          message: "No available slots found in the next 30 days",
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: nextSlot,
+      });
+    } catch (error: any) {
+      logger.error("Error getting next available slot:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to get next available slot",
+      });
+    }
+  }
+
+  /**
    * Get clinician slots within a date range (for admin panel)
    * GET /api/booking/clinician-slots
    */

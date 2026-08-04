@@ -37,6 +37,16 @@ router.get(
 );
 
 /**
+ * GET /api/booking/next-available-slot
+ * Get next immediate available slot for a clinician
+ * Public endpoint - MUST be before /:id route
+ */
+router.get(
+  "/next-available-slot",
+  bookingController.getNextAvailableSlot.bind(bookingController),
+);
+
+/**
  * GET /api/booking/clinician-slots
  * Get clinician slots within a date range (for admin panel)
  * Public endpoint - MUST be before /:id route

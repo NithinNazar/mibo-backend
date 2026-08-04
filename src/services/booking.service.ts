@@ -551,6 +551,98 @@ class BookingService {
   }
 
   /**
+   * Get the next immediate available slot for a clinician
+   * Returns the next available date, day, and time slot
+   * Format: { date: "2026-08-15", day: "Friday", time: "10:30 AM", fullText: "15 August, Friday. 10:30 AM" }
+   */
+  async getNextAvailableSlot(
+    clinicianId: number,
+    centreId?: number,
+  ): Promise<{
+    date: string;
+    day: string;
+    time: string;
+    fullText: string;
+  } | null> {
+    try {
+      // Search for next 30 days
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 30);
+
+      const startDateStr = today.toISOString().split("T")[0];
+      const endDateStr = endDate.toISOString().split("T")[0];
+
+      // Get dates with available slots
+      const datesWithSlots = await this.getDatesWithSlots(
+        clinicianId,
+        centreId,
+        startDateStr,
+        endDateStr,
+      );
+
+      if (datesWithSlots.length === 0) {
+        return null; // No available slots found
+      }
+
+      // Get the first date (already sorted chronologically)
+      const nextAvailable = datesWithSlots[0];
+
+      // Parse the date
+      const slotDate = new Date(nextAvailable.date + "T00:00:00");
+
+      // Get day name
+      const dayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      const dayName = dayNames[slotDate.getDay()];
+
+      // Get month name
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const monthName = monthNames[slotDate.getMonth()];
+
+      // Format time (convert 24h to 12h format)
+      const time24 = nextAvailable.firstSlot || "09:00";
+      const [hours, minutes] = time24.split(":").map(Number);
+      const period = hours >= 12 ? "PM" : "AM";
+      const hours12 = hours % 12 || 12;
+      const time12 = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
+
+      // Format: "15 August, Friday. 10:30 AM"
+      const fullText = `${slotDate.getDate()} ${monthName}, ${dayName}. ${time12}`;
+
+      return {
+        date: nextAvailable.date,
+        day: dayName,
+        time: time12,
+        fullText,
+      };
+    } catch (error: any) {
+      logger.error("Error getting next available slot:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get clinician slots within a date range (for admin panel)
    * Returns all slots (available and booked) for the specified date range
    */
