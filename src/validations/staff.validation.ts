@@ -35,6 +35,7 @@ export interface CreateClinicianDto {
   consultation_modes?: string[]; // e.g., ['IN_PERSON', 'ONLINE']
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  profile_video_url?: string;
   expertise?: string[];
 }
 
@@ -50,6 +51,7 @@ export interface UpdateClinicianDto {
   consultation_modes?: string[];
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
+  profile_video_url?: string;
   qualification?: string[]; // Changed to array
   expertise?: string[];
   languages?: string[];
@@ -328,6 +330,10 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.profile_picture_url = String(body.profile_picture_url).trim();
   }
 
+  if (body.profile_video_url) {
+    dto.profile_video_url = String(body.profile_video_url).trim();
+  }
+
   // Validate expertise as array (optional)
   if (body.expertise) {
     if (!Array.isArray(body.expertise)) {
@@ -430,6 +436,13 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
 
   if (body.profilePictureUrl !== undefined) {
     dto.profile_picture_url = String(body.profilePictureUrl).trim();
+  }
+
+  if (body.profileVideoUrl !== undefined) {
+    const videoUrl = String(body.profileVideoUrl).trim();
+    if (videoUrl) {
+      dto.profile_video_url = videoUrl;
+    }
   }
 
   // Validate qualification as array

@@ -492,6 +492,7 @@ export class StaffRepository {
         cp.qualification,
         cp.expertise,
         cp.languages,
+        cp.profile_video_url,
         cp.is_active,
         u.full_name,
         u.phone,
