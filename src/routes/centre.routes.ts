@@ -12,18 +12,21 @@ const router = Router();
 
 /**
  * GET /api/centres
- * Get all centres (all authenticated users)
+ * Get all centres (PUBLIC - no authentication required)
  * Query params: ?city=bangalore
+ * This endpoint is public because centre information (locations, addresses)
+ * needs to be accessible to non-logged-in users browsing the experts page
  */
-router.get("/", authMiddleware, (req, res, next) =>
+router.get("/", (req, res, next) =>
   centreController.getCentres(req, res, next),
 );
 
 /**
  * GET /api/centres/:id
- * Get centre by ID (all authenticated users)
+ * Get centre by ID (PUBLIC - no authentication required)
+ * This endpoint is public for the same reason as GET /centres
  */
-router.get("/:id", authMiddleware, (req, res, next) =>
+router.get("/:id", (req, res, next) =>
   centreController.getCentreById(req, res, next),
 );
 
