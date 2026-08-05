@@ -2659,3 +2659,17 @@
 {"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-05 15:44:17"}
 {"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-05 15:44:17"}
 {"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-05 15:44:17"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 16:26:44"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 16:26:48"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 16:26:49"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-05 16:26:49"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-05 16:26:51"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-05 16:26:51"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-05 16:26:51"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 17:52:56"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 17:53:00"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 17:53:01"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-05 17:53:01"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-05 17:53:03"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-05 17:53:03"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-05 17:53:03"}
