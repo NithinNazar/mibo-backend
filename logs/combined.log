@@ -2688,3 +2688,42 @@
 {"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-05 21:42:22"}
 {"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-05 21:42:22"}
 {"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-08-05 21:44:31"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 22:57:26"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 22:57:29"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-05 22:57:30"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-05 22:57:30"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-05 22:57:31"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-05 22:57:31"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-05 22:57:31"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 15:24:38"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 15:24:42"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 15:24:43"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-06 15:24:43"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-06 15:24:45"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-06 15:24:45"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-06 15:24:45"}
+{"level":"info","message":"✅ WhatsApp OTP sent to 919048810697","service":"mibo-backend","timestamp":"2026-08-06 15:25:57"}
+{"level":"info","message":"✅ OTP sent to 919048810697 via WhatsApp","service":"mibo-backend","timestamp":"2026-08-06 15:25:57"}
+{"level":"info","message":"✅ New patient account created: 919048810697","service":"mibo-backend","timestamp":"2026-08-06 15:26:51"}
+{"level":"info","message":"✅ Patient logged in: 919048810697","service":"mibo-backend","timestamp":"2026-08-06 15:26:51"}
+{"level":"info","message":"✅ Appointment created: ID 104 for patient 44","service":"mibo-backend","timestamp":"2026-08-06 15:27:06"}
+{"level":"info","message":"💰 Payment calculation for appointment 104: Consultation Fee: ₹2100, Registration Fee: ₹100, Total: ₹2200","service":"mibo-backend","timestamp":"2026-08-06 15:27:06"}
+{"level":"info","message":"Razorpay order created: order_TMRV0EgI6Uzrs0","service":"mibo-backend","timestamp":"2026-08-06 15:27:06"}
+{"level":"info","message":"✅ Payment order created: order_TMRV0EgI6Uzrs0 for appointment 104","service":"mibo-backend","timestamp":"2026-08-06 15:27:06"}
+{"level":"error","message":"Error creating appointment: This time slot is not available. Please choose a different time.","service":"mibo-backend","stack":"Error: This time slot is not available. Please choose a different time.\n    at BookingService.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:115:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingController.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:59:22)","timestamp":"2026-08-06 15:27:12"}
+{"level":"error","message":"Error creating appointment: This time slot is not available. Please choose a different time.","service":"mibo-backend","stack":"Error: This time slot is not available. Please choose a different time.\n    at BookingService.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:115:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingController.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:59:22)","timestamp":"2026-08-06 15:27:12"}
+{"level":"error","message":"Error creating appointment: This time slot is not available. Please choose a different time.","service":"mibo-backend","stack":"Error: This time slot is not available. Please choose a different time.\n    at BookingService.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:115:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingController.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:59:22)","timestamp":"2026-08-06 15:27:20"}
+{"level":"error","message":"Error creating appointment: This time slot is not available. Please choose a different time.","service":"mibo-backend","stack":"Error: This time slot is not available. Please choose a different time.\n    at BookingService.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:115:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingController.createAppointment (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:59:22)","timestamp":"2026-08-06 15:27:20"}
+{"level":"info","message":"✅ Appointment created: ID 105 for patient 44","service":"mibo-backend","timestamp":"2026-08-06 15:27:36"}
+{"level":"info","message":"💰 Payment calculation for appointment 105: Consultation Fee: ₹2100, Registration Fee: ₹100, Total: ₹2200","service":"mibo-backend","timestamp":"2026-08-06 15:27:36"}
+{"level":"info","message":"Razorpay order created: order_TMRVWyL2LcnlX3","service":"mibo-backend","timestamp":"2026-08-06 15:27:36"}
+{"level":"info","message":"✅ Payment order created: order_TMRVWyL2LcnlX3 for appointment 105","service":"mibo-backend","timestamp":"2026-08-06 15:27:36"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-08-06 15:59:59"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 16:00:24"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 16:00:27"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-06 16:00:28"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-06 16:00:28"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-06 16:00:29"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-06 16:00:29"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-06 16:00:29"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-08-06 16:04:41"}

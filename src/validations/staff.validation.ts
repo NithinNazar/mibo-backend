@@ -36,6 +36,7 @@ export interface CreateClinicianDto {
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
   profile_video_url?: string;
+  gender?: string; // MALE, FEMALE, OTHER
   expertise?: string[];
 }
 
@@ -52,6 +53,7 @@ export interface UpdateClinicianDto {
   default_consultation_duration_minutes?: number;
   profile_picture_url?: string;
   profile_video_url?: string;
+  gender?: string; // MALE, FEMALE, OTHER
   qualification?: string[]; // Changed to array
   expertise?: string[];
   languages?: string[];
@@ -334,6 +336,14 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
     dto.profile_video_url = String(body.profile_video_url).trim();
   }
 
+  if (body.gender) {
+    const gender = String(body.gender).trim().toUpperCase();
+    if (!["MALE", "FEMALE", "OTHER"].includes(gender)) {
+      throw ApiError.badRequest("Gender must be MALE, FEMALE, or OTHER");
+    }
+    dto.gender = gender;
+  }
+
   // Validate expertise as array (optional)
   if (body.expertise) {
     if (!Array.isArray(body.expertise)) {
@@ -443,6 +453,14 @@ export function validateUpdateClinician(body: any): UpdateClinicianDto {
     if (videoUrl) {
       dto.profile_video_url = videoUrl;
     }
+  }
+
+  if (body.gender !== undefined) {
+    const gender = String(body.gender).trim().toUpperCase();
+    if (gender && !["MALE", "FEMALE", "OTHER"].includes(gender)) {
+      throw ApiError.badRequest("Gender must be MALE, FEMALE, or OTHER");
+    }
+    dto.gender = gender || undefined;
   }
 
   // Validate qualification as array
