@@ -41,6 +41,7 @@ export interface CreateClinicianDto {
 }
 
 export interface UpdateClinicianDto {
+  full_name?: string; // Allow updating clinician's full name
   phone?: string;
   email?: string;
   primary_centre_id?: number;
@@ -357,6 +358,15 @@ export function validateCreateClinician(body: any): CreateClinicianDto {
 
 export function validateUpdateClinician(body: any): UpdateClinicianDto {
   const dto: UpdateClinicianDto = {};
+
+  // Validate full_name if provided
+  if (body.fullName !== undefined) {
+    const fullName = String(body.fullName).trim();
+    if (fullName && fullName.length < 2) {
+      throw ApiError.badRequest("Full name must be at least 2 characters");
+    }
+    dto.full_name = fullName || undefined;
+  }
 
   // Validate phone if provided
   if (body.phone !== undefined) {

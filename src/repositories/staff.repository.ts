@@ -25,6 +25,7 @@ interface CreateStaffData {
 
 interface CreateClinicianData {
   user_id: number;
+  full_name?: string; // Allow updating clinician's full name
   phone?: string;
   email?: string;
   primary_centre_id: number;
@@ -646,10 +647,16 @@ export class StaffRepository {
         [clinicianId],
       );
 
-      // Update user fields (phone, email) if provided
+      // Update user fields (full_name, phone, email) if provided
       const userFields: string[] = [];
       const userValues: any[] = [];
       let userParamIndex = 1;
+
+      if (data.full_name !== undefined) {
+        userFields.push(`full_name = $${userParamIndex}`);
+        userValues.push(data.full_name);
+        userParamIndex++;
+      }
 
       if (data.phone !== undefined) {
         userFields.push(`phone = $${userParamIndex}`);
