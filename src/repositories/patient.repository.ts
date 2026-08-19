@@ -611,33 +611,33 @@ class PatientRepository {
         (
           SELECT COUNT(*) 
           FROM appointments a 
-          WHERE a.patient_id = u.id 
+          WHERE a.patient_id = pp.id 
           AND a.scheduled_start_at > NOW()
           AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
         ) as upcoming_appointments_count,
         (
           SELECT COUNT(*) 
           FROM appointments a 
-          WHERE a.patient_id = u.id 
+          WHERE a.patient_id = pp.id 
           AND a.scheduled_start_at <= NOW()
         ) as past_appointments_count,
         (
           SELECT json_agg(
             json_build_object(
               'id', a.id,
-              'scheduled_start_at', a.scheduled_start_at,
-              'scheduled_end_at', a.scheduled_end_at,
-              'appointment_type', a.appointment_type,
+              'scheduledStartAt', a.scheduled_start_at,
+              'scheduledEndAt', a.scheduled_end_at,
+              'appointmentType', a.appointment_type,
               'status', a.status,
-              'clinician_name', cu.full_name,
-              'centre_name', c.name
+              'clinicianName', cu.full_name,
+              'centreName', c.name
             ) ORDER BY a.scheduled_start_at ASC
           )
           FROM appointments a
           JOIN clinician_profiles cp ON a.clinician_id = cp.id
           JOIN users cu ON cp.user_id = cu.id
           JOIN centres c ON a.centre_id = c.id
-          WHERE a.patient_id = u.id 
+          WHERE a.patient_id = pp.id 
           AND a.scheduled_start_at > NOW()
           AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
           LIMIT 5
