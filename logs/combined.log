@@ -2904,3 +2904,244 @@
 {"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-11 15:41:45"}
 {"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-11 15:41:45"}
 {"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-11 15:41:45"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 18:38:45"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 18:39:11"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 18:39:15"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-12 18:39:16"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-12 18:39:20"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-12 18:39:20"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-12 18:39:20"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:03"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:03"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:03"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 18:41:04"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:05"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:06"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:07"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:08"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:28"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:09:29"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:54"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:54"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:54"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:23:54"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:23:55"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 19:33:50"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 19:34:17"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 19:34:21"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-12 19:34:22"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-12 19:34:26"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-12 19:34:26"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-12 19:34:26"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:07"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:07"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:07"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:08"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:09"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:35:14"}
+{"level":"info","message":"✅ WhatsApp OTP sent to 919048810697","service":"mibo-backend","timestamp":"2026-08-12 19:35:40"}
+{"level":"info","message":"✅ OTP sent to 919048810697 via WhatsApp","service":"mibo-backend","timestamp":"2026-08-12 19:35:40"}
+{"level":"info","message":"✅ Patient logged in: 919048810697","service":"mibo-backend","timestamp":"2026-08-12 19:36:08"}
+{"level":"info","message":"✅ Appointment created: ID 108 for patient 44","service":"mibo-backend","timestamp":"2026-08-12 19:36:15"}
+{"level":"info","message":"💰 Payment calculation for appointment 108: Consultation Fee: ₹9999, Registration Fee: ₹100, Total: ₹10099","service":"mibo-backend","timestamp":"2026-08-12 19:36:15"}
+{"level":"info","message":"Razorpay order created: order_TOswwdwjc3f6mS","service":"mibo-backend","timestamp":"2026-08-12 19:36:15"}
+{"level":"info","message":"✅ Payment order created: order_TOswwdwjc3f6mS for appointment 108","service":"mibo-backend","timestamp":"2026-08-12 19:36:15"}
+{"level":"info","message":"⚠️ Payment failure recorded for order order_TOswwdwjc3f6mS — appointment 108 cancelled and slot freed","service":"mibo-backend","timestamp":"2026-08-12 19:36:25"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:30"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:30"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:30"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:30"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:31"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:36:35"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:12"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:13"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 19:37:13"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 19:37:13"}
+{"level":"error","message":"Error getting dates with slots: Clinician not found","service":"mibo-backend","stack":"Error: Clinician not found\n    at BookingService.getDatesWithSlots (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:448:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingService.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:577:30)\n    at BookingController.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:302:24)","timestamp":"2026-08-12 19:40:58"}
+{"level":"error","message":"Error getting next available slot: Clinician not found","service":"mibo-backend","stack":"Error: Clinician not found\n    at BookingService.getDatesWithSlots (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:448:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingService.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:577:30)\n    at BookingController.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:302:24)","timestamp":"2026-08-12 19:40:58"}
+{"level":"error","message":"Error getting next available slot: Clinician not found","service":"mibo-backend","stack":"Error: Clinician not found\n    at BookingService.getDatesWithSlots (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:448:15)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at BookingService.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\services\\booking.service.ts:577:30)\n    at BookingController.getNextAvailableSlot (C:\\Users\\nithi\\Desktop\\backend_mibo\\backend\\src\\controllers\\booking.controller.ts:302:24)","timestamp":"2026-08-12 19:40:58"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"mibo-backend","timestamp":"2026-08-12 19:42:16"}
+{"level":"info","message":"✓ Gallabox initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 22:53:20"}
+{"level":"info","message":"✓ Google Meet initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 22:53:48"}
+{"level":"info","message":"✓ Razorpay initialized successfully","service":"mibo-backend","timestamp":"2026-08-12 22:53:52"}
+{"level":"warn","message":"⚠ Email service not configured. Add EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASSWORD to enable email notifications.","service":"mibo-backend","timestamp":"2026-08-12 22:53:53"}
+{"level":"info","message":"🚀 Server running on port 5000","service":"mibo-backend","timestamp":"2026-08-12 22:53:57"}
+{"level":"info","message":"📝 Environment: production","service":"mibo-backend","timestamp":"2026-08-12 22:53:57"}
+{"level":"info","message":"🌐 CORS Origin: https://mibo.care,https://www.mibo.care","service":"mibo-backend","timestamp":"2026-08-12 22:53:57"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:43"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 22:54:44"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:46"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:46"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:47"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:48"}
+{"level":"warn","message":"No availability rules found for clinician 60, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:49"}
+{"level":"warn","message":"No availability rules found for clinician 57, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:49"}
+{"level":"warn","message":"No availability rules found for clinician 56, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:49"}
+{"level":"warn","message":"No availability rules found for clinician 66, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:49"}
+{"level":"warn","message":"No availability rules found for clinician 61, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:49"}
+{"level":"warn","message":"No availability rules found for clinician 62, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:50"}
+{"level":"warn","message":"No availability rules found for clinician 67, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:50"}
+{"level":"warn","message":"No availability rules found for clinician 63, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:50"}
+{"level":"warn","message":"No availability rules found for clinician 65, using primary centre 2","service":"mibo-backend","timestamp":"2026-08-12 23:03:50"}
+{"level":"warn","message":"No availability rules found for clinician 69, using primary centre 1","service":"mibo-backend","timestamp":"2026-08-12 23:03:50"}
+{"level":"info","message":"✅ WhatsApp OTP sent to 919048810697","service":"mibo-backend","timestamp":"2026-08-12 23:04:17"}
+{"level":"info","message":"✅ OTP sent to 919048810697 via WhatsApp","service":"mibo-backend","timestamp":"2026-08-12 23:04:17"}
+{"level":"info","message":"✅ Patient logged in: 919048810697","service":"mibo-backend","timestamp":"2026-08-12 23:04:34"}
+{"level":"info","message":"✅ Appointment created: ID 109 for patient 44","service":"mibo-backend","timestamp":"2026-08-12 23:04:40"}
+{"level":"info","message":"💰 Payment calculation for appointment 109: Consultation Fee: ₹9999, Registration Fee: ₹100, Total: ₹10099","service":"mibo-backend","timestamp":"2026-08-12 23:04:40"}
+{"level":"info","message":"Razorpay order created: order_TOwV6tbHbf4W7C","service":"mibo-backend","timestamp":"2026-08-12 23:04:41"}
+{"level":"info","message":"✅ Payment order created: order_TOwV6tbHbf4W7C for appointment 109","service":"mibo-backend","timestamp":"2026-08-12 23:04:41"}
+{"level":"info","message":"⚠️ Payment failure recorded for order order_TOwV6tbHbf4W7C — appointment 109 cancelled and slot freed","service":"mibo-backend","timestamp":"2026-08-12 23:04:48"}
