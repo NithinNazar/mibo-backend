@@ -115,6 +115,32 @@ class PaymentRepository {
   }
 
   /**
+   * Update payment status to success by payment_link_id
+   * Used specifically for admin booking flow when webhook fires with payment_link.paid
+   */
+  async updatePaymentSuccessByPaymentLinkId(
+    paymentLinkId: string,
+    razorpayPaymentId: string,
+    paymentMethodDetails?: any,
+  ): Promise<Payment | null> {
+    const result = await db.oneOrNone(
+      `UPDATE payments
+       SET payment_id = $1,
+           status = 'SUCCESS',
+           paid_at = NOW(),
+           payment_method_details = $2,
+           error_code = NULL,
+           error_description = NULL,
+           updated_at = NOW()
+       WHERE payment_link_id = $3
+         AND status != 'SUCCESS'
+       RETURNING *`,
+      [razorpayPaymentId, paymentMethodDetails || null, paymentLinkId],
+    );
+    return result;
+  }
+
+  /**
    * Update payment status to failed
    */
   async updatePaymentFailed(

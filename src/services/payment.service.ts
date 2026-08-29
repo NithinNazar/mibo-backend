@@ -7,6 +7,7 @@ import { razorpayUtil } from "../utils/razorpay";
 import { gallaboxUtil } from "../utils/gallabox";
 import { googleMeetUtil } from "../utils/googleMeet";
 import logger from "../config/logger";
+import { db } from "../config/db";
 
 class PaymentService {
   /**
@@ -628,7 +629,7 @@ class PaymentService {
         `💰 Payment link calculation for appointment ${appointmentId}: Consultation Fee: ₹${consultationFee}, Registration Fee: ₹${registrationFee}, Total: ₹${totalAmount}`,
       );
 
-      const expireBy = Math.floor(Date.now() / 1000) + (30 * 60);
+      const expireBy = Math.floor(Date.now() / 1000) + 30 * 60;
       // Create Razorpay payment link
       const paymentLink = await razorpayUtil.createPaymentLink(
         amountInPaise,
@@ -873,7 +874,9 @@ class PaymentService {
         );
       }
     } else {
-      logger.warn("[Admin] Gallabox not configured, payment link not sent via WhatsApp");
+      logger.warn(
+        "[Admin] Gallabox not configured, payment link not sent via WhatsApp",
+      );
     }
 
     return {
@@ -892,63 +895,131 @@ class PaymentService {
    * or sends a plain confirmation for IN_PERSON appointments.
    */
   async verifyAdminBookingPayment(paymentLinkId: string): Promise<any | null> {
-    const payment =
-      await paymentRepository.findPaymentByPaymentLinkId(paymentLinkId);
-    if (!payment) {
-      logger.warn(
-        `[Admin] No payment record found for payment link ${paymentLinkId}`,
-      );
-      return null;
-    }
-
-    if (payment.status === "SUCCESS") {
+    try {
       logger.info(
-        `[Admin] Payment ${paymentLinkId} already processed, skipping`,
+        `[Admin] Processing payment_link.paid webhook for link ${paymentLinkId}`,
       );
-      return null;
-    }
 
-    // Mark payment successful (payment links don't carry a Razorpay payment ID
-    // in the webhook entity — use the link ID as the identifier)
-    await paymentRepository.updatePaymentSuccess(paymentLinkId, paymentLinkId, {
-      method: "payment_link",
-    });
-
-    // Mark registration fee paid if this payment included it
-    if (payment.registration_fee && payment.registration_fee > 0) {
-      const patientProfile =
-        await patientRepository.findPatientProfileByPatientId(
-          payment.patient_id,
+      // Use database transaction for atomicity
+      return await db.tx(async (t) => {
+        // Find payment by payment_link_id
+        const payment = await t.oneOrNone(
+          "SELECT * FROM payments WHERE payment_link_id = $1 ORDER BY created_at DESC LIMIT 1",
+          [paymentLinkId],
         );
-      if (patientProfile) {
-        await patientRepository.markRegistrationFeePaid(patientProfile.user_id);
+
+        if (!payment) {
+          logger.warn(
+            `[Admin] No payment record found for payment link ${paymentLinkId}`,
+          );
+          return null;
+        }
+
+        if (payment.status === "SUCCESS") {
+          logger.info(
+            `[Admin] Payment ${paymentLinkId} already processed (status: SUCCESS), skipping`,
+          );
+          return null;
+        }
+
         logger.info(
-          `✅ [Admin] Registration fee marked as paid for patient ${payment.patient_id}`,
+          `[Admin] Found payment record ${payment.id} for appointment ${payment.appointment_id}`,
         );
-      }
-    }
 
-    // Confirm the appointment
-    await bookingRepository.updateAppointmentStatus(
-      payment.appointment_id,
-      "CONFIRMED",
-    );
+        // Update payment status to SUCCESS using the new method
+        await t.none(
+          `UPDATE payments
+           SET payment_id = $1,
+               status = 'SUCCESS',
+               paid_at = NOW(),
+               payment_method_details = $2,
+               error_code = NULL,
+               error_description = NULL,
+               updated_at = NOW()
+           WHERE id = $3`,
+          [
+            paymentLinkId, // Use payment_link_id as payment_id
+            { method: "payment_link" },
+            payment.id,
+          ],
+        );
 
-    logger.info(
-      `✅ [Admin] Appointment ${payment.appointment_id} confirmed after payment link ${paymentLinkId} paid`,
-    );
+        logger.info(
+          `[Admin] Payment ${payment.id} marked as SUCCESS for appointment ${payment.appointment_id}`,
+        );
 
-    const appointment = await bookingRepository.findAppointmentById(
-      payment.appointment_id,
-    );
-    if (!appointment) {
+        // Mark registration fee paid if this payment included it
+        if (payment.registration_fee && payment.registration_fee > 0) {
+          const patientProfile = await t.oneOrNone(
+            "SELECT * FROM patient_profiles WHERE id = $1",
+            [payment.patient_id],
+          );
+
+          if (patientProfile) {
+            await t.none(
+              "UPDATE users SET has_paid_registration_fee = TRUE WHERE id = $1",
+              [patientProfile.user_id],
+            );
+            logger.info(
+              `✅ [Admin] Registration fee marked as paid for patient ${payment.patient_id}`,
+            );
+          }
+        }
+
+        // Update appointment status to CONFIRMED
+        await t.none(
+          `UPDATE appointments
+           SET status = $1, is_active = TRUE, updated_at = NOW()
+           WHERE id = $2`,
+          ["CONFIRMED", payment.appointment_id],
+        );
+
+        logger.info(
+          `✅ [Admin] Appointment ${payment.appointment_id} confirmed after payment link ${paymentLinkId} paid`,
+        );
+
+        // Fetch complete appointment details
+        const appointment = await t.oneOrNone(
+          `SELECT 
+            a.*,
+            u.full_name as clinician_name,
+            cp.specialization,
+            cp.consultation_fee,
+            c.name as centre_name,
+            c.address_line1,
+            c.address_line2,
+            c.city,
+            c.pincode,
+            c.contact_phone,
+            pu.full_name as patient_name,
+            pu.phone as patient_phone,
+            pu.email as patient_email
+          FROM appointments a
+          JOIN clinician_profiles cp ON a.clinician_id = cp.id
+          JOIN users u ON cp.user_id = u.id
+          JOIN centres c ON a.centre_id = c.id
+          JOIN patient_profiles pp ON a.patient_id = pp.id
+          JOIN users pu ON pp.user_id = pu.id
+          WHERE a.id = $1`,
+          [payment.appointment_id],
+        );
+
+        if (!appointment) {
+          logger.error(
+            `[Admin] Appointment ${payment.appointment_id} not found after confirmation`,
+          );
+          return null;
+        }
+
+        return appointment;
+      });
+    } catch (error: any) {
       logger.error(
-        `[Admin] Appointment ${payment.appointment_id} not found after confirmation`,
+        `[Admin] Error in verifyAdminBookingPayment for link ${paymentLinkId}:`,
+        error,
       );
-      return null;
+      throw error;
     }
-
-    return appointment;
   }
 
   /**
@@ -960,26 +1031,59 @@ class PaymentService {
   private async rollbackAdminBookingAppointment(
     paymentLinkId: string,
   ): Promise<void> {
-    const payment =
-      await paymentRepository.findPaymentByPaymentLinkId(paymentLinkId);
-    if (!payment) {
-      logger.warn(
-        `[Admin] No payment record found for expired link ${paymentLinkId}`,
+    try {
+      logger.info(
+        `[Admin] Processing payment_link.expired webhook for link ${paymentLinkId}`,
       );
-      return;
+
+      // Use database transaction for atomicity
+      await db.tx(async (t) => {
+        const payment = await t.oneOrNone(
+          "SELECT * FROM payments WHERE payment_link_id = $1 ORDER BY created_at DESC LIMIT 1",
+          [paymentLinkId],
+        );
+
+        if (!payment) {
+          logger.warn(
+            `[Admin] No payment record found for expired link ${paymentLinkId}`,
+          );
+          return;
+        }
+
+        logger.info(
+          `[Admin] Found payment record ${payment.id} for appointment ${payment.appointment_id}`,
+        );
+
+        // Update payment as failed
+        await t.none(
+          `UPDATE payments 
+           SET status = 'FAILED',
+               error_code = $1,
+               error_description = $2,
+               updated_at = NOW()
+           WHERE id = $3`,
+          ["LINK_EXPIRED", "Payment link expired without payment", payment.id],
+        );
+
+        // Rollback appointment (only if status is still BOOKED)
+        await t.none(
+          `UPDATE appointments
+           SET status = 'CANCELLED', is_active = FALSE, updated_at = NOW()
+           WHERE id = $1 AND status = 'BOOKED'`,
+          [payment.appointment_id],
+        );
+
+        logger.info(
+          `⚠️ [Admin] Appointment ${payment.appointment_id} rolled back — payment link ${paymentLinkId} expired`,
+        );
+      });
+    } catch (error: any) {
+      logger.error(
+        `[Admin] Error in rollbackAdminBookingAppointment for link ${paymentLinkId}:`,
+        error,
+      );
+      throw error;
     }
-
-    await paymentRepository.updatePaymentFailed(
-      paymentLinkId,
-      "LINK_EXPIRED",
-      "Payment link expired without payment",
-    );
-
-    await appointmentRepository.rollbackAppointment(payment.appointment_id);
-
-    logger.info(
-      `⚠️ [Admin] Appointment ${payment.appointment_id} rolled back — payment link ${paymentLinkId} expired`,
-    );
   }
 
   /**
