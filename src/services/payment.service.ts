@@ -457,9 +457,26 @@ class PaymentService {
           paymentEntity.error_description,
         );
 
-        logger.info(
-          `⚠️ Webhook processed: Payment failed for order ${orderId}`,
-        );
+        // Get payment details to find associated appointment
+        const payment = await paymentRepository.findPaymentByOrderId(orderId);
+
+        if (payment) {
+          // Cancel the appointment to free up the slot
+          // Only cancel if appointment is still in BOOKED status (not already CONFIRMED or CANCELLED)
+          await bookingRepository.updateAppointmentStatusConditional(
+            payment.appointment_id,
+            "CANCELLED",
+            ["BOOKED"], // Only cancel if currently BOOKED
+          );
+
+          logger.info(
+            `⚠️ Webhook processed: Payment failed for order ${orderId}, appointment ${payment.appointment_id} cancelled`,
+          );
+        } else {
+          logger.info(
+            `⚠️ Webhook processed: Payment failed for order ${orderId}`,
+          );
+        }
       }
 
       // Mark webhook as processed

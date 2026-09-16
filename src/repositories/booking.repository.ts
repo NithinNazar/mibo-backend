@@ -225,6 +225,27 @@ class BookingRepository {
   }
 
   /**
+   * Update appointment status conditionally
+   * Only updates if current status is in the allowedCurrentStatuses array
+   * This prevents race conditions where a payment might fail after appointment is already confirmed
+   */
+  async updateAppointmentStatusConditional(
+    appointmentId: number,
+    newStatus: string,
+    allowedCurrentStatuses: string[],
+  ): Promise<Appointment | null> {
+    const result = await db.oneOrNone(
+      `UPDATE appointments
+       SET status = $1, is_active = FALSE, updated_at = NOW()
+       WHERE id = $2 AND status = ANY($3::text[])
+       RETURNING *`,
+      [newStatus, appointmentId, allowedCurrentStatuses],
+    );
+
+    return result;
+  }
+
+  /**
    * Get patient appointments
    */
   async getPatientAppointments(
